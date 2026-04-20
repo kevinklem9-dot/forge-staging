@@ -4735,16 +4735,28 @@ function setTheme(theme) {
 function updateLogoFilter(theme) {
   const logo = document.getElementById('authLogo');
   if (!logo) return;
-  // sepia(1) normalises logo to hsl(36°,73%,L), then hue-rotate+saturate+brightness
-  // targets are derived from each theme's exact --accent hex value
-  const filters = {
-    'dark-yellow': 'sepia(1) hue-rotate(31deg) saturate(1.37) brightness(1.13)',   // #e8ff3d
-    'dark-blue':   'sepia(1) hue-rotate(176deg) saturate(1.37) brightness(1.18)',   // #4d9fff
-    'dark-green':  'sepia(1) hue-rotate(114deg) saturate(0.93) brightness(0.98)',   // #39d98a
-    'midnight':    'sepia(1) hue-rotate(224deg) saturate(1.37) brightness(1.48)',   // #bf9fff
-    'light':       'sepia(1) saturate(0) brightness(0.19)',                          // #1a1a1a
-  };
-  logo.style.filter = filters[theme] || filters['dark-yellow'];
+  // Get the exact accent colour from the live CSS variable
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  // Use an overlay div coloured with --accent and mix-blend-mode:multiply
+  // The logo uses mix-blend-mode:lighten to remove its black background
+  // A sibling overlay with multiply tints the white/yellow parts to the exact accent
+  let overlay = document.getElementById('authLogoOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'authLogoOverlay';
+    overlay.style.cssText = `
+      position:absolute;
+      top:0;left:0;width:100%;height:100%;
+      mix-blend-mode:multiply;
+      pointer-events:none;
+      transition:background 0.3s;
+    `;
+    logo.parentElement.style.position = 'relative';
+    logo.parentElement.insertBefore(overlay, logo.nextSibling);
+  }
+  overlay.style.background = accent;
+  // Reset any previous filter
+  logo.style.filter = 'brightness(1.05)';
 }
 
 function toggleThemeDrawer() {
