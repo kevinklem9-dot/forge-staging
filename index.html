@@ -87,6 +87,15 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
   position:relative;
 }
 
+.auth-logo-img {
+  width: min(220px, 60vw);
+  height: auto;
+  display: block;
+  margin: 0 auto 8px;
+  mix-blend-mode: lighten;
+  transition: filter 0.3s;
+}
+
 .auth-card {
   background:var(--surface);
   border:1px solid var(--border);
@@ -4726,12 +4735,13 @@ function setTheme(theme) {
 function updateLogoFilter(theme) {
   const logo = document.getElementById('authLogo');
   if (!logo) return;
+  // Shifts the logo's baked-in yellow (#e8ff3d, hue ~65°) to match each theme's --accent
   const filters = {
-    'dark-yellow': 'brightness(1.05)',
-    'dark-blue':   'hue-rotate(195deg) saturate(1.2) brightness(1.1)',
-    'dark-green':  'hue-rotate(90deg) saturate(1.2) brightness(1.1)',
-    'midnight':    'hue-rotate(255deg) saturate(0.9) brightness(1.1)',
-    'light':       'brightness(0.15) contrast(1.5)',
+    'dark-yellow': 'brightness(1.05)',                                    // yellow stays yellow
+    'dark-blue':   'hue-rotate(145deg) saturate(1.1) brightness(1.1)',   // yellow→blue (#4d9fff)
+    'dark-green':  'hue-rotate(85deg) saturate(1.1) brightness(1.0)',    // yellow→green (#39d98a)
+    'midnight':    'hue-rotate(205deg) saturate(0.9) brightness(1.1)',   // yellow→purple (#bf9fff)
+    'light':       'brightness(0.12) contrast(1.8)',                      // near-black for light bg
   };
   logo.style.filter = filters[theme] || 'brightness(1.05)';
 }
@@ -4753,7 +4763,7 @@ function loadTheme() {
   setTimeout(() => {
     document.querySelectorAll('.theme-swatch').forEach((s, i) => s.classList.toggle('active', THEMES[i] === saved));
     updateLogoFilter(saved);
-  }, 200);
+  }, 100);
 }
 
 // ── LANGUAGE SYSTEM ─────────────────────────────
