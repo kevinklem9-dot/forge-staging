@@ -826,6 +826,12 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
           <div id="weeklyReviewCard" style="margin:0 18px 4px"></div>
         </div>
 
+        <!-- MONTHLY REVIEW -->
+        <div id="monthlyReviewSection" style="display:none">
+          <div class="section-label">MONTHLY DEEP-DIVE</div>
+          <div id="monthlyReviewCard" style="margin:0 18px 4px"></div>
+        </div>
+
         <div class="stat-grid" id="statGrid"></div>
 
         <!-- PLAN ADHERENCE -->
@@ -2883,6 +2889,7 @@ async function renderProgress() {
     renderStatGrid(),
     renderMissions(),
     renderWeeklyReview(),
+    renderMonthlyReview(),
     renderAdherence(),
     renderMetricsHistory(),
     checkDeloadWarning()
@@ -3055,6 +3062,68 @@ async function renderWeeklyReview() {
       <div class="review-body">${review.summary || review.ai_insights || ''}</div>
     </div>
   `;
+}
+
+// ── MONTHLY DEEP-DIVE REVIEW ──────────────────────
+async function renderMonthlyReview() {
+  const section = document.getElementById('monthlyReviewSection');
+  const card = document.getElementById('monthlyReviewCard');
+  if (!section) return;
+
+  if (!canAccess('monthly_review')) {
+    section.style.display = '';
+    if (card) card.innerHTML = `<div onclick="showLockedFeature('Monthly AI Deep-Dive Review','forge')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
+      <div style="font-size:24px;margin-bottom:8px;">🔒</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Monthly Deep-Dive Review</div>
+      <div style="font-size:12px;color:var(--muted);">Available on 🔥 Forge</div>
+    </div>`;
+    return;
+  }
+
+  const res = await api('/api/monthly-review/latest');
+  const review = res?.review;
+
+  if (!review) {
+    // No review yet — show a prompt
+    section.style.display = '';
+    const now = new Date();
+    const monthName = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    card.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">MONTHLY DEEP-DIVE · ${monthName.toUpperCase()}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Your monthly deep-dive review analyses your full month of training — volume trends, strength progression, recovery patterns, and personalised recommendations for next month.</div>
+        <button onclick="generateMonthlyReview(this)" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Generate This Month's Review</button>
+      </div>`;
+    return;
+  }
+
+  section.style.display = '';
+  const monthDate = new Date(review.month_start || review.created_at);
+  const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  card.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">MONTHLY DEEP-DIVE · ${monthLabel.toUpperCase()}</div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">SESSIONS</div></div>` : ''}
+        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">PRs HIT</div></div>` : ''}
+        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ADHERENCE</div></div>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.ai_insights || ''}</div>
+      <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">REGENERATE REVIEW</button>
+    </div>`;
+}
+
+async function generateMonthlyReview(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+  const res = await api('/api/monthly-review/generate', 'POST');
+  if (res?.review) {
+    showToast('Monthly review ready', 'success');
+    renderMonthlyReview();
+  } else {
+    showToast('Failed to generate — try again', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate This Month\'s Review'; }
+  }
 }
 
 // ── PLAN ADHERENCE ────────────────────────────────
@@ -4260,6 +4329,12 @@ async function showExerciseModal(exerciseIndex) {
   const day = userPlan?.workout_plan?.days?.[selectedDay];
   const exercise = day?.exercises?.[exerciseIndex];
   if (!exercise) return;
+
+  // Gate video demos to Forge tier
+  if (!canAccess('video_demos')) {
+    showLockedFeature('Exercise Video Demonstrations', 'forge');
+    return;
+  }
 
   // Remove any existing modal
   document.getElementById('exerciseModal')?.remove();
