@@ -3128,11 +3128,32 @@ async function generateMonthlyReview(btn) {
   const res = await api('/api/monthly-review/generate', 'POST');
   if (res?.review) {
     showToast('Monthly review ready', 'success');
-    renderMonthlyReview();
+    // Render directly from the returned data — don't re-fetch, DB save may lag
+    renderMonthlyReviewData(res.review);
   } else {
     showToast('Failed to generate — try again', 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Generate This Month\'s Review'; }
   }
+}
+
+function renderMonthlyReviewData(review) {
+  const section = document.getElementById('monthlyReviewSection');
+  const card = document.getElementById('monthlyReviewCard');
+  if (!section || !card) return;
+  section.style.display = '';
+  const monthDate = new Date(review.month_start || review.created_at || Date.now());
+  const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  card.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">MONTHLY DEEP-DIVE · ${monthLabel.toUpperCase()}</div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">SESSIONS</div></div>` : ''}
+        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">PRs HIT</div></div>` : ''}
+        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ADHERENCE</div></div>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.review_content || ''}</div>
+      <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">REGENERATE REVIEW</button>
+    </div>`;
 }
 
 // ── PLAN ADHERENCE ────────────────────────────────
