@@ -2200,8 +2200,15 @@ async function loadPlanAndLaunch() {
     let updated = false;
     if (planRes?.plan) {
       userPlan = planRes.plan;
-      localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
       updated = true;
+      // If user has a non-English language set, translate first then cache+render
+      // Don't render the English version briefly before translation
+      if (appLanguage && appLanguage !== 'en') {
+        translateAndRefreshPlan(appLanguage); // handles cache + render after translation
+      } else {
+        localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+        // Only re-render if we got a different plan than cached
+      }
     }
     if (profileRes?.profile) {
       userProfile = profileRes.profile;
@@ -9221,24 +9228,42 @@ function setLanguage(code) {
   if (typeof renderCoachCounter === 'function') renderCoachCounter();
   closeLangDrawer();
   showToast(`${lang.flag} ${lang.label}`, 'success');
-  // Translate plan text (notes, day names, labels, meal names) if switching away from English
-  if (code !== 'en' && userPlan) {
-    translateAndRefreshPlan(code);
+  // Translate plan text when switching to any language including English
+  if (userPlan) {
+    if (code === 'en') {
+      // Switching to English — reload original plan from server (always stored in English)
+      reloadPlanFromServer();
+    } else {
+      translateAndRefreshPlan(code);
+    }
   }
 }
 
 async function translateAndRefreshPlan(code) {
   const res = await api('/api/translate-plan', 'POST', { language: code });
   if (res?.ok && !res.skipped && res.workout_plan) {
-    // Update in-memory plan with translated text
     userPlan.workout_plan = res.workout_plan;
     if (res.nutrition_plan) userPlan.nutrition_plan = res.nutrition_plan;
-    // Cache the translated plan
+    // Cache the translated version — this is what loads on next login
     localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
-    // Re-render panels with translated content
     if (typeof renderWorkoutPanel === 'function') renderWorkoutPanel();
     if (typeof renderNutritionPanel === 'function') renderNutritionPanel();
     if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
+    if (typeof renderShoppingList === 'function' && document.getElementById('nview-shopping')?.style.display !== 'none') renderShoppingList();
+  }
+}
+
+async function reloadPlanFromServer() {
+  // Fetch the original English plan directly from the server
+  const res = await api('/api/plan');
+  if (res?.plan) {
+    userPlan = res.plan;
+    // Cache the English version
+    localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+    if (typeof renderWorkoutPanel === 'function') renderWorkoutPanel();
+    if (typeof renderNutritionPanel === 'function') renderNutritionPanel();
+    if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
+    if (typeof renderShoppingList === 'function' && document.getElementById('nview-shopping')?.style.display !== 'none') renderShoppingList();
   }
 }
 
