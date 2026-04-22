@@ -968,9 +968,9 @@ if ('serviceWorker' in navigator) {
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
-const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const SUPABASE_URL = 'https://ozhtiqoregcwxkkxohbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aHRpcW9yZWdjd3hra3hvaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjAxMTAsImV4cCI6MjA5MDMzNjExMH0.DrrZLUgLgtBTfSrhDC_acZ48ZrKQdqltBfAi_0-aTeI';
+const BACKEND_URL = 'https://forge-production-db97.up.railway.app';
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
@@ -1103,18 +1103,28 @@ function selectGlobalLang(code) {
   const lang = LANGUAGES.find(l => l.code === code) || LANGUAGES[0];
   const flag = document.getElementById('globalLangFlag');
   if (flag) flag.textContent = lang.flag;
-  // If in app, use full setLanguage; if on auth/onboarding screens just set appLanguage + applyLanguage
+  // If in main app, use full setLanguage (re-renders everything)
   const inApp = document.getElementById('screen-app')?.classList.contains('active');
   if (inApp) {
     setLanguage(code);
-  } else {
-    appLanguage = code;
-    localStorage.setItem('forge_language', code);
-    applyLanguage();
-    // Also update the in-app lang button
-    const btn = document.getElementById('langBtn');
-    if (btn) btn.textContent = lang.flag;
-    loadLanguage();
+    return;
+  }
+  // Otherwise just update appLanguage and re-render what's on screen
+  appLanguage = code;
+  localStorage.setItem('forge_language', code);
+  loadLanguage();
+  applyLanguage();
+  // Update the in-app lang button flag
+  const btn = document.getElementById('langBtn');
+  if (btn) btn.textContent = lang.flag;
+  // Re-render onboarding if it's active
+  const onObScreen = document.getElementById('screen-onboarding')?.classList.contains('active');
+  if (onObScreen && typeof renderObStep === 'function') renderObStep();
+  // Re-render generating screen label if active
+  const onGenScreen = document.getElementById('screen-generating')?.classList.contains('active');
+  if (onGenScreen) {
+    const genStatus = document.getElementById('gen-status');
+    if (genStatus) genStatus.textContent = t('generating_workout');
   }
 }
 
@@ -1533,105 +1543,109 @@ let obStep = 0;
 const obData = {};
 
 // Sport steps injected dynamically after goals if 'sport' is selected
-const SPORT_STEPS = [
-  {
-    title: 'Your Sport', sub: 'Tell us exactly what you play or compete in', field: 'sport_name',
-    type: 'sport_name'
-  },
-  {
-    title: 'Competition Level', sub: 'Do you compete or train recreationally?', field: 'sport_level',
-    type: 'grid',
-    options: [
-      { value: 'recreational', icon: '🎮', label: 'Recreational', sub: 'For fun & fitness' },
-      { value: 'amateur', icon: '🥈', label: 'Amateur', sub: 'Club or local league' },
-      { value: 'competitive', icon: '🥇', label: 'Competitive', sub: 'Regular competition' },
-      { value: 'elite', icon: '🏆', label: 'Elite / Pro', sub: 'High performance' },
-    ]
-  },
-  {
-    title: 'Sport Training Days', sub: 'Which days do you already train or play your sport?', field: 'sport_training_days',
-    type: 'sport_days'
-  },
-  {
-    title: 'Sport Details', sub: 'Anything else we should know?', field: 'sport_details',
-    type: 'sport_details'
-  },
-];
+function getSportSteps() {
+  return [
+    {
+      title: t('ob_sport_title'), sub: t('ob_sport_sub'), field: 'sport_name',
+      type: 'sport_name'
+    },
+    {
+      title: t('ob_sport_level_title'), sub: t('ob_sport_level_sub'), field: 'sport_level',
+      type: 'grid',
+      options: [
+        { value: 'recreational', icon: '🎮', label: t('ob_sport_recreational'), sub: t('ob_sport_recreational_sub') },
+        { value: 'amateur', icon: '🥈', label: t('ob_sport_amateur'), sub: t('ob_sport_amateur_sub') },
+        { value: 'competitive', icon: '🥇', label: t('ob_sport_competitive'), sub: t('ob_sport_competitive_sub') },
+        { value: 'elite', icon: '🏆', label: t('ob_sport_elite'), sub: t('ob_sport_elite_sub') },
+      ]
+    },
+    {
+      title: t('ob_sport_days_title'), sub: t('ob_sport_days_sub'), field: 'sport_training_days',
+      type: 'sport_days'
+    },
+    {
+      title: t('ob_sport_details_title'), sub: t('ob_sport_details_sub'), field: 'sport_details',
+      type: 'sport_details'
+    },
+  ];
+}
 
 function getObSteps() {
-  const base = [...OB_STEPS_BASE];
+  const base = [...getObStepsBase()];
   // If sport is selected, inject sport steps after the goals step (index 0)
   if (Array.isArray(obData.goal) && obData.goal.includes('sport')) {
-    base.splice(1, 0, ...SPORT_STEPS);
+    base.splice(1, 0, ...getSportSteps());
   }
   return base;
 }
 
-const OB_STEPS_BASE = [
-  {
-    title: 'Your Goals', sub: 'Select all that apply', field: 'goal',
-    type: 'multi',
-    options: [
-      { value: 'muscle', icon: '💪', label: 'Build Muscle', sub: 'Hypertrophy focus' },
-      { value: 'fat_loss', icon: '🔥', label: 'Lose Fat', sub: 'Burn & preserve muscle' },
-      { value: 'strength', icon: '🏋️', label: 'Get Stronger', sub: 'Power & strength' },
-      { value: 'endurance', icon: '🏃', label: 'Improve Fitness', sub: 'Conditioning' },
-      { value: 'sport', icon: '🏅', label: 'Sport Performance', sub: 'Train for your sport' },
-    ]
-  },
-  {
-    title: 'Gym Experience', sub: 'How long have you been training in the gym?', field: 'experience',
-    type: 'grid',
-    options: [
-      { value: 'beginner', icon: '🌱', label: 'Beginner', sub: 'Under 1 year in the gym' },
-      { value: 'intermediate', icon: '⚡', label: 'Intermediate', sub: '1–3 years in the gym' },
-      { value: 'advanced', icon: '🔱', label: 'Advanced', sub: '3+ years in the gym' },
-    ]
-  },
-  {
-    title: 'Gym Days', sub: 'How many days per week can you train in the gym?', field: 'days_per_week',
-    type: 'grid',
-    options: [
-      { value: 1, icon: '1️⃣', label: '1 Day', sub: 'Full body' },
-      { value: 2, icon: '2️⃣', label: '2 Days', sub: 'Full body split' },
-      { value: 3, icon: '3️⃣', label: '3 Days', sub: 'Full body' },
-      { value: 4, icon: '4️⃣', label: '4 Days', sub: 'Upper/lower' },
-      { value: 5, icon: '5️⃣', label: '5 Days', sub: 'Push/pull/legs' },
-      { value: 6, icon: '6️⃣', label: '6 Days', sub: 'PPL x 2' },
-    ]
-  },
-  {
-    title: 'Which Gym Days?', sub: 'Select the days you can go to the gym', field: 'preferred_days',
-    type: 'days'
-  },
-  {
-    title: 'Equipment', sub: 'Select all you have access to', field: 'equipment',
-    type: 'multi',
-    options: [
-      { value: 'full_gym', icon: '🏢', label: 'Full Gym', sub: 'All equipment' },
-      { value: 'home_gym', icon: '🏠', label: 'Home Gym', sub: 'Dumbbells & barbell' },
-      { value: 'minimal', icon: '🎽', label: 'Minimal', sub: 'Bands & bodyweight' },
-    ]
-  },
-  {
-    title: 'Your Stats', sub: 'Age, height and current weight', field: 'stats',
-    type: 'stats'
-  },
-  {
-    title: 'Diet Style', sub: 'How do you eat?', field: 'diet_style',
-    type: 'grid',
-    options: [
-      { value: 'anything', icon: '🍖', label: 'Everything', sub: 'No restrictions' },
-      { value: 'vegetarian', icon: '🥗', label: 'Vegetarian', sub: 'No meat' },
-      { value: 'vegan', icon: '🌱', label: 'Vegan', sub: 'Plant only' },
-      { value: 'keto', icon: '🥑', label: 'Keto/Low Carb', sub: 'Fat-dominant' },
-    ]
-  },
-  {
-    title: 'Any Restrictions?', sub: 'Foods to avoid, allergies, injuries', field: 'restrictions',
-    type: 'text'
-  }
-];
+function getObStepsBase() {
+  return [
+    {
+      title: t('ob_goal_title'), sub: t('ob_goal_sub'), field: 'goal',
+      type: 'multi',
+      options: [
+        { value: 'muscle',    icon: '💪', label: t('ob_goal_muscle'),    sub: t('ob_goal_muscle_sub') },
+        { value: 'fat_loss',  icon: '🔥', label: t('ob_goal_fat_loss'),  sub: t('ob_goal_fat_loss_sub') },
+        { value: 'strength',  icon: '🏋️', label: t('ob_goal_strength'),  sub: t('ob_goal_strength_sub') },
+        { value: 'endurance', icon: '🏃', label: t('ob_goal_endurance'), sub: t('ob_goal_endurance_sub') },
+        { value: 'sport',     icon: '🏅', label: t('ob_goal_sport'),     sub: t('ob_goal_sport_sub') },
+      ]
+    },
+    {
+      title: t('ob_exp_title'), sub: t('ob_exp_sub'), field: 'experience',
+      type: 'grid',
+      options: [
+        { value: 'beginner',     icon: '🌱', label: t('ob_exp_beginner'),     sub: t('ob_exp_beginner_sub') },
+        { value: 'intermediate', icon: '⚡', label: t('ob_exp_intermediate'), sub: t('ob_exp_intermediate_sub') },
+        { value: 'advanced',     icon: '🔱', label: t('ob_exp_advanced'),     sub: t('ob_exp_advanced_sub') },
+      ]
+    },
+    {
+      title: t('ob_days_title'), sub: t('ob_days_sub'), field: 'days_per_week',
+      type: 'grid',
+      options: [
+        { value: 1, icon: '1️⃣', label: '1 ' + t('ob_day'),  sub: t('ob_days_1_sub') },
+        { value: 2, icon: '2️⃣', label: '2 ' + t('ob_days'), sub: t('ob_days_2_sub') },
+        { value: 3, icon: '3️⃣', label: '3 ' + t('ob_days'), sub: t('ob_days_3_sub') },
+        { value: 4, icon: '4️⃣', label: '4 ' + t('ob_days'), sub: t('ob_days_4_sub') },
+        { value: 5, icon: '5️⃣', label: '5 ' + t('ob_days'), sub: t('ob_days_5_sub') },
+        { value: 6, icon: '6️⃣', label: '6 ' + t('ob_days'), sub: t('ob_days_6_sub') },
+      ]
+    },
+    {
+      title: t('ob_which_days_title'), sub: t('ob_which_days_sub'), field: 'preferred_days',
+      type: 'days'
+    },
+    {
+      title: t('ob_equipment_title'), sub: t('ob_equipment_sub'), field: 'equipment',
+      type: 'multi',
+      options: [
+        { value: 'full_gym',  icon: '🏢', label: t('ob_equip_full'),    sub: t('ob_equip_full_sub') },
+        { value: 'home_gym',  icon: '🏠', label: t('ob_equip_home'),    sub: t('ob_equip_home_sub') },
+        { value: 'minimal',   icon: '🎽', label: t('ob_equip_minimal'), sub: t('ob_equip_minimal_sub') },
+      ]
+    },
+    {
+      title: t('ob_stats_title'), sub: t('ob_stats_sub'), field: 'stats',
+      type: 'stats'
+    },
+    {
+      title: t('ob_diet_title'), sub: t('ob_diet_sub'), field: 'diet_style',
+      type: 'grid',
+      options: [
+        { value: 'anything',    icon: '🍖', label: t('ob_diet_anything'),    sub: t('ob_diet_anything_sub') },
+        { value: 'vegetarian',  icon: '🥗', label: t('ob_diet_vegetarian'),  sub: t('ob_diet_vegetarian_sub') },
+        { value: 'vegan',       icon: '🌱', label: t('ob_diet_vegan'),       sub: t('ob_diet_vegan_sub') },
+        { value: 'keto',        icon: '🥑', label: t('ob_diet_keto'),        sub: t('ob_diet_keto_sub') },
+      ]
+    },
+    {
+      title: t('ob_restrictions_title'), sub: t('ob_restrictions_sub'), field: 'restrictions',
+      type: 'text'
+    }
+  ];
+}
 
 function renderObStep() {
   const step = getObSteps()[obStep];
@@ -1646,16 +1660,16 @@ function renderObStep() {
   let stepSub = step.sub;
   if (isSportUser) {
     if (step.field === 'days_per_week') {
-      stepTitle = 'Gym Training Days';
-      stepSub = 'How many days per week can you train in the gym? (separate from sport)';
+      stepTitle = t('ob_days_sport_title');
+      stepSub = t('ob_days_sport_sub');
     }
     if (step.field === 'preferred_days') {
-      stepTitle = 'Which Gym Days?';
-      stepSub = 'Select your gym days — sport days are shown but cannot be selected';
+      stepTitle = t('ob_which_days_title');
+      stepSub = t('ob_which_days_sport_sub');
     }
     if (step.field === 'experience') {
-      stepTitle = 'Gym Experience';
-      stepSub = 'How long have you been lifting weights in the gym?';
+      stepTitle = t('ob_exp_title');
+      stepSub = t('ob_exp_sport_sub');
     }
   }
   document.getElementById('ob-title').textContent = stepTitle;
@@ -1717,25 +1731,25 @@ function renderObStep() {
   if (step.type === 'stats') {
     body.innerHTML = `
       <div class="field-group">
-        <div class="field-label">Age</div>
+        <div class="field-label">${t('ob_stats_age')}</div>
         <input class="number-input-large" type="number" id="ob-age" inputmode="numeric" placeholder="—" value="${obData.age || ''}" oninput="checkStats()">
-        <div class="number-unit">YEARS</div>
+        <div class="number-unit">${t('ob_stats_years')}</div>
       </div>
       <div class="field-group" style="margin-top:20px">
-        <div class="field-label">Height</div>
+        <div class="field-label">${t('ob_stats_height')}</div>
         <input class="number-input-large" type="number" id="ob-height" inputmode="numeric" placeholder="—" value="${obData.height_cm || ''}" oninput="checkStats()">
-        <div class="number-unit">CM</div>
+        <div class="number-unit">${t('ob_stats_cm')}</div>
       </div>
       <div class="field-group" style="margin-top:20px">
-        <div class="field-label">Weight</div>
+        <div class="field-label">${t('ob_stats_weight')}</div>
         <input class="number-input-large" type="number" id="ob-weight" inputmode="decimal" placeholder="—" value="${obData.weight_kg || ''}" oninput="checkStats()">
-        <div class="number-unit">KG</div>
+        <div class="number-unit">${t('ob_stats_kg')}</div>
       </div>
       <div class="field-group" style="margin-top:20px">
-        <div class="field-label">Sex</div>
+        <div class="field-label">${t('ob_stats_sex')}</div>
         <div class="ob-grid" style="margin-top:8px">
-          <div class="ob-option ${obData.sex==='male'?'selected':''}" data-field="sex" data-value="male"><div class="ob-option-icon">♂️</div><div class="ob-option-label">Male</div></div>
-          <div class="ob-option ${obData.sex==='female'?'selected':''}" data-field="sex" data-value="female"><div class="ob-option-icon">♀️</div><div class="ob-option-label">Female</div></div>
+          <div class="ob-option ${obData.sex==='male'?'selected':''}" data-field="sex" data-value="male"><div class="ob-option-icon">♂️</div><div class="ob-option-label">${t('ob_stats_male')}</div></div>
+          <div class="ob-option ${obData.sex==='female'?'selected':''}" data-field="sex" data-value="female"><div class="ob-option-icon">♀️</div><div class="ob-option-label">${t('ob_stats_female')}</div></div>
         </div>
       </div>
     `;
@@ -1749,7 +1763,8 @@ function renderObStep() {
   }
 
   if (step.type === 'days') {
-    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const dayKeys = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const days = dayKeys.map(d => ({ key: d, label: t('day_' + d.toLowerCase()) }));
     if (!obData.preferred_days) obData.preferred_days = [];
     const target = parseInt(obData.days_per_week) || 3;
     const isSport = Array.isArray(obData.goal) && obData.goal.includes('sport');
@@ -1766,28 +1781,28 @@ function renderObStep() {
 
     const headerNote = isSport && sportDays.length > 0
       ? (canSameDay
-          ? 'Sport days shown below — you can also pick these for gym sessions.'
-          : 'Your sport days are shown below. Choose your GYM days from the remaining days.')
-      : 'Select exactly ' + target + ' day' + (target > 1 ? 's' : '');
+          ? t('ob_days_sport_note_sameday')
+          : t('ob_days_sport_note'))
+      : t('select_days_first').replace('{n}', target);
 
-    const rowsHtml = days.map(function(d) {
+    const rowsHtml = days.map(function(day) {
+      const d = day.key;
+      const label = day.label;
       const isSportDay = sportDays.includes(d);
       const sel = !isSportDay && obData.preferred_days.includes(d);
       if (isSportDay && !canSameDay) {
-        // Locked sport day — shown greyed with sport badge
         return '<div class="ob-day-row" data-day="' + d + '" data-locked="true" style="background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;opacity:0.45;cursor:not-allowed;">'
-          + '<span style="font-size:14px;font-weight:600;color:var(--muted)">' + d + '</span>'
+          + '<span style="font-size:14px;font-weight:600;color:var(--muted)">' + label + '</span>'
           + '<span style="font-size:11px;background:var(--border);color:var(--muted);padding:2px 8px;border-radius:20px;font-family:DM Mono,monospace">SPORT</span>'
           + '</div>';
       }
       if (isSportDay && canSameDay) {
-        // Sport day but selectable for gym too — show dual badge if selected
         const sel = obData.preferred_days.includes(d);
         const borderColor = sel ? 'var(--accent)' : 'rgba(212,235,30,0.3)';
         const textColor = sel ? 'var(--accent)' : 'var(--text)';
         const badges = '<span style="font-size:10px;background:rgba(212,235,30,0.15);color:var(--accent);padding:2px 7px;border-radius:20px;font-family:DM Mono,monospace">SPORT' + (sel ? ' + GYM' : '') + '</span>';
         return '<div class="ob-day-row" data-day="' + d + '" style="background:var(--surface);border:2px solid ' + borderColor + ';border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.15s;user-select:none;">'
-          + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + d + '</span>'
+          + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + label + '</span>'
           + badges
           + '</div>';
       }
@@ -1795,13 +1810,13 @@ function renderObStep() {
       const textColor = sel ? 'var(--accent)' : 'var(--text)';
       const check = sel ? '<span style="font-size:18px;color:var(--accent)">✓</span>' : '<span style="font-size:18px"></span>';
       return '<div class="ob-day-row" data-day="' + d + '" style="background:var(--surface);border:2px solid ' + borderColor + ';border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.15s;user-select:none;-webkit-user-select:none">'
-        + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + d + '</span>'
+        + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + label + '</span>'
         + check
         + '</div>';
     }).join('');
 
     body.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">' + headerNote + '</div>'
-      + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px">Gym days: <span id="days-count">' + obData.preferred_days.length + '</span> / ' + target + ' selected</div>'
+      + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px">' + t('ob_days_gym_count').replace('{n}', obData.preferred_days.length).replace('{total}', target) + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:8px">' + rowsHtml + '</div>';
 
     function syncDaysUI() {
@@ -1847,12 +1862,12 @@ function renderObStep() {
   if (step.type === 'text') {
     body.innerHTML = `
       <div class="field-group">
-        <div class="field-label">Diet restrictions / foods you avoid</div>
-        <input class="field-input" type="text" id="ob-restrictions" placeholder="e.g. no soy, no dairy — or type 'none'" value="${obData.diet_restrictions || ''}">
+        <div class="field-label">${t('ob_restrictions_diet_label')}</div>
+        <input class="field-input" type="text" id="ob-restrictions" placeholder="${t('ob_restrictions_diet_placeholder')}" value="${obData.diet_restrictions || ''}">
       </div>
       <div class="field-group" style="margin-top:16px">
-        <div class="field-label">Injuries or physical limitations</div>
-        <input class="field-input" type="text" id="ob-injuries" placeholder="e.g. bad knee — or type 'none'" value="${obData.injuries || ''}">
+        <div class="field-label">${t('ob_restrictions_injuries_label')}</div>
+        <input class="field-input" type="text" id="ob-injuries" placeholder="${t('ob_restrictions_injuries_placeholder')}" value="${obData.injuries || ''}">
       </div>
     `;
     document.getElementById('ob-next').disabled = false;
@@ -1861,42 +1876,41 @@ function renderObStep() {
   if (step.type === 'sport_name') {
     body.innerHTML = `
       <div class="field-group">
-        <div class="field-label">What sport do you play?</div>
-        <input class="field-input" type="text" id="ob-sport-name" placeholder="e.g. Football, Boxing, Tennis, BJJ..." value="${obData.sport_name || ''}" oninput="checkSportName()">
+        <div class="field-label">${t('ob_sport_name_label')}</div>
+        <input class="field-input" type="text" id="ob-sport-name" placeholder="${t('ob_sport_name_placeholder')}" value="${obData.sport_name || ''}" oninput="checkSportName()">
       </div>
       <div class="field-group" style="margin-top:16px">
-        <div class="field-label">Position or discipline (optional)</div>
-        <input class="field-input" type="text" id="ob-sport-position" placeholder="e.g. Centre-back, Heavyweight, Freestyle..." value="${obData.sport_position || ''}">
+        <div class="field-label">${t('ob_sport_position_label')}</div>
+        <input class="field-input" type="text" id="ob-sport-position" placeholder="${t('ob_sport_position_placeholder')}" value="${obData.sport_position || ''}">
       </div>
       <div style="margin-top:20px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
-        <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:6px;">WHY WE ASK</div>
-        <div style="font-size:13px;color:var(--text);line-height:1.5;">Your gym programme will be built around your sport — not against it. We'll schedule gym sessions on your non-sport days and prioritise the physical qualities your sport demands.</div>
+        <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:6px;">${t('ob_sport_why_label')}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;">${t('ob_sport_why_text')}</div>
       </div>
     `;
     document.getElementById('ob-next').disabled = !obData.sport_name;
   }
 
   if (step.type === 'sport_days') {
-    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const dayKeys = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     if (!Array.isArray(obData.sport_training_days)) obData.sport_training_days = [];
     const hasPrev = obData.sport_training_days.length > 0;
 
-    const dayRows = days.map(function(d) {
+    const dayRows = dayKeys.map(function(d) {
+      const label = t('day_' + d.toLowerCase());
       const sel = obData.sport_training_days.includes(d);
       const borderColor = sel ? 'var(--accent)' : 'var(--border)';
       const textColor = sel ? 'var(--accent)' : 'var(--text)';
       const badge = sel ? '<span style="font-size:11px;background:var(--accent);color:#000;padding:2px 8px;border-radius:20px;font-family:DM Mono,monospace;font-weight:600">SPORT</span>' : '';
       return '<div class="ob-day-row" data-day="' + d + '" style="background:var(--surface);border:2px solid ' + borderColor + ';border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.15s;user-select:none;-webkit-user-select:none">'
-        + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + d + '</span>'
+        + '<span style="font-size:14px;font-weight:600;color:' + textColor + '">' + label + '</span>'
         + badge
         + '</div>';
     }).join('');
 
-    const hintText = hasPrev
-      ? 'Your previous selection is shown. Tap to change.'
-      : 'Select 0 days if your schedule varies week to week.';
+    const hintText = hasPrev ? t('ob_sport_days_hint_prev') : t('ob_sport_days_hint');
 
-    body.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">Sport days &mdash; <span id="sport-days-count">' + obData.sport_training_days.length + '</span> selected</div>'
+    body.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">' + t('ob_sport_days_count').replace('{n}', obData.sport_training_days.length) + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:8px">' + dayRows + '</div>'
       + '<div style="margin-top:12px;font-size:12px;color:var(--muted);">' + hintText + '</div>';
 
@@ -1917,8 +1931,8 @@ function renderObStep() {
           this.style.borderColor = 'var(--accent)';
           this.querySelector('span:first-child').style.color = 'var(--accent)';
         }
-        document.getElementById('sport-days-count').textContent = obData.sport_training_days.length;
-        renderObStep(); // re-render to update badges cleanly
+        document.getElementById('sport-days-count') && (document.getElementById('sport-days-count').textContent = obData.sport_training_days.length);
+        renderObStep();
       });
     });
   }
@@ -1926,27 +1940,27 @@ function renderObStep() {
   if (step.type === 'sport_details') {
     body.innerHTML = `
       <div class="field-group">
-        <div class="field-label">Can you train gym on the same day as sport? (optional)</div>
+        <div class="field-label">${t('ob_sport_sameday_label')}</div>
         <div class="ob-grid" style="margin-top:8px;grid-template-columns:repeat(2,1fr)">
           <div class="ob-option ${obData.gym_same_day==='yes'?'selected':''}" style="cursor:pointer" onclick="selectSportSessions(this, 'gym_same_yes')">
             <div class="ob-option-icon">✅</div>
-            <div class="ob-option-label">Yes</div>
-            <div class="ob-option-sub">I can double up</div>
+            <div class="ob-option-label">${t('ob_yes')}</div>
+            <div class="ob-option-sub">${t('ob_sport_sameday_yes_sub')}</div>
           </div>
           <div class="ob-option ${obData.gym_same_day==='no'?'selected':''}" style="cursor:pointer" onclick="selectSportSessions(this, 'gym_same_no')">
             <div class="ob-option-icon">❌</div>
-            <div class="ob-option-label">No</div>
-            <div class="ob-option-sub">Separate days only</div>
+            <div class="ob-option-label">${t('ob_no')}</div>
+            <div class="ob-option-sub">${t('ob_sport_sameday_no_sub')}</div>
           </div>
         </div>
       </div>
       <div class="field-group" style="margin-top:20px">
-        <div class="field-label">Upcoming competition or event? (optional)</div>
-        <input class="field-input" type="text" id="ob-sport-competition" placeholder="e.g. County finals in March, fight in 8 weeks..." value="${obData.sport_competition || ''}">
+        <div class="field-label">${t('ob_sport_competition_label')}</div>
+        <input class="field-input" type="text" id="ob-sport-competition" placeholder="${t('ob_sport_competition_placeholder')}" value="${obData.sport_competition || ''}">
       </div>
       <div class="field-group" style="margin-top:16px">
-        <div class="field-label">Anything else your coach should know?</div>
-        <input class="field-input" type="text" id="ob-sport-notes" placeholder="e.g. recovering from ankle sprain, bulking phase..." value="${obData.sport_notes || ''}">
+        <div class="field-label">${t('ob_sport_notes_label')}</div>
+        <input class="field-input" type="text" id="ob-sport-notes" placeholder="${t('ob_sport_notes_placeholder')}" value="${obData.sport_notes || ''}">
       </div>
     `;
     document.getElementById('ob-next').disabled = false;
@@ -5249,6 +5263,106 @@ const STRINGS = {
     locked_programmes: 'Multiple Saved Programmes',
     locked_steel_badge: 'Available on 🔩 Steel and above',
     locked_forge_badge: 'Available on 🔥 Forge',
+
+    ob_goal_muscle: 'Build Muscle',
+    ob_goal_muscle_sub: 'Hypertrophy focus',
+    ob_goal_fat_loss: 'Lose Fat',
+    ob_goal_fat_loss_sub: 'Burn & preserve muscle',
+    ob_goal_strength: 'Get Stronger',
+    ob_goal_strength_sub: 'Power & strength',
+    ob_goal_endurance: 'Improve Fitness',
+    ob_goal_endurance_sub: 'Conditioning',
+    ob_goal_sport: 'Sport Performance',
+    ob_goal_sport_sub: 'Train for your sport',
+    ob_exp_beginner: 'Beginner',
+    ob_exp_beginner_sub: 'Under 1 year in the gym',
+    ob_exp_intermediate: 'Intermediate',
+    ob_exp_intermediate_sub: '1–3 years in the gym',
+    ob_exp_advanced: 'Advanced',
+    ob_exp_advanced_sub: '3+ years in the gym',
+    ob_exp_sport_sub: 'How long have you been lifting weights in the gym?',
+    ob_day: 'Day',
+    ob_days: 'Days',
+    ob_days_1_sub: 'Full body',
+    ob_days_2_sub: 'Full body split',
+    ob_days_3_sub: 'Full body',
+    ob_days_4_sub: 'Upper/lower',
+    ob_days_5_sub: 'Push/pull/legs',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Gym Training Days',
+    ob_days_sport_sub: 'How many days per week can you train in the gym? (separate from sport)',
+    ob_days_sport_note: 'Your sport days are shown below. Choose your GYM days from the remaining days.',
+    ob_days_sport_note_sameday: 'Sport days shown below — you can also pick these for gym sessions.',
+    ob_days_gym_count: 'Gym days: {n} / {total} selected',
+    ob_which_days_sport_sub: 'Select your gym days — sport days are shown but cannot be selected',
+    ob_equip_full: 'Full Gym',
+    ob_equip_full_sub: 'All equipment',
+    ob_equip_home: 'Home Gym',
+    ob_equip_home_sub: 'Dumbbells & barbell',
+    ob_equip_minimal: 'Minimal',
+    ob_equip_minimal_sub: 'Bands & bodyweight',
+    ob_diet_anything: 'Everything',
+    ob_diet_anything_sub: 'No restrictions',
+    ob_diet_vegetarian: 'Vegetarian',
+    ob_diet_vegetarian_sub: 'No meat',
+    ob_diet_vegan: 'Vegan',
+    ob_diet_vegan_sub: 'Plant only',
+    ob_diet_keto: 'Keto/Low Carb',
+    ob_diet_keto_sub: 'Fat-dominant',
+    ob_stats_age: 'Age',
+    ob_stats_height: 'Height',
+    ob_stats_weight: 'Weight',
+    ob_stats_sex: 'Sex',
+    ob_stats_male: 'Male',
+    ob_stats_female: 'Female',
+    ob_stats_years: 'YEARS',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Diet restrictions / foods you avoid',
+    ob_restrictions_diet_placeholder: 'e.g. no soy, no dairy — or type \'none\'',
+    ob_restrictions_injuries_label: 'Injuries or physical limitations',
+    ob_restrictions_injuries_placeholder: 'e.g. bad knee — or type \'none\'',
+    ob_sport_title: 'Your Sport',
+    ob_sport_sub: 'Tell us exactly what you play or compete in',
+    ob_sport_level_title: 'Competition Level',
+    ob_sport_level_sub: 'Do you compete or train recreationally?',
+    ob_sport_recreational: 'Recreational',
+    ob_sport_recreational_sub: 'For fun & fitness',
+    ob_sport_amateur: 'Amateur',
+    ob_sport_amateur_sub: 'Club or local league',
+    ob_sport_competitive: 'Competitive',
+    ob_sport_competitive_sub: 'Regular competition',
+    ob_sport_elite: 'Elite / Pro',
+    ob_sport_elite_sub: 'High performance',
+    ob_sport_days_title: 'Sport Training Days',
+    ob_sport_days_sub: 'Which days do you already train or play your sport?',
+    ob_sport_details_title: 'Sport Details',
+    ob_sport_details_sub: 'Anything else we should know?',
+    ob_sport_name_label: 'What sport do you play?',
+    ob_sport_name_placeholder: 'e.g. Football, Boxing, Tennis, BJJ...',
+    ob_sport_position_label: 'Position or discipline (optional)',
+    ob_sport_position_placeholder: 'e.g. Centre-back, Heavyweight, Freestyle...',
+    ob_sport_why_label: 'WHY WE ASK',
+    ob_sport_why_text: 'Your gym programme will be built around your sport — not against it. We\'ll schedule gym sessions on your non-sport days and prioritise the physical qualities your sport demands.',
+    ob_sport_sameday_label: 'Can you train gym on the same day as sport? (optional)',
+    ob_sport_sameday_yes_sub: 'I can double up',
+    ob_sport_sameday_no_sub: 'Separate days only',
+    ob_yes: 'Yes',
+    ob_no: 'No',
+    ob_sport_competition_label: 'Upcoming competition or event? (optional)',
+    ob_sport_competition_placeholder: 'e.g. County finals in March, fight in 8 weeks...',
+    ob_sport_notes_label: 'Anything else your coach should know?',
+    ob_sport_notes_placeholder: 'e.g. recovering from ankle sprain, bulking phase...',
+    ob_sport_days_count: 'Sport days — {n} selected',
+    ob_sport_days_hint: 'Select 0 days if your schedule varies week to week.',
+    ob_sport_days_hint_prev: 'Your previous selection is shown. Tap to change.',
+    day_monday: 'Monday',
+    day_tuesday: 'Tuesday',
+    day_wednesday: 'Wednesday',
+    day_thursday: 'Thursday',
+    day_friday: 'Friday',
+    day_saturday: 'Saturday',
+    day_sunday: 'Sunday',
 },
   es: {
     nav_coach: 'Coach',
@@ -5462,6 +5576,106 @@ const STRINGS = {
     locked_programmes: 'Múltiples programas guardados',
     locked_steel_badge: 'Disponible en 🔩 Steel y superior',
     locked_forge_badge: 'Disponible en 🔥 Forge',
+
+    ob_goal_muscle: 'Ganar Músculo',
+    ob_goal_muscle_sub: 'Enfoque en hipertrofia',
+    ob_goal_fat_loss: 'Perder Grasa',
+    ob_goal_fat_loss_sub: 'Quemar y preservar músculo',
+    ob_goal_strength: 'Ganar Fuerza',
+    ob_goal_strength_sub: 'Potencia y fuerza',
+    ob_goal_endurance: 'Mejorar Fitness',
+    ob_goal_endurance_sub: 'Acondicionamiento',
+    ob_goal_sport: 'Rendimiento Deportivo',
+    ob_goal_sport_sub: 'Entrena para tu deporte',
+    ob_exp_beginner: 'Principiante',
+    ob_exp_beginner_sub: 'Menos de 1 año en el gym',
+    ob_exp_intermediate: 'Intermedio',
+    ob_exp_intermediate_sub: '1–3 años en el gym',
+    ob_exp_advanced: 'Avanzado',
+    ob_exp_advanced_sub: 'Más de 3 años en el gym',
+    ob_exp_sport_sub: '¿Cuánto tiempo llevas levantando pesas?',
+    ob_day: 'Día',
+    ob_days: 'Días',
+    ob_days_1_sub: 'Cuerpo completo',
+    ob_days_2_sub: 'División cuerpo completo',
+    ob_days_3_sub: 'Cuerpo completo',
+    ob_days_4_sub: 'Superior/inferior',
+    ob_days_5_sub: 'Empuje/tirón/piernas',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Días de Gym',
+    ob_days_sport_sub: '¿Cuántos días a la semana puedes ir al gym? (aparte del deporte)',
+    ob_days_sport_note: 'Tus días de deporte se muestran abajo. Elige tus días de GYM de los restantes.',
+    ob_days_sport_note_sameday: 'Días de deporte mostrados — también puedes elegirlos para el gym.',
+    ob_days_gym_count: 'Días de gym: {n} / {total} seleccionados',
+    ob_which_days_sport_sub: 'Selecciona tus días de gym — los días de deporte no se pueden seleccionar',
+    ob_equip_full: 'Gym Completo',
+    ob_equip_full_sub: 'Todo el equipamiento',
+    ob_equip_home: 'Gym en Casa',
+    ob_equip_home_sub: 'Mancuernas y barra',
+    ob_equip_minimal: 'Mínimo',
+    ob_equip_minimal_sub: 'Bandas y peso corporal',
+    ob_diet_anything: 'Todo',
+    ob_diet_anything_sub: 'Sin restricciones',
+    ob_diet_vegetarian: 'Vegetariano',
+    ob_diet_vegetarian_sub: 'Sin carne',
+    ob_diet_vegan: 'Vegano',
+    ob_diet_vegan_sub: 'Solo plantas',
+    ob_diet_keto: 'Keto/Bajo en Carbs',
+    ob_diet_keto_sub: 'Predominancia de grasas',
+    ob_stats_age: 'Edad',
+    ob_stats_height: 'Altura',
+    ob_stats_weight: 'Peso',
+    ob_stats_sex: 'Sexo',
+    ob_stats_male: 'Hombre',
+    ob_stats_female: 'Mujer',
+    ob_stats_years: 'AÑOS',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Restricciones dietéticas / alimentos a evitar',
+    ob_restrictions_diet_placeholder: 'p.ej. sin soja, sin lácteos — o escribe \'ninguno\'',
+    ob_restrictions_injuries_label: 'Lesiones o limitaciones físicas',
+    ob_restrictions_injuries_placeholder: 'p.ej. rodilla mala — o escribe \'ninguno\'',
+    ob_sport_title: 'Tu Deporte',
+    ob_sport_sub: 'Dinos exactamente qué practicas',
+    ob_sport_level_title: 'Nivel de Competición',
+    ob_sport_level_sub: '¿Compites o entrenas recreacionalmente?',
+    ob_sport_recreational: 'Recreativo',
+    ob_sport_recreational_sub: 'Por diversión y fitness',
+    ob_sport_amateur: 'Amateur',
+    ob_sport_amateur_sub: 'Club o liga local',
+    ob_sport_competitive: 'Competitivo',
+    ob_sport_competitive_sub: 'Competición regular',
+    ob_sport_elite: 'Élite / Pro',
+    ob_sport_elite_sub: 'Alto rendimiento',
+    ob_sport_days_title: 'Días de Entrenamiento',
+    ob_sport_days_sub: '¿Qué días ya entrenas o juegas tu deporte?',
+    ob_sport_details_title: 'Detalles del Deporte',
+    ob_sport_details_sub: '¿Algo más que debamos saber?',
+    ob_sport_name_label: '¿Qué deporte practicas?',
+    ob_sport_name_placeholder: 'p.ej. Fútbol, Boxeo, Tenis, BJJ...',
+    ob_sport_position_label: 'Posición o disciplina (opcional)',
+    ob_sport_position_placeholder: 'p.ej. Defensa central, Peso pesado...',
+    ob_sport_why_label: 'POR QUÉ LO PREGUNTAMOS',
+    ob_sport_why_text: 'Tu programa de gym se construirá alrededor de tu deporte, no contra él.',
+    ob_sport_sameday_label: '¿Puedes entrenar gym el mismo día que tu deporte? (opcional)',
+    ob_sport_sameday_yes_sub: 'Puedo hacer doble sesión',
+    ob_sport_sameday_no_sub: 'Solo días separados',
+    ob_yes: 'Sí',
+    ob_no: 'No',
+    ob_sport_competition_label: '¿Competición próxima? (opcional)',
+    ob_sport_competition_placeholder: 'p.ej. Final regional en marzo...',
+    ob_sport_notes_label: '¿Algo más que tu entrenador deba saber?',
+    ob_sport_notes_placeholder: 'p.ej. recuperándome de esguince...',
+    ob_sport_days_count: 'Días de deporte — {n} seleccionados',
+    ob_sport_days_hint: 'Selecciona 0 días si tu horario varía semana a semana.',
+    ob_sport_days_hint_prev: 'Tu selección anterior se muestra. Toca para cambiar.',
+    day_monday: 'Lunes',
+    day_tuesday: 'Martes',
+    day_wednesday: 'Miércoles',
+    day_thursday: 'Jueves',
+    day_friday: 'Viernes',
+    day_saturday: 'Sábado',
+    day_sunday: 'Domingo',
 },
   fr: {
     nav_coach: 'Coach',
@@ -5675,6 +5889,106 @@ const STRINGS = {
     locked_programmes: 'Programmes multiples sauvegardés',
     locked_steel_badge: 'Disponible sur 🔩 Steel et plus',
     locked_forge_badge: 'Disponible sur 🔥 Forge',
+
+    ob_goal_muscle: 'Prendre du Muscle',
+    ob_goal_muscle_sub: 'Axé hypertrophie',
+    ob_goal_fat_loss: 'Perdre du Gras',
+    ob_goal_fat_loss_sub: 'Brûler et préserver le muscle',
+    ob_goal_strength: 'Gagner en Force',
+    ob_goal_strength_sub: 'Puissance et force',
+    ob_goal_endurance: 'Améliorer le Fitness',
+    ob_goal_endurance_sub: 'Conditionnement',
+    ob_goal_sport: 'Performance Sportive',
+    ob_goal_sport_sub: 'Entraîne-toi pour ton sport',
+    ob_exp_beginner: 'Débutant',
+    ob_exp_beginner_sub: 'Moins d\'1 an en salle',
+    ob_exp_intermediate: 'Intermédiaire',
+    ob_exp_intermediate_sub: '1–3 ans en salle',
+    ob_exp_advanced: 'Avancé',
+    ob_exp_advanced_sub: 'Plus de 3 ans en salle',
+    ob_exp_sport_sub: 'Depuis combien de temps soulevez-vous des poids ?',
+    ob_day: 'Jour',
+    ob_days: 'Jours',
+    ob_days_1_sub: 'Corps entier',
+    ob_days_2_sub: 'Split corps entier',
+    ob_days_3_sub: 'Corps entier',
+    ob_days_4_sub: 'Haut/bas',
+    ob_days_5_sub: 'Poussée/tirage/jambes',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Jours de Salle',
+    ob_days_sport_sub: 'Combien de jours par semaine pouvez-vous aller en salle ?',
+    ob_days_sport_note: 'Vos jours de sport sont indiqués. Choisissez vos jours de SALLE parmi les autres.',
+    ob_days_sport_note_sameday: 'Jours de sport indiqués — vous pouvez aussi les choisir pour la salle.',
+    ob_days_gym_count: 'Jours de salle : {n} / {total} sélectionnés',
+    ob_which_days_sport_sub: 'Sélectionnez vos jours de salle — les jours de sport ne peuvent pas être sélectionnés',
+    ob_equip_full: 'Salle Complète',
+    ob_equip_full_sub: 'Tout l\'équipement',
+    ob_equip_home: 'Salle à Domicile',
+    ob_equip_home_sub: 'Haltères et barre',
+    ob_equip_minimal: 'Minimal',
+    ob_equip_minimal_sub: 'Élastiques et poids du corps',
+    ob_diet_anything: 'Tout',
+    ob_diet_anything_sub: 'Sans restrictions',
+    ob_diet_vegetarian: 'Végétarien',
+    ob_diet_vegetarian_sub: 'Sans viande',
+    ob_diet_vegan: 'Vegan',
+    ob_diet_vegan_sub: 'Plantes uniquement',
+    ob_diet_keto: 'Keto/Faible en glucides',
+    ob_diet_keto_sub: 'Prédominance des graisses',
+    ob_stats_age: 'Âge',
+    ob_stats_height: 'Taille',
+    ob_stats_weight: 'Poids',
+    ob_stats_sex: 'Sexe',
+    ob_stats_male: 'Homme',
+    ob_stats_female: 'Femme',
+    ob_stats_years: 'ANS',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Restrictions alimentaires / aliments à éviter',
+    ob_restrictions_diet_placeholder: 'ex. sans soja, sans lait — ou tapez \'aucun\'',
+    ob_restrictions_injuries_label: 'Blessures ou limitations physiques',
+    ob_restrictions_injuries_placeholder: 'ex. genou douloureux — ou tapez \'aucun\'',
+    ob_sport_title: 'Votre Sport',
+    ob_sport_sub: 'Dites-nous exactement ce que vous pratiquez',
+    ob_sport_level_title: 'Niveau de Compétition',
+    ob_sport_level_sub: 'Vous compétissez ou pratiquez en loisir ?',
+    ob_sport_recreational: 'Loisir',
+    ob_sport_recreational_sub: 'Pour le plaisir et la forme',
+    ob_sport_amateur: 'Amateur',
+    ob_sport_amateur_sub: 'Club ou ligue locale',
+    ob_sport_competitive: 'Compétitif',
+    ob_sport_competitive_sub: 'Compétition régulière',
+    ob_sport_elite: 'Élite / Pro',
+    ob_sport_elite_sub: 'Haute performance',
+    ob_sport_days_title: 'Jours d\'Entraînement',
+    ob_sport_days_sub: 'Quels jours entraînez-vous votre sport ?',
+    ob_sport_details_title: 'Détails du Sport',
+    ob_sport_details_sub: 'Autre chose à savoir ?',
+    ob_sport_name_label: 'Quel sport pratiquez-vous ?',
+    ob_sport_name_placeholder: 'ex. Football, Boxe, Tennis, BJJ...',
+    ob_sport_position_label: 'Poste ou discipline (optionnel)',
+    ob_sport_position_placeholder: 'ex. Défenseur central, Poids lourd...',
+    ob_sport_why_label: 'POURQUOI ON DEMANDE',
+    ob_sport_why_text: 'Votre programme de salle sera construit autour de votre sport, pas contre lui.',
+    ob_sport_sameday_label: 'Pouvez-vous aller en salle le même jour que votre sport ? (optionnel)',
+    ob_sport_sameday_yes_sub: 'Je peux faire double séance',
+    ob_sport_sameday_no_sub: 'Jours séparés uniquement',
+    ob_yes: 'Oui',
+    ob_no: 'Non',
+    ob_sport_competition_label: 'Compétition à venir ? (optionnel)',
+    ob_sport_competition_placeholder: 'ex. Finale régionale en mars...',
+    ob_sport_notes_label: 'Autre chose que votre coach devrait savoir ?',
+    ob_sport_notes_placeholder: 'ex. récupération entorse...',
+    ob_sport_days_count: 'Jours de sport — {n} sélectionnés',
+    ob_sport_days_hint: 'Sélectionnez 0 jours si votre emploi du temps varie.',
+    ob_sport_days_hint_prev: 'Votre sélection précédente est affichée. Appuyez pour modifier.',
+    day_monday: 'Lundi',
+    day_tuesday: 'Mardi',
+    day_wednesday: 'Mercredi',
+    day_thursday: 'Jeudi',
+    day_friday: 'Vendredi',
+    day_saturday: 'Samedi',
+    day_sunday: 'Dimanche',
 },
   de: {
     nav_coach: 'Coach',
@@ -5888,6 +6202,106 @@ const STRINGS = {
     locked_programmes: 'Mehrere gespeicherte Programme',
     locked_steel_badge: 'Verfügbar ab 🔩 Steel',
     locked_forge_badge: 'Verfügbar bei 🔥 Forge',
+
+    ob_goal_muscle: 'Muskeln aufbauen',
+    ob_goal_muscle_sub: 'Hypertrophie-Fokus',
+    ob_goal_fat_loss: 'Fett verlieren',
+    ob_goal_fat_loss_sub: 'Verbrennen & Muskeln erhalten',
+    ob_goal_strength: 'Stärker werden',
+    ob_goal_strength_sub: 'Kraft & Power',
+    ob_goal_endurance: 'Fitness verbessern',
+    ob_goal_endurance_sub: 'Konditionierung',
+    ob_goal_sport: 'Sportliche Leistung',
+    ob_goal_sport_sub: 'Für deinen Sport trainieren',
+    ob_exp_beginner: 'Anfänger',
+    ob_exp_beginner_sub: 'Unter 1 Jahr im Gym',
+    ob_exp_intermediate: 'Fortgeschritten',
+    ob_exp_intermediate_sub: '1–3 Jahre im Gym',
+    ob_exp_advanced: 'Erfahren',
+    ob_exp_advanced_sub: 'Über 3 Jahre im Gym',
+    ob_exp_sport_sub: 'Wie lange hebst du schon Gewichte?',
+    ob_day: 'Tag',
+    ob_days: 'Tage',
+    ob_days_1_sub: 'Ganzkörper',
+    ob_days_2_sub: 'Ganzkörper-Split',
+    ob_days_3_sub: 'Ganzkörper',
+    ob_days_4_sub: 'Ober-/Unterkörper',
+    ob_days_5_sub: 'Drücken/Ziehen/Beine',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Gym-Trainingstage',
+    ob_days_sport_sub: 'Wie viele Tage pro Woche kannst du ins Gym?',
+    ob_days_sport_note: 'Deine Sporttage werden angezeigt. Wähle deine GYM-Tage aus den restlichen.',
+    ob_days_sport_note_sameday: 'Sporttage angezeigt — du kannst sie auch für das Gym wählen.',
+    ob_days_gym_count: 'Gym-Tage: {n} / {total} ausgewählt',
+    ob_which_days_sport_sub: 'Wähle deine Gym-Tage — Sporttage können nicht gewählt werden',
+    ob_equip_full: 'Vollständiges Gym',
+    ob_equip_full_sub: 'Alle Geräte',
+    ob_equip_home: 'Heim-Gym',
+    ob_equip_home_sub: 'Kurz- und Langhantel',
+    ob_equip_minimal: 'Minimal',
+    ob_equip_minimal_sub: 'Bänder & Körpergewicht',
+    ob_diet_anything: 'Alles',
+    ob_diet_anything_sub: 'Keine Einschränkungen',
+    ob_diet_vegetarian: 'Vegetarisch',
+    ob_diet_vegetarian_sub: 'Kein Fleisch',
+    ob_diet_vegan: 'Vegan',
+    ob_diet_vegan_sub: 'Nur pflanzlich',
+    ob_diet_keto: 'Keto/Low Carb',
+    ob_diet_keto_sub: 'Fett-dominiert',
+    ob_stats_age: 'Alter',
+    ob_stats_height: 'Größe',
+    ob_stats_weight: 'Gewicht',
+    ob_stats_sex: 'Geschlecht',
+    ob_stats_male: 'Männlich',
+    ob_stats_female: 'Weiblich',
+    ob_stats_years: 'JAHRE',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Ernährungseinschränkungen / Lebensmittel vermeiden',
+    ob_restrictions_diet_placeholder: 'z.B. kein Soja, keine Milch — oder tippe \'keine\'',
+    ob_restrictions_injuries_label: 'Verletzungen oder körperliche Einschränkungen',
+    ob_restrictions_injuries_placeholder: 'z.B. schlechtes Knie — oder tippe \'keine\'',
+    ob_sport_title: 'Dein Sport',
+    ob_sport_sub: 'Sag uns genau was du spielst oder betreibst',
+    ob_sport_level_title: 'Wettkampfniveau',
+    ob_sport_level_sub: 'Wettkampf oder Freizeit?',
+    ob_sport_recreational: 'Freizeitlich',
+    ob_sport_recreational_sub: 'Für Spaß & Fitness',
+    ob_sport_amateur: 'Amateur',
+    ob_sport_amateur_sub: 'Verein oder lokale Liga',
+    ob_sport_competitive: 'Wettkampf',
+    ob_sport_competitive_sub: 'Regelmäßige Wettkämpfe',
+    ob_sport_elite: 'Elite / Pro',
+    ob_sport_elite_sub: 'Hochleistung',
+    ob_sport_days_title: 'Sport-Trainingstage',
+    ob_sport_days_sub: 'An welchen Tagen trainierst du deinen Sport?',
+    ob_sport_details_title: 'Sport-Details',
+    ob_sport_details_sub: 'Noch etwas zu wissen?',
+    ob_sport_name_label: 'Welchen Sport treibst du?',
+    ob_sport_name_placeholder: 'z.B. Fußball, Boxen, Tennis, BJJ...',
+    ob_sport_position_label: 'Position oder Disziplin (optional)',
+    ob_sport_position_placeholder: 'z.B. Innenverteidiger, Schwergewicht...',
+    ob_sport_why_label: 'WARUM WIR FRAGEN',
+    ob_sport_why_text: 'Dein Gym-Programm wird um deinen Sport herum aufgebaut, nicht dagegen.',
+    ob_sport_sameday_label: 'Kannst du am selben Tag Gym und Sport trainieren? (optional)',
+    ob_sport_sameday_yes_sub: 'Ich kann doppelt trainieren',
+    ob_sport_sameday_no_sub: 'Nur getrennte Tage',
+    ob_yes: 'Ja',
+    ob_no: 'Nein',
+    ob_sport_competition_label: 'Bevorstehender Wettkampf? (optional)',
+    ob_sport_competition_placeholder: 'z.B. Kreisfinale im März...',
+    ob_sport_notes_label: 'Noch etwas was dein Coach wissen sollte?',
+    ob_sport_notes_placeholder: 'z.B. Knöchelverstauchung...',
+    ob_sport_days_count: 'Sporttage — {n} ausgewählt',
+    ob_sport_days_hint: 'Wähle 0 Tage wenn dein Zeitplan variiert.',
+    ob_sport_days_hint_prev: 'Deine vorherige Auswahl wird angezeigt. Tippe zum Ändern.',
+    day_monday: 'Montag',
+    day_tuesday: 'Dienstag',
+    day_wednesday: 'Mittwoch',
+    day_thursday: 'Donnerstag',
+    day_friday: 'Freitag',
+    day_saturday: 'Samstag',
+    day_sunday: 'Sonntag',
 },
   it: {
     nav_coach: 'Coach',
@@ -6101,6 +6515,106 @@ const STRINGS = {
     locked_programmes: 'Programmi multipli salvati',
     locked_steel_badge: 'Disponibile su 🔩 Steel e superiore',
     locked_forge_badge: 'Disponibile su 🔥 Forge',
+
+    ob_goal_muscle: 'Aumentare Massa',
+    ob_goal_muscle_sub: 'Focus ipertrofia',
+    ob_goal_fat_loss: 'Perdere Grasso',
+    ob_goal_fat_loss_sub: 'Bruciare e preservare il muscolo',
+    ob_goal_strength: 'Diventare più Forte',
+    ob_goal_strength_sub: 'Potenza e forza',
+    ob_goal_endurance: 'Migliorare il Fitness',
+    ob_goal_endurance_sub: 'Condizionamento',
+    ob_goal_sport: 'Prestazione Sportiva',
+    ob_goal_sport_sub: 'Allenati per il tuo sport',
+    ob_exp_beginner: 'Principiante',
+    ob_exp_beginner_sub: 'Meno di 1 anno in palestra',
+    ob_exp_intermediate: 'Intermedio',
+    ob_exp_intermediate_sub: '1–3 anni in palestra',
+    ob_exp_advanced: 'Avanzato',
+    ob_exp_advanced_sub: 'Più di 3 anni in palestra',
+    ob_exp_sport_sub: 'Da quanto tempo sollevi pesi in palestra?',
+    ob_day: 'Giorno',
+    ob_days: 'Giorni',
+    ob_days_1_sub: 'Corpo intero',
+    ob_days_2_sub: 'Split corpo intero',
+    ob_days_3_sub: 'Corpo intero',
+    ob_days_4_sub: 'Parte superiore/inferiore',
+    ob_days_5_sub: 'Spinta/tirata/gambe',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Giorni in Palestra',
+    ob_days_sport_sub: 'Quanti giorni a settimana puoi allenarti in palestra?',
+    ob_days_sport_note: 'I tuoi giorni sportivi sono mostrati. Scegli i giorni di PALESTRA dai rimanenti.',
+    ob_days_sport_note_sameday: 'Giorni sportivi mostrati — puoi sceglierli anche per la palestra.',
+    ob_days_gym_count: 'Giorni palestra: {n} / {total} selezionati',
+    ob_which_days_sport_sub: 'Seleziona i tuoi giorni di palestra — i giorni sportivi non possono essere selezionati',
+    ob_equip_full: 'Palestra Completa',
+    ob_equip_full_sub: 'Tutta l\'attrezzatura',
+    ob_equip_home: 'Palestra Casa',
+    ob_equip_home_sub: 'Manubri e bilanciere',
+    ob_equip_minimal: 'Minimale',
+    ob_equip_minimal_sub: 'Elastici e peso corporeo',
+    ob_diet_anything: 'Tutto',
+    ob_diet_anything_sub: 'Nessuna restrizione',
+    ob_diet_vegetarian: 'Vegetariano',
+    ob_diet_vegetarian_sub: 'Senza carne',
+    ob_diet_vegan: 'Vegano',
+    ob_diet_vegan_sub: 'Solo piante',
+    ob_diet_keto: 'Keto/Basso in Carb',
+    ob_diet_keto_sub: 'Predominanza grassi',
+    ob_stats_age: 'Età',
+    ob_stats_height: 'Altezza',
+    ob_stats_weight: 'Peso',
+    ob_stats_sex: 'Sesso',
+    ob_stats_male: 'Maschio',
+    ob_stats_female: 'Femmina',
+    ob_stats_years: 'ANNI',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Restrizioni alimentari / cibi da evitare',
+    ob_restrictions_diet_placeholder: 'es. niente soia, niente latte — o scrivi \'nessuno\'',
+    ob_restrictions_injuries_label: 'Infortuni o limitazioni fisiche',
+    ob_restrictions_injuries_placeholder: 'es. ginocchio dolorante — o scrivi \'nessuno\'',
+    ob_sport_title: 'Il Tuo Sport',
+    ob_sport_sub: 'Dicci esattamente cosa pratichi',
+    ob_sport_level_title: 'Livello di Competizione',
+    ob_sport_level_sub: 'Gareggi o ti alleni per svago?',
+    ob_sport_recreational: 'Ricreativo',
+    ob_sport_recreational_sub: 'Per divertimento e forma',
+    ob_sport_amateur: 'Amatoriale',
+    ob_sport_amateur_sub: 'Club o campionato locale',
+    ob_sport_competitive: 'Competitivo',
+    ob_sport_competitive_sub: 'Competizione regolare',
+    ob_sport_elite: 'Elite / Pro',
+    ob_sport_elite_sub: 'Alta performance',
+    ob_sport_days_title: 'Giorni di Allenamento Sportivo',
+    ob_sport_days_sub: 'Quali giorni ti alleni già nel tuo sport?',
+    ob_sport_details_title: 'Dettagli Sportivi',
+    ob_sport_details_sub: 'Altro da sapere?',
+    ob_sport_name_label: 'Che sport pratichi?',
+    ob_sport_name_placeholder: 'es. Calcio, Boxe, Tennis, BJJ...',
+    ob_sport_position_label: 'Ruolo o disciplina (opzionale)',
+    ob_sport_position_placeholder: 'es. Difensore centrale, Peso massimo...',
+    ob_sport_why_label: 'PERCHÉ LO CHIEDIAMO',
+    ob_sport_why_text: 'Il tuo programma in palestra sarà costruito intorno al tuo sport, non contro di esso.',
+    ob_sport_sameday_label: 'Puoi allenarti in palestra lo stesso giorno dello sport? (opzionale)',
+    ob_sport_sameday_yes_sub: 'Posso fare doppio allenamento',
+    ob_sport_sameday_no_sub: 'Solo giorni separati',
+    ob_yes: 'Sì',
+    ob_no: 'No',
+    ob_sport_competition_label: 'Competizione imminente? (opzionale)',
+    ob_sport_competition_placeholder: 'es. Finale regionale a marzo...',
+    ob_sport_notes_label: 'Altro che il tuo coach dovrebbe sapere?',
+    ob_sport_notes_placeholder: 'es. recupero da distorsione...',
+    ob_sport_days_count: 'Giorni sportivi — {n} selezionati',
+    ob_sport_days_hint: 'Seleziona 0 giorni se il tuo programma varia.',
+    ob_sport_days_hint_prev: 'La tua selezione precedente è mostrata. Tocca per cambiare.',
+    day_monday: 'Lunedì',
+    day_tuesday: 'Martedì',
+    day_wednesday: 'Mercoledì',
+    day_thursday: 'Giovedì',
+    day_friday: 'Venerdì',
+    day_saturday: 'Sabato',
+    day_sunday: 'Domenica',
 },
   pt: {
     nav_coach: 'Coach',
@@ -6314,6 +6828,106 @@ const STRINGS = {
     locked_programmes: 'Múltiplos programas salvos',
     locked_steel_badge: 'Disponível no 🔩 Steel e acima',
     locked_forge_badge: 'Disponível no 🔥 Forge',
+
+    ob_goal_muscle: 'Ganhar Músculo',
+    ob_goal_muscle_sub: 'Foco em hipertrofia',
+    ob_goal_fat_loss: 'Perder Gordura',
+    ob_goal_fat_loss_sub: 'Queimar e preservar músculo',
+    ob_goal_strength: 'Ficar mais Forte',
+    ob_goal_strength_sub: 'Potência e força',
+    ob_goal_endurance: 'Melhorar o Fitness',
+    ob_goal_endurance_sub: 'Condicionamento',
+    ob_goal_sport: 'Desempenho Esportivo',
+    ob_goal_sport_sub: 'Treina para o seu esporte',
+    ob_exp_beginner: 'Iniciante',
+    ob_exp_beginner_sub: 'Menos de 1 ano na academia',
+    ob_exp_intermediate: 'Intermediário',
+    ob_exp_intermediate_sub: '1–3 anos na academia',
+    ob_exp_advanced: 'Avançado',
+    ob_exp_advanced_sub: 'Mais de 3 anos na academia',
+    ob_exp_sport_sub: 'Há quanto tempo você levanta pesos?',
+    ob_day: 'Dia',
+    ob_days: 'Dias',
+    ob_days_1_sub: 'Corpo inteiro',
+    ob_days_2_sub: 'Split corpo inteiro',
+    ob_days_3_sub: 'Corpo inteiro',
+    ob_days_4_sub: 'Superior/inferior',
+    ob_days_5_sub: 'Empurrar/puxar/pernas',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Dias de Academia',
+    ob_days_sport_sub: 'Quantos dias por semana pode treinar na academia?',
+    ob_days_sport_note: 'Seus dias de esporte estão mostrados. Escolha seus dias de ACADEMIA dos restantes.',
+    ob_days_sport_note_sameday: 'Dias de esporte mostrados — você também pode escolhê-los para a academia.',
+    ob_days_gym_count: 'Dias de academia: {n} / {total} selecionados',
+    ob_which_days_sport_sub: 'Selecione seus dias de academia — dias de esporte não podem ser selecionados',
+    ob_equip_full: 'Academia Completa',
+    ob_equip_full_sub: 'Todo o equipamento',
+    ob_equip_home: 'Academia em Casa',
+    ob_equip_home_sub: 'Halteres e barra',
+    ob_equip_minimal: 'Mínimo',
+    ob_equip_minimal_sub: 'Elásticos e peso corporal',
+    ob_diet_anything: 'Tudo',
+    ob_diet_anything_sub: 'Sem restrições',
+    ob_diet_vegetarian: 'Vegetariano',
+    ob_diet_vegetarian_sub: 'Sem carne',
+    ob_diet_vegan: 'Vegano',
+    ob_diet_vegan_sub: 'Apenas plantas',
+    ob_diet_keto: 'Keto/Baixo Carb',
+    ob_diet_keto_sub: 'Predominância de gorduras',
+    ob_stats_age: 'Idade',
+    ob_stats_height: 'Altura',
+    ob_stats_weight: 'Peso',
+    ob_stats_sex: 'Sexo',
+    ob_stats_male: 'Masculino',
+    ob_stats_female: 'Feminino',
+    ob_stats_years: 'ANOS',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Restrições alimentares / alimentos a evitar',
+    ob_restrictions_diet_placeholder: 'ex. sem soja, sem laticínios — ou escreva \'nenhum\'',
+    ob_restrictions_injuries_label: 'Lesões ou limitações físicas',
+    ob_restrictions_injuries_placeholder: 'ex. joelho ruim — ou escreva \'nenhum\'',
+    ob_sport_title: 'Seu Esporte',
+    ob_sport_sub: 'Diga-nos exatamente o que você pratica',
+    ob_sport_level_title: 'Nível de Competição',
+    ob_sport_level_sub: 'Você compete ou treina recreativamente?',
+    ob_sport_recreational: 'Recreativo',
+    ob_sport_recreational_sub: 'Por diversão e fitness',
+    ob_sport_amateur: 'Amador',
+    ob_sport_amateur_sub: 'Clube ou liga local',
+    ob_sport_competitive: 'Competitivo',
+    ob_sport_competitive_sub: 'Competição regular',
+    ob_sport_elite: 'Elite / Pro',
+    ob_sport_elite_sub: 'Alta performance',
+    ob_sport_days_title: 'Dias de Treino Esportivo',
+    ob_sport_days_sub: 'Em quais dias você já treina seu esporte?',
+    ob_sport_details_title: 'Detalhes do Esporte',
+    ob_sport_details_sub: 'Mais alguma coisa a saber?',
+    ob_sport_name_label: 'Que esporte você pratica?',
+    ob_sport_name_placeholder: 'ex. Futebol, Boxe, Tênis, BJJ...',
+    ob_sport_position_label: 'Posição ou disciplina (opcional)',
+    ob_sport_position_placeholder: 'ex. Zagueiro, Peso pesado...',
+    ob_sport_why_label: 'POR QUE PERGUNTAMOS',
+    ob_sport_why_text: 'Seu programa de academia será construído em torno do seu esporte, não contra ele.',
+    ob_sport_sameday_label: 'Você pode treinar academia no mesmo dia do esporte? (opcional)',
+    ob_sport_sameday_yes_sub: 'Posso fazer duplo treino',
+    ob_sport_sameday_no_sub: 'Apenas dias separados',
+    ob_yes: 'Sim',
+    ob_no: 'Não',
+    ob_sport_competition_label: 'Competição próxima? (opcional)',
+    ob_sport_competition_placeholder: 'ex. Final estadual em março...',
+    ob_sport_notes_label: 'Mais alguma coisa que seu coach deva saber?',
+    ob_sport_notes_placeholder: 'ex. recuperação de entorse...',
+    ob_sport_days_count: 'Dias de esporte — {n} selecionados',
+    ob_sport_days_hint: 'Selecione 0 dias se seu horário varia.',
+    ob_sport_days_hint_prev: 'Sua seleção anterior está mostrada. Toque para alterar.',
+    day_monday: 'Segunda',
+    day_tuesday: 'Terça',
+    day_wednesday: 'Quarta',
+    day_thursday: 'Quinta',
+    day_friday: 'Sexta',
+    day_saturday: 'Sábado',
+    day_sunday: 'Domingo',
 },
   nl: {
     nav_coach: 'Coach',
@@ -6527,6 +7141,106 @@ const STRINGS = {
     locked_programmes: 'Meerdere opgeslagen programma\'s',
     locked_steel_badge: 'Beschikbaar op 🔩 Steel en hoger',
     locked_forge_badge: 'Beschikbaar op 🔥 Forge',
+
+    ob_goal_muscle: 'Spieren opbouwen',
+    ob_goal_muscle_sub: 'Hypertrofie focus',
+    ob_goal_fat_loss: 'Vet verliezen',
+    ob_goal_fat_loss_sub: 'Verbranden & spieren behouden',
+    ob_goal_strength: 'Sterker worden',
+    ob_goal_strength_sub: 'Kracht & power',
+    ob_goal_endurance: 'Fitness verbeteren',
+    ob_goal_endurance_sub: 'Conditie',
+    ob_goal_sport: 'Sportprestaties',
+    ob_goal_sport_sub: 'Train voor jouw sport',
+    ob_exp_beginner: 'Beginner',
+    ob_exp_beginner_sub: 'Minder dan 1 jaar in de gym',
+    ob_exp_intermediate: 'Gevorderd',
+    ob_exp_intermediate_sub: '1–3 jaar in de gym',
+    ob_exp_advanced: 'Geavanceerd',
+    ob_exp_advanced_sub: 'Meer dan 3 jaar in de gym',
+    ob_exp_sport_sub: 'Hoe lang til je al gewichten?',
+    ob_day: 'Dag',
+    ob_days: 'Dagen',
+    ob_days_1_sub: 'Volledig lichaam',
+    ob_days_2_sub: 'Volledig lichaam split',
+    ob_days_3_sub: 'Volledig lichaam',
+    ob_days_4_sub: 'Boven-/onderkant',
+    ob_days_5_sub: 'Duwen/trekken/benen',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Gym Trainingsdagen',
+    ob_days_sport_sub: 'Hoeveel dagen per week kun je naar de gym?',
+    ob_days_sport_note: 'Je sportdagen worden getoond. Kies je GYM dagen uit de overige.',
+    ob_days_sport_note_sameday: 'Sportdagen getoond — je kunt ze ook kiezen voor de gym.',
+    ob_days_gym_count: 'Gym dagen: {n} / {total} geselecteerd',
+    ob_which_days_sport_sub: 'Selecteer je gym dagen — sportdagen kunnen niet worden geselecteerd',
+    ob_equip_full: 'Volledige Gym',
+    ob_equip_full_sub: 'Alle apparatuur',
+    ob_equip_home: 'Thuis Gym',
+    ob_equip_home_sub: 'Dumbbells & halter',
+    ob_equip_minimal: 'Minimaal',
+    ob_equip_minimal_sub: 'Banden & lichaamsgewicht',
+    ob_diet_anything: 'Alles',
+    ob_diet_anything_sub: 'Geen beperkingen',
+    ob_diet_vegetarian: 'Vegetarisch',
+    ob_diet_vegetarian_sub: 'Geen vlees',
+    ob_diet_vegan: 'Veganistisch',
+    ob_diet_vegan_sub: 'Alleen planten',
+    ob_diet_keto: 'Keto/Laag Koolhydraat',
+    ob_diet_keto_sub: 'Vet-dominant',
+    ob_stats_age: 'Leeftijd',
+    ob_stats_height: 'Lengte',
+    ob_stats_weight: 'Gewicht',
+    ob_stats_sex: 'Geslacht',
+    ob_stats_male: 'Man',
+    ob_stats_female: 'Vrouw',
+    ob_stats_years: 'JAAR',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Dieetbeperkingen / te vermijden voedsel',
+    ob_restrictions_diet_placeholder: 'bijv. geen soja, geen melk — of typ \'geen\'',
+    ob_restrictions_injuries_label: 'Blessures of lichamelijke beperkingen',
+    ob_restrictions_injuries_placeholder: 'bijv. slecht knie — of typ \'geen\'',
+    ob_sport_title: 'Jouw Sport',
+    ob_sport_sub: 'Vertel ons precies wat je speelt of beoefent',
+    ob_sport_level_title: 'Competitieniveau',
+    ob_sport_level_sub: 'Doe je mee aan wedstrijden of train je recreatief?',
+    ob_sport_recreational: 'Recreatief',
+    ob_sport_recreational_sub: 'Voor plezier & fitness',
+    ob_sport_amateur: 'Amateur',
+    ob_sport_amateur_sub: 'Club of lokale competitie',
+    ob_sport_competitive: 'Competitief',
+    ob_sport_competitive_sub: 'Regelmatige wedstrijden',
+    ob_sport_elite: 'Elite / Pro',
+    ob_sport_elite_sub: 'Topprestaties',
+    ob_sport_days_title: 'Sporttrainingsdagen',
+    ob_sport_days_sub: 'Op welke dagen train je al voor je sport?',
+    ob_sport_details_title: 'Sportdetails',
+    ob_sport_details_sub: 'Nog iets anders te weten?',
+    ob_sport_name_label: 'Welke sport beoefen je?',
+    ob_sport_name_placeholder: 'bijv. Voetbal, Boksen, Tennis, BJJ...',
+    ob_sport_position_label: 'Positie of discipline (optioneel)',
+    ob_sport_position_placeholder: 'bijv. Verdediger, Zwaargewicht...',
+    ob_sport_why_label: 'WAAROM WE VRAGEN',
+    ob_sport_why_text: 'Jouw gym programma wordt gebouwd rondom je sport, niet ertegen.',
+    ob_sport_sameday_label: 'Kun je op dezelfde dag gym én sport trainen? (optioneel)',
+    ob_sport_sameday_yes_sub: 'Ik kan dubbel trainen',
+    ob_sport_sameday_no_sub: 'Alleen aparte dagen',
+    ob_yes: 'Ja',
+    ob_no: 'Nee',
+    ob_sport_competition_label: 'Aankomende wedstrijd? (optioneel)',
+    ob_sport_competition_placeholder: 'bijv. Regionale finale in maart...',
+    ob_sport_notes_label: 'Nog iets wat je coach moet weten?',
+    ob_sport_notes_placeholder: 'bijv. herstel van verstuiking...',
+    ob_sport_days_count: 'Sportdagen — {n} geselecteerd',
+    ob_sport_days_hint: 'Selecteer 0 dagen als je schema varieert.',
+    ob_sport_days_hint_prev: 'Je vorige selectie wordt getoond. Tik om te wijzigen.',
+    day_monday: 'Maandag',
+    day_tuesday: 'Dinsdag',
+    day_wednesday: 'Woensdag',
+    day_thursday: 'Donderdag',
+    day_friday: 'Vrijdag',
+    day_saturday: 'Zaterdag',
+    day_sunday: 'Zondag',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -6740,6 +7454,106 @@ const STRINGS = {
     locked_programmes: 'Кілька збережених програм',
     locked_steel_badge: 'Доступно на 🔩 Steel і вище',
     locked_forge_badge: 'Доступно на 🔥 Forge',
+
+    ob_goal_muscle: 'Набрати Масу',
+    ob_goal_muscle_sub: 'Фокус на гіпертрофії',
+    ob_goal_fat_loss: 'Схуднути',
+    ob_goal_fat_loss_sub: 'Спалювати жир та зберігати м\'язи',
+    ob_goal_strength: 'Стати Сильнішим',
+    ob_goal_strength_sub: 'Сила та потужність',
+    ob_goal_endurance: 'Покращити Фітнес',
+    ob_goal_endurance_sub: 'Кондиціювання',
+    ob_goal_sport: 'Спортивна Результативність',
+    ob_goal_sport_sub: 'Тренуйся для свого спорту',
+    ob_exp_beginner: 'Початківець',
+    ob_exp_beginner_sub: 'Менше 1 року в залі',
+    ob_exp_intermediate: 'Середній рівень',
+    ob_exp_intermediate_sub: '1–3 роки в залі',
+    ob_exp_advanced: 'Досвідчений',
+    ob_exp_advanced_sub: 'Більше 3 років в залі',
+    ob_exp_sport_sub: 'Як довго ви займаєтесь з вагами?',
+    ob_day: 'День',
+    ob_days: 'Днів',
+    ob_days_1_sub: 'Все тіло',
+    ob_days_2_sub: 'Спліт все тіло',
+    ob_days_3_sub: 'Все тіло',
+    ob_days_4_sub: 'Верх/низ',
+    ob_days_5_sub: 'Жим/тяга/ноги',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Дні тренувань у залі',
+    ob_days_sport_sub: 'Скільки днів на тиждень ви можете тренуватися в залі?',
+    ob_days_sport_note: 'Ваші спортивні дні показані. Виберіть дні ЗАЛУ з решти.',
+    ob_days_sport_note_sameday: 'Спортивні дні показані — ви також можете вибрати їх для залу.',
+    ob_days_gym_count: 'Дні залу: {n} / {total} вибрано',
+    ob_which_days_sport_sub: 'Виберіть дні залу — спортивні дні не можна вибрати',
+    ob_equip_full: 'Повний Зал',
+    ob_equip_full_sub: 'Все обладнання',
+    ob_equip_home: 'Домашній Зал',
+    ob_equip_home_sub: 'Гантелі та штанга',
+    ob_equip_minimal: 'Мінімум',
+    ob_equip_minimal_sub: 'Гумки та вага тіла',
+    ob_diet_anything: 'Все',
+    ob_diet_anything_sub: 'Без обмежень',
+    ob_diet_vegetarian: 'Вегетаріанець',
+    ob_diet_vegetarian_sub: 'Без м\'яса',
+    ob_diet_vegan: 'Веган',
+    ob_diet_vegan_sub: 'Тільки рослинне',
+    ob_diet_keto: 'Кето/Низько-вуглеводне',
+    ob_diet_keto_sub: 'Жиро-домінантне',
+    ob_stats_age: 'Вік',
+    ob_stats_height: 'Зріст',
+    ob_stats_weight: 'Вага',
+    ob_stats_sex: 'Стать',
+    ob_stats_male: 'Чоловік',
+    ob_stats_female: 'Жінка',
+    ob_stats_years: 'РОКІВ',
+    ob_stats_cm: 'СМ',
+    ob_stats_kg: 'КГ',
+    ob_restrictions_diet_label: 'Обмеження в харчуванні / продукти яких уникати',
+    ob_restrictions_diet_placeholder: 'напр. без сої, без молока — або введіть \'немає\'',
+    ob_restrictions_injuries_label: 'Травми або фізичні обмеження',
+    ob_restrictions_injuries_placeholder: 'напр. погане коліно — або введіть \'немає\'',
+    ob_sport_title: 'Ваш Спорт',
+    ob_sport_sub: 'Розкажіть нам точно що ви граєте або практикуєте',
+    ob_sport_level_title: 'Рівень Змагань',
+    ob_sport_level_sub: 'Ви змагаєтесь чи тренуєтесь для задоволення?',
+    ob_sport_recreational: 'Аматорський',
+    ob_sport_recreational_sub: 'Для задоволення та форми',
+    ob_sport_amateur: 'Аматор',
+    ob_sport_amateur_sub: 'Клуб або місцева ліга',
+    ob_sport_competitive: 'Змагальний',
+    ob_sport_competitive_sub: 'Регулярні змагання',
+    ob_sport_elite: 'Еліта / Про',
+    ob_sport_elite_sub: 'Висока результативність',
+    ob_sport_days_title: 'Дні Спортивних Тренувань',
+    ob_sport_days_sub: 'В які дні ви вже тренуєте свій спорт?',
+    ob_sport_details_title: 'Деталі Спорту',
+    ob_sport_details_sub: 'Що ще потрібно знати?',
+    ob_sport_name_label: 'Яким спортом ви займаєтесь?',
+    ob_sport_name_placeholder: 'напр. Футбол, Бокс, Теніс, БЖЖ...',
+    ob_sport_position_label: 'Позиція або дисципліна (необов\'язково)',
+    ob_sport_position_placeholder: 'напр. Центральний захисник, Важка вага...',
+    ob_sport_why_label: 'ЧОМУ МИ ПИТАЄМО',
+    ob_sport_why_text: 'Ваша програма в залі буде побудована навколо вашого спорту, а не проти нього.',
+    ob_sport_sameday_label: 'Чи можете ви тренуватися в залі в той же день що й спорт? (необов\'язково)',
+    ob_sport_sameday_yes_sub: 'Можу подвоїти тренування',
+    ob_sport_sameday_no_sub: 'Тільки окремі дні',
+    ob_yes: 'Так',
+    ob_no: 'Ні',
+    ob_sport_competition_label: 'Найближчі змагання? (необов\'язково)',
+    ob_sport_competition_placeholder: 'напр. Обласний фінал у березні...',
+    ob_sport_notes_label: 'Щось ще що ваш тренер повинен знати?',
+    ob_sport_notes_placeholder: 'напр. відновлення після розтягнення...',
+    ob_sport_days_count: 'Спортивні дні — {n} вибрано',
+    ob_sport_days_hint: 'Виберіть 0 днів якщо ваш розклад змінюється.',
+    ob_sport_days_hint_prev: 'Ваш попередній вибір показано. Торкніться щоб змінити.',
+    day_monday: 'Понеділок',
+    day_tuesday: 'Вівторок',
+    day_wednesday: 'Середа',
+    day_thursday: 'Четвер',
+    day_friday: 'П\'ятниця',
+    day_saturday: 'Субота',
+    day_sunday: 'Неділя',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -6953,6 +7767,106 @@ const STRINGS = {
     locked_programmes: 'Useita tallennettuja ohjelmia',
     locked_steel_badge: 'Saatavilla 🔩 Steel ja ylöspäin',
     locked_forge_badge: 'Saatavilla 🔥 Forge',
+
+    ob_goal_muscle: 'Rakentaa Lihaksia',
+    ob_goal_muscle_sub: 'Hypertrofia-fokus',
+    ob_goal_fat_loss: 'Laihduttaa',
+    ob_goal_fat_loss_sub: 'Polttaa rasvaa ja säilyttää lihaksia',
+    ob_goal_strength: 'Tulla Vahvemmaksi',
+    ob_goal_strength_sub: 'Voima ja teho',
+    ob_goal_endurance: 'Parantaa Kuntoa',
+    ob_goal_endurance_sub: 'Kestävyys',
+    ob_goal_sport: 'Urheilusuoritus',
+    ob_goal_sport_sub: 'Harjoittele urheiluasi varten',
+    ob_exp_beginner: 'Aloittelija',
+    ob_exp_beginner_sub: 'Alle 1 vuosi salilla',
+    ob_exp_intermediate: 'Keskitaso',
+    ob_exp_intermediate_sub: '1–3 vuotta salilla',
+    ob_exp_advanced: 'Kokenut',
+    ob_exp_advanced_sub: 'Yli 3 vuotta salilla',
+    ob_exp_sport_sub: 'Kuinka kauan olet nostanut painoja?',
+    ob_day: 'Päivä',
+    ob_days: 'Päivää',
+    ob_days_1_sub: 'Koko keho',
+    ob_days_2_sub: 'Koko keho split',
+    ob_days_3_sub: 'Koko keho',
+    ob_days_4_sub: 'Ylä-/alakroppa',
+    ob_days_5_sub: 'Työntö/veto/jalat',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'Salin Harjoituspäivät',
+    ob_days_sport_sub: 'Kuinka monta päivää viikossa voit harjoitella salilla?',
+    ob_days_sport_note: 'Urheilupäiväsi näkyvät. Valitse SALI-päivät jäljellä olevista.',
+    ob_days_sport_note_sameday: 'Urheilupäivät näkyvät — voit valita ne myös salille.',
+    ob_days_gym_count: 'Salipäivät: {n} / {total} valittu',
+    ob_which_days_sport_sub: 'Valitse salipäivät — urheilupäiviä ei voi valita',
+    ob_equip_full: 'Täysi Sali',
+    ob_equip_full_sub: 'Kaikki varusteet',
+    ob_equip_home: 'Kotisali',
+    ob_equip_home_sub: 'Käsipainot ja tanko',
+    ob_equip_minimal: 'Minimaalinen',
+    ob_equip_minimal_sub: 'Vastuskuminauhat ja kehonpaino',
+    ob_diet_anything: 'Kaikki',
+    ob_diet_anything_sub: 'Ei rajoituksia',
+    ob_diet_vegetarian: 'Kasvissyöjä',
+    ob_diet_vegetarian_sub: 'Ei lihaa',
+    ob_diet_vegan: 'Vegaani',
+    ob_diet_vegan_sub: 'Vain kasvipohjainen',
+    ob_diet_keto: 'Keto/Vähähiilihydraattinen',
+    ob_diet_keto_sub: 'Rasvo-dominantti',
+    ob_stats_age: 'Ikä',
+    ob_stats_height: 'Pituus',
+    ob_stats_weight: 'Paino',
+    ob_stats_sex: 'Sukupuoli',
+    ob_stats_male: 'Mies',
+    ob_stats_female: 'Nainen',
+    ob_stats_years: 'VUOTTA',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: 'Ruokarajoitukset / vältettävät ruoat',
+    ob_restrictions_diet_placeholder: 'esim. ei soijaa, ei maitoa — tai kirjoita \'ei mitään\'',
+    ob_restrictions_injuries_label: 'Vammat tai fyysiset rajoitukset',
+    ob_restrictions_injuries_placeholder: 'esim. huono polvi — tai kirjoita \'ei mitään\'',
+    ob_sport_title: 'Sinun Urheilusi',
+    ob_sport_sub: 'Kerro meille tarkalleen mitä harrastat',
+    ob_sport_level_title: 'Kilpailutaso',
+    ob_sport_level_sub: 'Kilpailetko vai harjoitteletko harrastuksena?',
+    ob_sport_recreational: 'Harrastus',
+    ob_sport_recreational_sub: 'Hauskuuden ja kunnon vuoksi',
+    ob_sport_amateur: 'Amatööri',
+    ob_sport_amateur_sub: 'Seura tai paikallinen liiga',
+    ob_sport_competitive: 'Kilpailullinen',
+    ob_sport_competitive_sub: 'Säännölliset kilpailut',
+    ob_sport_elite: 'Eliitti / Pro',
+    ob_sport_elite_sub: 'Huippusuoritus',
+    ob_sport_days_title: 'Urheiluharjoituspäivät',
+    ob_sport_days_sub: 'Millä päivillä harjoittelet jo urheiluasi?',
+    ob_sport_details_title: 'Urheilun Tiedot',
+    ob_sport_details_sub: 'Muuta tietää?',
+    ob_sport_name_label: 'Mitä urheilua harrastat?',
+    ob_sport_name_placeholder: 'esim. Jalkapallo, Nyrkkeily, Tennis, BJJ...',
+    ob_sport_position_label: 'Asema tai laji (valinnainen)',
+    ob_sport_position_placeholder: 'esim. Puolustaja, Raskaansarjan...',
+    ob_sport_why_label: 'MIKSI KYSYMME',
+    ob_sport_why_text: 'Saliohjelma rakennetaan urheilusi ympärille, ei sitä vastaan.',
+    ob_sport_sameday_label: 'Voitko harjoitella salilla samana päivänä kuin urheilua? (valinnainen)',
+    ob_sport_sameday_yes_sub: 'Voin tehdä tuplasession',
+    ob_sport_sameday_no_sub: 'Vain erilliset päivät',
+    ob_yes: 'Kyllä',
+    ob_no: 'Ei',
+    ob_sport_competition_label: 'Tuleva kilpailu? (valinnainen)',
+    ob_sport_competition_placeholder: 'esim. Aluefinaali maaliskuussa...',
+    ob_sport_notes_label: 'Muuta mitä valmentajan pitäisi tietää?',
+    ob_sport_notes_placeholder: 'esim. nilkkavamman kuntoutus...',
+    ob_sport_days_count: 'Urheilupäivät — {n} valittu',
+    ob_sport_days_hint: 'Valitse 0 päivää jos aikataulusi vaihtelee.',
+    ob_sport_days_hint_prev: 'Edellinen valintasi näkyy. Napauta muuttaaksesi.',
+    day_monday: 'Maanantai',
+    day_tuesday: 'Tiistai',
+    day_wednesday: 'Keskiviikko',
+    day_thursday: 'Torstai',
+    day_friday: 'Perjantai',
+    day_saturday: 'Lauantai',
+    day_sunday: 'Sunnuntai',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -7166,6 +8080,106 @@ const STRINGS = {
     locked_programmes: 'برامج متعددة محفوظة',
     locked_steel_badge: 'متاح في 🔩 Steel وما فوق',
     locked_forge_badge: 'متاح في 🔥 Forge',
+
+    ob_goal_muscle: 'بناء العضلات',
+    ob_goal_muscle_sub: 'تركيز على الضخامة',
+    ob_goal_fat_loss: 'خسارة الدهون',
+    ob_goal_fat_loss_sub: 'حرق الدهون والحفاظ على العضلات',
+    ob_goal_strength: 'أصبح أقوى',
+    ob_goal_strength_sub: 'القوة والطاقة',
+    ob_goal_endurance: 'تحسين اللياقة',
+    ob_goal_endurance_sub: 'التكييف',
+    ob_goal_sport: 'الأداء الرياضي',
+    ob_goal_sport_sub: 'تدرب لرياضتك',
+    ob_exp_beginner: 'مبتدئ',
+    ob_exp_beginner_sub: 'أقل من سنة في الجيم',
+    ob_exp_intermediate: 'متوسط',
+    ob_exp_intermediate_sub: '1–3 سنوات في الجيم',
+    ob_exp_advanced: 'متقدم',
+    ob_exp_advanced_sub: 'أكثر من 3 سنوات في الجيم',
+    ob_exp_sport_sub: 'منذ متى وأنت ترفع الأوزان؟',
+    ob_day: 'يوم',
+    ob_days: 'أيام',
+    ob_days_1_sub: 'جسم كامل',
+    ob_days_2_sub: 'سبليت جسم كامل',
+    ob_days_3_sub: 'جسم كامل',
+    ob_days_4_sub: 'جزء علوي/سفلي',
+    ob_days_5_sub: 'دفع/سحب/أرجل',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'أيام تدريب الجيم',
+    ob_days_sport_sub: 'كم يوماً في الأسبوع يمكنك التدريب في الجيم؟',
+    ob_days_sport_note: 'أيام رياضتك معروضة. اختر أيام الجيم من الأيام المتبقية.',
+    ob_days_sport_note_sameday: 'أيام الرياضة معروضة — يمكنك أيضاً اختيارها للجيم.',
+    ob_days_gym_count: 'أيام الجيم: {n} / {total} محددة',
+    ob_which_days_sport_sub: 'اختر أيام الجيم — لا يمكن تحديد أيام الرياضة',
+    ob_equip_full: 'جيم كامل',
+    ob_equip_full_sub: 'جميع المعدات',
+    ob_equip_home: 'جيم منزلي',
+    ob_equip_home_sub: 'دمبلز وبار',
+    ob_equip_minimal: 'حد أدنى',
+    ob_equip_minimal_sub: 'أربطة ووزن الجسم',
+    ob_diet_anything: 'كل شيء',
+    ob_diet_anything_sub: 'بدون قيود',
+    ob_diet_vegetarian: 'نباتي',
+    ob_diet_vegetarian_sub: 'بدون لحم',
+    ob_diet_vegan: 'نباتي صرف',
+    ob_diet_vegan_sub: 'نباتات فقط',
+    ob_diet_keto: 'كيتو/منخفض الكارب',
+    ob_diet_keto_sub: 'مهيمن على الدهون',
+    ob_stats_age: 'العمر',
+    ob_stats_height: 'الطول',
+    ob_stats_weight: 'الوزن',
+    ob_stats_sex: 'الجنس',
+    ob_stats_male: 'ذكر',
+    ob_stats_female: 'أنثى',
+    ob_stats_years: 'سنوات',
+    ob_stats_cm: 'سم',
+    ob_stats_kg: 'كغ',
+    ob_restrictions_diet_label: 'القيود الغذائية / الأطعمة التي يجب تجنبها',
+    ob_restrictions_diet_placeholder: 'مثال: بدون صويا، بدون حليب — أو اكتب \'لا شيء\'',
+    ob_restrictions_injuries_label: 'الإصابات أو القيود الجسدية',
+    ob_restrictions_injuries_placeholder: 'مثال: ركبة سيئة — أو اكتب \'لا شيء\'',
+    ob_sport_title: 'رياضتك',
+    ob_sport_sub: 'أخبرنا بالضبط ما تمارسه',
+    ob_sport_level_title: 'مستوى المنافسة',
+    ob_sport_level_sub: 'هل تتنافس أم تتدرب ترفيهياً؟',
+    ob_sport_recreational: 'ترفيهي',
+    ob_sport_recreational_sub: 'للمتعة واللياقة',
+    ob_sport_amateur: 'هاوٍ',
+    ob_sport_amateur_sub: 'نادٍ أو دوري محلي',
+    ob_sport_competitive: 'تنافسي',
+    ob_sport_competitive_sub: 'منافسات منتظمة',
+    ob_sport_elite: 'نخبة / محترف',
+    ob_sport_elite_sub: 'أداء عالٍ',
+    ob_sport_days_title: 'أيام التدريب الرياضي',
+    ob_sport_days_sub: 'في أي أيام تتدرب بالفعل على رياضتك؟',
+    ob_sport_details_title: 'تفاصيل الرياضة',
+    ob_sport_details_sub: 'أي شيء آخر يجب معرفته؟',
+    ob_sport_name_label: 'ما هي الرياضة التي تمارسها؟',
+    ob_sport_name_placeholder: 'مثال: كرة قدم، ملاكمة، تنس، BJJ...',
+    ob_sport_position_label: 'المركز أو التخصص (اختياري)',
+    ob_sport_position_placeholder: 'مثال: مدافع، وزن ثقيل...',
+    ob_sport_why_label: 'لماذا نسأل',
+    ob_sport_why_text: 'سيُبنى برنامج الجيم الخاص بك حول رياضتك، وليس ضدها.',
+    ob_sport_sameday_label: 'هل يمكنك التدريب في الجيم في نفس يوم الرياضة؟ (اختياري)',
+    ob_sport_sameday_yes_sub: 'يمكنني المضاعفة',
+    ob_sport_sameday_no_sub: 'أيام منفصلة فقط',
+    ob_yes: 'نعم',
+    ob_no: 'لا',
+    ob_sport_competition_label: 'منافسة قادمة؟ (اختياري)',
+    ob_sport_competition_placeholder: 'مثال: نهائي المنطقة في مارس...',
+    ob_sport_notes_label: 'أي شيء آخر يجب أن يعرفه مدربك؟',
+    ob_sport_notes_placeholder: 'مثال: التعافي من الالتواء...',
+    ob_sport_days_count: 'أيام الرياضة — {n} محددة',
+    ob_sport_days_hint: 'حدد 0 أيام إذا كان جدولك يتغير.',
+    ob_sport_days_hint_prev: 'يتم عرض اختيارك السابق. انقر للتغيير.',
+    day_monday: 'الاثنين',
+    day_tuesday: 'الثلاثاء',
+    day_wednesday: 'الأربعاء',
+    day_thursday: 'الخميس',
+    day_friday: 'الجمعة',
+    day_saturday: 'السبت',
+    day_sunday: 'الأحد',
 },
   zh: {
     nav_coach: '教练',
@@ -7379,6 +8393,106 @@ const STRINGS = {
     locked_programmes: '多个保存的训练计划',
     locked_steel_badge: '需要 🔩 Steel 或以上',
     locked_forge_badge: '需要 🔥 Forge',
+
+    ob_goal_muscle: '增肌',
+    ob_goal_muscle_sub: '肌肥大为主',
+    ob_goal_fat_loss: '减脂',
+    ob_goal_fat_loss_sub: '燃烧脂肪并保留肌肉',
+    ob_goal_strength: '增强力量',
+    ob_goal_strength_sub: '力量与爆发力',
+    ob_goal_endurance: '提升健康',
+    ob_goal_endurance_sub: '体能训练',
+    ob_goal_sport: '运动表现',
+    ob_goal_sport_sub: '为你的运动而训练',
+    ob_exp_beginner: '初学者',
+    ob_exp_beginner_sub: '健身不足1年',
+    ob_exp_intermediate: '中级',
+    ob_exp_intermediate_sub: '健身1–3年',
+    ob_exp_advanced: '高级',
+    ob_exp_advanced_sub: '健身超过3年',
+    ob_exp_sport_sub: '你已经举铁多久了？',
+    ob_day: '天',
+    ob_days: '天',
+    ob_days_1_sub: '全身训练',
+    ob_days_2_sub: '全身分化',
+    ob_days_3_sub: '全身训练',
+    ob_days_4_sub: '上下肢分化',
+    ob_days_5_sub: '推/拉/腿',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: '健身房训练日',
+    ob_days_sport_sub: '每周可以去健身房几天？',
+    ob_days_sport_note: '你的运动日已显示。从剩余的日子中选择你的健身房日。',
+    ob_days_sport_note_sameday: '运动日已显示 — 你也可以选择这些日子去健身房。',
+    ob_days_gym_count: '健身房天数：{n} / {total} 已选',
+    ob_which_days_sport_sub: '选择你的健身房日 — 运动日不可选择',
+    ob_equip_full: '完整健身房',
+    ob_equip_full_sub: '所有器械',
+    ob_equip_home: '家庭健身房',
+    ob_equip_home_sub: '哑铃和杠铃',
+    ob_equip_minimal: '极简',
+    ob_equip_minimal_sub: '弹力带和自重',
+    ob_diet_anything: '什么都吃',
+    ob_diet_anything_sub: '无限制',
+    ob_diet_vegetarian: '素食',
+    ob_diet_vegetarian_sub: '不吃肉',
+    ob_diet_vegan: '纯素',
+    ob_diet_vegan_sub: '只吃植物',
+    ob_diet_keto: '生酮/低碳',
+    ob_diet_keto_sub: '以脂肪为主',
+    ob_stats_age: '年龄',
+    ob_stats_height: '身高',
+    ob_stats_weight: '体重',
+    ob_stats_sex: '性别',
+    ob_stats_male: '男',
+    ob_stats_female: '女',
+    ob_stats_years: '岁',
+    ob_stats_cm: '厘米',
+    ob_stats_kg: '公斤',
+    ob_restrictions_diet_label: '饮食限制 / 需要避免的食物',
+    ob_restrictions_diet_placeholder: '例如：不吃大豆、不喝牛奶 — 或输入\'无\'',
+    ob_restrictions_injuries_label: '伤病或身体限制',
+    ob_restrictions_injuries_placeholder: '例如：膝盖不好 — 或输入\'无\'',
+    ob_sport_title: '你的运动',
+    ob_sport_sub: '告诉我们你参与的具体运动',
+    ob_sport_level_title: '竞技水平',
+    ob_sport_level_sub: '你参加比赛还是休闲训练？',
+    ob_sport_recreational: '休闲',
+    ob_sport_recreational_sub: '为乐趣和健康',
+    ob_sport_amateur: '业余',
+    ob_sport_amateur_sub: '俱乐部或地方联赛',
+    ob_sport_competitive: '竞技',
+    ob_sport_competitive_sub: '定期参赛',
+    ob_sport_elite: '精英/职业',
+    ob_sport_elite_sub: '高水平表现',
+    ob_sport_days_title: '运动训练日',
+    ob_sport_days_sub: '你已经在哪些日子进行运动训练？',
+    ob_sport_details_title: '运动详情',
+    ob_sport_details_sub: '还有什么需要了解的？',
+    ob_sport_name_label: '你参与什么运动？',
+    ob_sport_name_placeholder: '例如：足球、拳击、网球、BJJ...',
+    ob_sport_position_label: '位置或专项（可选）',
+    ob_sport_position_placeholder: '例如：中后卫、重量级...',
+    ob_sport_why_label: '为什么我们要问',
+    ob_sport_why_text: '你的健身计划将围绕你的运动而制定，而不是与之对立。',
+    ob_sport_sameday_label: '你能在运动同一天去健身房吗？（可选）',
+    ob_sport_sameday_yes_sub: '可以双重训练',
+    ob_sport_sameday_no_sub: '只能分开',
+    ob_yes: '是',
+    ob_no: '否',
+    ob_sport_competition_label: '即将到来的比赛？（可选）',
+    ob_sport_competition_placeholder: '例如：3月区域决赛...',
+    ob_sport_notes_label: '教练还需要知道什么？',
+    ob_sport_notes_placeholder: '例如：正在恢复脚踝扭伤...',
+    ob_sport_days_count: '运动日 — 已选{n}天',
+    ob_sport_days_hint: '如果你的时间表每周不同，选择0天。',
+    ob_sport_days_hint_prev: '显示你之前的选择。点击更改。',
+    day_monday: '周一',
+    day_tuesday: '周二',
+    day_wednesday: '周三',
+    day_thursday: '周四',
+    day_friday: '周五',
+    day_saturday: '周六',
+    day_sunday: '周日',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -7592,6 +8706,106 @@ const STRINGS = {
     locked_programmes: '複数の保存プログラム',
     locked_steel_badge: '🔩 Steel以上が必要',
     locked_forge_badge: '🔥 Forgeが必要',
+
+    ob_goal_muscle: '筋肉をつける',
+    ob_goal_muscle_sub: '筋肥大フォーカス',
+    ob_goal_fat_loss: '脂肪を落とす',
+    ob_goal_fat_loss_sub: '燃焼して筋肉を維持',
+    ob_goal_strength: 'より強くなる',
+    ob_goal_strength_sub: 'パワーと強さ',
+    ob_goal_endurance: 'フィットネス向上',
+    ob_goal_endurance_sub: 'コンディショニング',
+    ob_goal_sport: 'スポーツパフォーマンス',
+    ob_goal_sport_sub: 'スポーツのために鍛える',
+    ob_exp_beginner: '初心者',
+    ob_exp_beginner_sub: 'ジム歴1年未満',
+    ob_exp_intermediate: '中級者',
+    ob_exp_intermediate_sub: 'ジム歴1〜3年',
+    ob_exp_advanced: '上級者',
+    ob_exp_advanced_sub: 'ジム歴3年以上',
+    ob_exp_sport_sub: 'ウエイトトレーニング歴はどれくらいですか？',
+    ob_day: '日',
+    ob_days: '日',
+    ob_days_1_sub: '全身トレーニング',
+    ob_days_2_sub: '全身スプリット',
+    ob_days_3_sub: '全身トレーニング',
+    ob_days_4_sub: '上半身/下半身',
+    ob_days_5_sub: 'プッシュ/プル/レッグ',
+    ob_days_6_sub: 'PPL x 2',
+    ob_days_sport_title: 'ジムトレーニング日',
+    ob_days_sport_sub: '週に何日ジムでトレーニングできますか？',
+    ob_days_sport_note: 'スポーツの日が表示されています。残りの日からジムの日を選んでください。',
+    ob_days_sport_note_sameday: 'スポーツの日が表示されています — ジムにも選択できます。',
+    ob_days_gym_count: 'ジムの日：{n} / {total}選択済み',
+    ob_which_days_sport_sub: 'ジムの日を選択 — スポーツの日は選択できません',
+    ob_equip_full: 'フルジム',
+    ob_equip_full_sub: '全器具あり',
+    ob_equip_home: 'ホームジム',
+    ob_equip_home_sub: 'ダンベルとバーベル',
+    ob_equip_minimal: 'ミニマル',
+    ob_equip_minimal_sub: 'バンドと自重',
+    ob_diet_anything: '何でも',
+    ob_diet_anything_sub: '制限なし',
+    ob_diet_vegetarian: 'ベジタリアン',
+    ob_diet_vegetarian_sub: '肉なし',
+    ob_diet_vegan: 'ヴィーガン',
+    ob_diet_vegan_sub: '植物性のみ',
+    ob_diet_keto: 'ケト/低糖質',
+    ob_diet_keto_sub: '脂質主体',
+    ob_stats_age: '年齢',
+    ob_stats_height: '身長',
+    ob_stats_weight: '体重',
+    ob_stats_sex: '性別',
+    ob_stats_male: '男性',
+    ob_stats_female: '女性',
+    ob_stats_years: '歳',
+    ob_stats_cm: 'CM',
+    ob_stats_kg: 'KG',
+    ob_restrictions_diet_label: '食事制限 / 避ける食べ物',
+    ob_restrictions_diet_placeholder: '例：大豆なし、乳製品なし — または「なし」と入力',
+    ob_restrictions_injuries_label: '怪我や身体的制限',
+    ob_restrictions_injuries_placeholder: '例：膝が悪い — または「なし」と入力',
+    ob_sport_title: 'あなたのスポーツ',
+    ob_sport_sub: '何をしているか正確に教えてください',
+    ob_sport_level_title: '競技レベル',
+    ob_sport_level_sub: '競技参加か趣味か？',
+    ob_sport_recreational: '趣味',
+    ob_sport_recreational_sub: '楽しみとフィットネスのため',
+    ob_sport_amateur: 'アマチュア',
+    ob_sport_amateur_sub: 'クラブや地域リーグ',
+    ob_sport_competitive: '競技',
+    ob_sport_competitive_sub: '定期的な試合',
+    ob_sport_elite: 'エリート / プロ',
+    ob_sport_elite_sub: 'ハイパフォーマンス',
+    ob_sport_days_title: 'スポーツトレーニング日',
+    ob_sport_days_sub: 'すでにスポーツをしている日は？',
+    ob_sport_details_title: 'スポーツの詳細',
+    ob_sport_details_sub: '他に知っておくべきことは？',
+    ob_sport_name_label: 'どんなスポーツをしていますか？',
+    ob_sport_name_placeholder: '例：サッカー、ボクシング、テニス、BJJ...',
+    ob_sport_position_label: 'ポジションや種目（任意）',
+    ob_sport_position_placeholder: '例：センターバック、ヘビー級...',
+    ob_sport_why_label: 'なぜ聞くか',
+    ob_sport_why_text: 'ジムプログラムはスポーツに沿って作られます。対立するものではありません。',
+    ob_sport_sameday_label: 'スポーツと同じ日にジムでトレーニングできますか？（任意）',
+    ob_sport_sameday_yes_sub: 'ダブルセッション可能',
+    ob_sport_sameday_no_sub: '別の日のみ',
+    ob_yes: 'はい',
+    ob_no: 'いいえ',
+    ob_sport_competition_label: '近日中の大会？（任意）',
+    ob_sport_competition_placeholder: '例：3月の地区決勝...',
+    ob_sport_notes_label: 'コーチが知っておくべきことは？',
+    ob_sport_notes_placeholder: '例：足首捻挫からの回復中...',
+    ob_sport_days_count: 'スポーツの日 — {n}日選択',
+    ob_sport_days_hint: 'スケジュールが変動する場合は0日を選択してください。',
+    ob_sport_days_hint_prev: '前回の選択が表示されています。タップして変更。',
+    day_monday: '月曜日',
+    day_tuesday: '火曜日',
+    day_wednesday: '水曜日',
+    day_thursday: '木曜日',
+    day_friday: '金曜日',
+    day_saturday: '土曜日',
+    day_sunday: '日曜日',
 },
 };
 
@@ -7746,6 +8960,8 @@ function setLanguage(code) {
   if (typeof renderAccount === 'function' && document.getElementById('accountPanel')?.innerHTML) renderAccount();
   // Re-render progress panel if open
   if (typeof renderProgress === 'function' && document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
+  // Re-render onboarding if active
+  if (document.getElementById('screen-onboarding')?.classList.contains('active') && typeof renderObStep === 'function') renderObStep();
   // Re-render upgrade sheet if open
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
   // Re-render coach counter
@@ -8021,6 +9237,5 @@ function urlBase64ToUint8Array(base64String) {
 })();
 
 </script>
-  <div style="position:fixed;top:12px;right:12px;z-index:99999;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:4px 8px;border-radius:4px;pointer-events:none;">STAGING</div>
 </body>
 </html>
