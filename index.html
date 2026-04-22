@@ -2826,7 +2826,7 @@ function renderShoppingList() {
   const n = userPlan?.nutrition_plan;
   if (!n) return;
 
-  // Aggregate all foods across all 7 days — use per-day meals where set
+  // Aggregate all foods across all 7 days
   const totals = {};
   let totalMealsPerDay = n.meals?.length || 0;
 
@@ -2844,59 +2844,95 @@ function renderShoppingList() {
   }
 
   if (!Object.keys(totals).length) {
-    el.innerHTML = `<div class="empty-state">No meal plan found.<br>Ask your coach to build one.</div>`;
+    el.innerHTML = `<div class="empty-state">${t('shopping_no_plan')}</div>`;
     return;
   }
 
-  // Group by category
-  const categories = {
-    'Protein': ['egg','chicken','beef','salmon','tuna','steak','mince','protein','whey','casein','turkey','pork','fish','meat'],
-    'Dairy': ['milk','cheese','yogurt','cottage','cream'],
-    'Carbs & Grains': ['rice','oat','bread','potato','pasta','sweet potato','quinoa','wrap','tortilla'],
-    'Fruits': ['banana','apple','berry','orange','mango','fruit','grape'],
-    'Vegetables': ['broccoli','spinach','salad','tomato','pepper','carrot','asparagus','onion','garlic','vegetable','cucumber','courgette','zucchini'],
-    'Fats & Oils': ['olive oil','butter','avocado','nut','almond','peanut','oil','seed'],
-    'Other': []
-  };
+  // Translated category names and keywords
+  const catKeys = [
+    { key: 'shop_cat_protein',  keywords: ['egg','chicken','beef','salmon','tuna','steak','mince','protein','whey','casein','turkey','pork','fish','meat'] },
+    { key: 'shop_cat_dairy',    keywords: ['milk','cheese','yogurt','cottage','cream'] },
+    { key: 'shop_cat_carbs',    keywords: ['rice','oat','bread','potato','pasta','sweet potato','quinoa','wrap','tortilla'] },
+    { key: 'shop_cat_fruits',   keywords: ['banana','apple','berry','orange','mango','fruit','grape'] },
+    { key: 'shop_cat_veg',      keywords: ['broccoli','spinach','salad','tomato','pepper','carrot','asparagus','onion','garlic','vegetable','cucumber','courgette','zucchini'] },
+    { key: 'shop_cat_fats',     keywords: ['olive oil','butter','avocado','nut','almond','peanut','oil','seed'] },
+    { key: 'shop_cat_other',    keywords: [] },
+  ];
+
+  // Load ticked items from localStorage
+  const tickedKey = 'forge_shopping_ticked';
+  let ticked = {};
+  try { ticked = JSON.parse(localStorage.getItem(tickedKey) || '{}'); } catch(e) { ticked = {}; }
 
   const grouped = {};
   Object.values(totals).forEach(item => {
     let placed = false;
-    for (const [cat, keywords] of Object.entries(categories)) {
-      if (cat === 'Other') continue;
-      if (keywords.some(k => item.name.toLowerCase().includes(k))) {
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(item);
+    for (const cat of catKeys) {
+      if (cat.key === 'shop_cat_other') continue;
+      if (cat.keywords.some(k => item.name.toLowerCase().includes(k))) {
+        if (!grouped[cat.key]) grouped[cat.key] = [];
+        grouped[cat.key].push(item);
         placed = true;
         break;
       }
     }
     if (!placed) {
-      if (!grouped['Other']) grouped['Other'] = [];
-      grouped['Other'].push(item);
+      if (!grouped['shop_cat_other']) grouped['shop_cat_other'] = [];
+      grouped['shop_cat_other'].push(item);
     }
   });
 
-  el.innerHTML = `
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:8px 0 16px;letter-spacing:1px">
-      7 days · ${totalMealsPerDay} meals/day · ${Object.keys(totals).length} ingredients
-    </div>
-    ${Object.entries(grouped).filter(([,items]) => items.length).map(([cat, items]) => `
-    <div style="margin-bottom:20px">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat}</div>
-      ${items.map(item => {
-        const weeklyAmt = formatWeeklyAmount(item.amounts);
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0"></div>
-            <span style="font-size:14px">${item.name}</span>
-          </div>
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:5px;white-space:nowrap">${weeklyAmt}</span>
-        </div>`;
-      }).join('')}
-    </div>
-  `).join('')}
-  `;
+  const tickedCount = Object.values(ticked).filter(Boolean).length;
+  const totalItems = Object.keys(totals).length;
+
+  el.innerHTML =
+    // Header with progress and clear button
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 16px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">
+        7 ${t('shop_days')} · ${totalMealsPerDay} ${t('shop_meals_day')} · ${totalItems} ${t('shop_ingredients')}
+      </div>
+      ${tickedCount > 0 ? `<button onclick="clearShoppingTicks()" style="background:transparent;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:0.5px;text-decoration:underline;">${t('shop_clear')}</button>` : ''}
+    </div>` +
+    // Progress bar
+    (totalItems > 0 ? `<div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:16px;">
+      <div style="height:100%;width:${Math.round((tickedCount/totalItems)*100)}%;background:var(--accent);border-radius:2px;transition:width 0.3s"></div>
+    </div>` : '') +
+    // Category groups
+    catKeys.filter(cat => grouped[cat.key]?.length).map(cat => {
+      const catName = t(cat.key);
+      const items = grouped[cat.key];
+      return `<div style="margin-bottom:20px">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${catName}</div>
+        ${items.map(item => {
+          const itemKey = item.name.toLowerCase().trim();
+          const isTicked = !!ticked[itemKey];
+          const weeklyAmt = formatWeeklyAmount(item.amounts);
+          return `<div onclick="toggleShoppingTick('${itemKey.replace(/'/g, '')}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity 0.2s;${isTicked ? 'opacity:0.4;' : ''}">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:20px;height:20px;border:2px solid ${isTicked ? 'var(--accent)' : 'var(--border)'};border-radius:5px;flex-shrink:0;background:${isTicked ? 'var(--accent)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.15s">
+                ${isTicked ? '<span style="color:#000;font-size:13px;font-weight:700;line-height:1">✓</span>' : ''}
+              </div>
+              <span style="font-size:14px;${isTicked ? 'text-decoration:line-through;color:var(--muted);' : ''}">${item.name}</span>
+            </div>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:5px;white-space:nowrap">${weeklyAmt}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+}
+
+function toggleShoppingTick(itemKey) {
+  const tickedKey = 'forge_shopping_ticked';
+  let ticked = {};
+  try { ticked = JSON.parse(localStorage.getItem(tickedKey) || '{}'); } catch(e) {}
+  ticked[itemKey] = !ticked[itemKey];
+  localStorage.setItem(tickedKey, JSON.stringify(ticked));
+  renderShoppingList();
+}
+
+function clearShoppingTicks() {
+  localStorage.removeItem('forge_shopping_ticked');
+  renderShoppingList();
 }
 
 function copyShoppingList() {
@@ -3904,7 +3940,7 @@ function renderTrialBanner() {
   // Recalculate days left from trialEndsAt for accuracy
   let daysLeft = 0;
   if (trialEndsAt) {
-    daysLeft = Math.max(0, Math.floor((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)));
+    daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)));
   }
 
   let daysText;
@@ -4167,7 +4203,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   const isCurrent = currentTier === tier;
   const _trialEndsAt = userSubscription?.trialEndsAt;
   const trialDays = _trialEndsAt
-    ? Math.max(0, Math.floor((new Date(_trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.ceil((new Date(_trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))
     : (userSubscription?.trialDaysLeft || 0);
   const status = userSubscription?.status || 'trial';
   const onTrial = status === 'trial';
@@ -4460,7 +4496,7 @@ function renderAccount() {
   const tierLabel = { iron: '⚙️ Iron', steel: '🔩 Steel', forge: '🔥 Forge' };
   const tierColour = { iron: 'var(--muted)', steel: 'var(--steel, #7eb8f7)', forge: 'var(--accent)' };
   const displayTier = sub.isExempt ? 'forge' : (sub.tier || 'iron');
-  const trialDays = sub.trialEndsAt ? Math.max(0, Math.floor((new Date(sub.trialEndsAt) - new Date()) / (1000*60*60*24))) : (sub.trialDaysLeft || 0);
+  const trialDays = sub.trialEndsAt ? Math.max(0, Math.ceil((new Date(sub.trialEndsAt) - new Date()) / (1000*60*60*24))) : (sub.trialDaysLeft || 0);
   const statusText = sub.isExempt ? t('exempt_free') : (sub.status === 'trial' ? t('trial_days_left', {n: trialDays}) : (sub.status || 'Trial'));
 
   el.innerHTML = `
@@ -5367,6 +5403,19 @@ const STRINGS = {
     ex_muscles_worked: 'MUSCLES WORKED',
     ex_step_by_step: 'STEP BY STEP',
     ex_no_video: 'No video available — follow the coaching notes below.',
+
+    shop_cat_protein: 'Protein',
+    shop_cat_dairy: 'Dairy',
+    shop_cat_carbs: 'Carbs & Grains',
+    shop_cat_fruits: 'Fruits',
+    shop_cat_veg: 'Vegetables',
+    shop_cat_fats: 'Fats & Oils',
+    shop_cat_other: 'Other',
+    shop_days: 'days',
+    shop_meals_day: 'meals/day',
+    shop_ingredients: 'ingredients',
+    shop_clear: 'Clear ticks',
+    shopping_no_plan: 'No meal plan found. Ask your coach to build one.',
 },
   es: {
     nav_coach: 'Coach',
@@ -5685,6 +5734,19 @@ const STRINGS = {
     ex_muscles_worked: 'MÚSCULOS TRABAJADOS',
     ex_step_by_step: 'PASO A PASO',
     ex_no_video: 'Video no disponible — sigue las notas de entrenamiento abajo.',
+
+    shop_cat_protein: 'Proteínas',
+    shop_cat_dairy: 'Lácteos',
+    shop_cat_carbs: 'Carbohidratos y Granos',
+    shop_cat_fruits: 'Frutas',
+    shop_cat_veg: 'Verduras',
+    shop_cat_fats: 'Grasas y Aceites',
+    shop_cat_other: 'Otros',
+    shop_days: 'días',
+    shop_meals_day: 'comidas/día',
+    shop_ingredients: 'ingredientes',
+    shop_clear: 'Limpiar marcas',
+    shopping_no_plan: 'No se encontró plan de comidas. Pide a tu coach que cree uno.',
 },
   fr: {
     nav_coach: 'Coach',
@@ -6003,6 +6065,19 @@ const STRINGS = {
     ex_muscles_worked: 'MUSCLES TRAVAILLÉS',
     ex_step_by_step: 'ÉTAPE PAR ÉTAPE',
     ex_no_video: 'Vidéo non disponible — suivez les notes de coaching ci-dessous.',
+
+    shop_cat_protein: 'Protéines',
+    shop_cat_dairy: 'Produits laitiers',
+    shop_cat_carbs: 'Glucides et Céréales',
+    shop_cat_fruits: 'Fruits',
+    shop_cat_veg: 'Légumes',
+    shop_cat_fats: 'Graisses et Huiles',
+    shop_cat_other: 'Autres',
+    shop_days: 'jours',
+    shop_meals_day: 'repas/jour',
+    shop_ingredients: 'ingrédients',
+    shop_clear: 'Effacer les coches',
+    shopping_no_plan: 'Aucun plan alimentaire trouvé. Demandez à votre coach d\'en créer un.',
 },
   de: {
     nav_coach: 'Coach',
@@ -6321,6 +6396,19 @@ const STRINGS = {
     ex_muscles_worked: 'TRAINIERTE MUSKELN',
     ex_step_by_step: 'SCHRITT FÜR SCHRITT',
     ex_no_video: 'Kein Video verfügbar — folge den Coaching-Hinweisen unten.',
+
+    shop_cat_protein: 'Protein',
+    shop_cat_dairy: 'Milchprodukte',
+    shop_cat_carbs: 'Kohlenhydrate & Getreide',
+    shop_cat_fruits: 'Früchte',
+    shop_cat_veg: 'Gemüse',
+    shop_cat_fats: 'Fette & Öle',
+    shop_cat_other: 'Sonstiges',
+    shop_days: 'Tage',
+    shop_meals_day: 'Mahlzeiten/Tag',
+    shop_ingredients: 'Zutaten',
+    shop_clear: 'Häkchen löschen',
+    shopping_no_plan: 'Kein Ernährungsplan gefunden. Bitte deinen Coach einen zu erstellen.',
 },
   it: {
     nav_coach: 'Coach',
@@ -6639,6 +6727,19 @@ const STRINGS = {
     ex_muscles_worked: 'MUSCOLI ALLENATI',
     ex_step_by_step: 'PASSO DOPO PASSO',
     ex_no_video: 'Video non disponibile — segui le note di allenamento sotto.',
+
+    shop_cat_protein: 'Proteine',
+    shop_cat_dairy: 'Latticini',
+    shop_cat_carbs: 'Carboidrati e Cereali',
+    shop_cat_fruits: 'Frutta',
+    shop_cat_veg: 'Verdure',
+    shop_cat_fats: 'Grassi e Oli',
+    shop_cat_other: 'Altro',
+    shop_days: 'giorni',
+    shop_meals_day: 'pasti/giorno',
+    shop_ingredients: 'ingredienti',
+    shop_clear: 'Cancella spunte',
+    shopping_no_plan: 'Nessun piano alimentare trovato. Chiedi al tuo coach di crearne uno.',
 },
   pt: {
     nav_coach: 'Coach',
@@ -6957,6 +7058,19 @@ const STRINGS = {
     ex_muscles_worked: 'MÚSCULOS TRABALHADOS',
     ex_step_by_step: 'PASSO A PASSO',
     ex_no_video: 'Vídeo não disponível — siga as notas de treino abaixo.',
+
+    shop_cat_protein: 'Proteínas',
+    shop_cat_dairy: 'Laticínios',
+    shop_cat_carbs: 'Carboidratos e Grãos',
+    shop_cat_fruits: 'Frutas',
+    shop_cat_veg: 'Vegetais',
+    shop_cat_fats: 'Gorduras e Óleos',
+    shop_cat_other: 'Outros',
+    shop_days: 'dias',
+    shop_meals_day: 'refeições/dia',
+    shop_ingredients: 'ingredientes',
+    shop_clear: 'Limpar marcas',
+    shopping_no_plan: 'Nenhum plano alimentar encontrado. Peça ao seu coach para criar um.',
 },
   nl: {
     nav_coach: 'Coach',
@@ -7275,6 +7389,19 @@ const STRINGS = {
     ex_muscles_worked: 'GETRAINDE SPIEREN',
     ex_step_by_step: 'STAP VOOR STAP',
     ex_no_video: 'Geen video beschikbaar — volg de trainingsnotities hieronder.',
+
+    shop_cat_protein: 'Eiwitten',
+    shop_cat_dairy: 'Zuivel',
+    shop_cat_carbs: 'Koolhydraten & Granen',
+    shop_cat_fruits: 'Fruit',
+    shop_cat_veg: 'Groenten',
+    shop_cat_fats: 'Vetten & Oliën',
+    shop_cat_other: 'Overig',
+    shop_days: 'dagen',
+    shop_meals_day: 'maaltijden/dag',
+    shop_ingredients: 'ingrediënten',
+    shop_clear: 'Vinkjes wissen',
+    shopping_no_plan: 'Geen maaltijdplan gevonden. Vraag je coach er een te maken.',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -7593,6 +7720,19 @@ const STRINGS = {
     ex_muscles_worked: 'М\'ЯЗИ ЩО ПРАЦЮЮТЬ',
     ex_step_by_step: 'КРОК ЗА КРОКОМ',
     ex_no_video: 'Відео недоступне — дотримуйся нотаток тренера нижче.',
+
+    shop_cat_protein: 'Білки',
+    shop_cat_dairy: 'Молочні продукти',
+    shop_cat_carbs: 'Вуглеводи та Зернові',
+    shop_cat_fruits: 'Фрукти',
+    shop_cat_veg: 'Овочі',
+    shop_cat_fats: 'Жири та Олії',
+    shop_cat_other: 'Інше',
+    shop_days: 'днів',
+    shop_meals_day: 'прийомів/день',
+    shop_ingredients: 'інгредієнтів',
+    shop_clear: 'Зняти відмітки',
+    shopping_no_plan: 'План харчування не знайдено. Попросіть тренера створити його.',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -7911,6 +8051,19 @@ const STRINGS = {
     ex_muscles_worked: 'HARJOITETUT LIHAKSET',
     ex_step_by_step: 'ASKEL ASKELEELTA',
     ex_no_video: 'Ei videota saatavilla — seuraa valmennusmuistiinpanoja alla.',
+
+    shop_cat_protein: 'Proteiini',
+    shop_cat_dairy: 'Maitotuotteet',
+    shop_cat_carbs: 'Hiilihydraatit ja Viljat',
+    shop_cat_fruits: 'Hedelmät',
+    shop_cat_veg: 'Vihannekset',
+    shop_cat_fats: 'Rasvat ja Öljyt',
+    shop_cat_other: 'Muut',
+    shop_days: 'päivää',
+    shop_meals_day: 'ateriaa/päivä',
+    shop_ingredients: 'ainesosaa',
+    shop_clear: 'Tyhjennä valinnat',
+    shopping_no_plan: 'Ruokavaliosuunnitelmaa ei löydy. Pyydä valmentajaasi luomaan sellainen.',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -8229,6 +8382,19 @@ const STRINGS = {
     ex_muscles_worked: 'العضلات المُستهدفة',
     ex_step_by_step: 'خطوة بخطوة',
     ex_no_video: 'لا يوجد فيديو — اتبع ملاحظات التدريب أدناه.',
+
+    shop_cat_protein: 'بروتين',
+    shop_cat_dairy: 'منتجات الألبان',
+    shop_cat_carbs: 'الكربوهيدرات والحبوب',
+    shop_cat_fruits: 'فواكه',
+    shop_cat_veg: 'خضروات',
+    shop_cat_fats: 'دهون وزيوت',
+    shop_cat_other: 'أخرى',
+    shop_days: 'أيام',
+    shop_meals_day: 'وجبات/يوم',
+    shop_ingredients: 'مكونات',
+    shop_clear: 'مسح العلامات',
+    shopping_no_plan: 'لم يتم العثور على خطة وجبات. اطلب من مدربك إنشاء واحدة.',
 },
   zh: {
     nav_coach: '教练',
@@ -8547,6 +8713,19 @@ const STRINGS = {
     ex_muscles_worked: '目标肌肉',
     ex_step_by_step: '步骤指导',
     ex_no_video: '暂无视频 — 请参阅下方教练笔记。',
+
+    shop_cat_protein: '蛋白质',
+    shop_cat_dairy: '乳制品',
+    shop_cat_carbs: '碳水化合物和谷物',
+    shop_cat_fruits: '水果',
+    shop_cat_veg: '蔬菜',
+    shop_cat_fats: '脂肪和油类',
+    shop_cat_other: '其他',
+    shop_days: '天',
+    shop_meals_day: '餐/天',
+    shop_ingredients: '种食材',
+    shop_clear: '清除勾选',
+    shopping_no_plan: '未找到饮食计划。请让你的教练创建一个。',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -8865,6 +9044,19 @@ const STRINGS = {
     ex_muscles_worked: '鍛える筋肉',
     ex_step_by_step: 'ステップバイステップ',
     ex_no_video: '動画なし — 下のコーチングノートに従ってください。',
+
+    shop_cat_protein: 'タンパク質',
+    shop_cat_dairy: '乳製品',
+    shop_cat_carbs: '炭水化物と穀物',
+    shop_cat_fruits: '果物',
+    shop_cat_veg: '野菜',
+    shop_cat_fats: '脂質とオイル',
+    shop_cat_other: 'その他',
+    shop_days: '日間',
+    shop_meals_day: '食/日',
+    shop_ingredients: '食材',
+    shop_clear: 'チェックをクリア',
+    shopping_no_plan: '食事プランが見つかりません。コーチに作成を依頼してください。',
 },
 };
 
@@ -9021,6 +9213,8 @@ function setLanguage(code) {
   if (typeof renderProgress === 'function' && document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
   // Re-render onboarding if active
   if (document.getElementById('screen-onboarding')?.classList.contains('active') && typeof renderObStep === 'function') renderObStep();
+  // Re-render shopping list if visible
+  if (document.getElementById('nview-shopping')?.style.display !== 'none' && typeof renderShoppingList === 'function') renderShoppingList();
   // Re-render upgrade sheet if open
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
   // Re-render coach counter
