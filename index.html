@@ -943,9 +943,9 @@ if ('serviceWorker' in navigator) {
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
-const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const SUPABASE_URL = 'https://ozhtiqoregcwxkkxohbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aHRpcW9yZWdjd3hra3hvaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjAxMTAsImV4cCI6MjA5MDMzNjExMH0.DrrZLUgLgtBTfSrhDC_acZ48ZrKQdqltBfAi_0-aTeI';
+const BACKEND_URL = 'https://forge-production-db97.up.railway.app';
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
@@ -3870,7 +3870,7 @@ function renderCoachCounter() {
 }
 
 // ── UPGRADE SHEET ─────────────────────────────────────
-let _upgradeAnnual = false; // toggle state
+let _upgradeAnnual = true; // toggle state — default annual
 
 function openUpgradeSheet(highlightTier) {
   const existing = document.getElementById('upgradeSheet');
@@ -3935,18 +3935,19 @@ function renderUpgradeSheetContent(highlightTier) {
     <div class="us-sheet">
       <div class="us-handle"></div>
       <div class="us-header">
-        <div class="us-title">CHOOSE YOUR PLAN</div>
+        <div class="us-title" style="font-size:24px;line-height:1.2;">Your trial has ended.<br>Keep your progress.</div>
         <div class="us-sub">7-day free trial · Cancel anytime · 30-day money back</div>
       </div>
       <div class="us-toggle">
-        <span class="us-toggle-label" style="color:${!_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">Monthly</span>
+        <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--muted)' : 'var(--text)'}">Monthly</span>
         <div class="us-pill" onclick="toggleUpgradeBilling()" style="background:${_upgradeAnnual ? 'var(--accent)' : 'var(--border)'}">
           <div class="us-knob" style="left:${_upgradeAnnual ? '25px' : '3px'}"></div>
         </div>
-        <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">Annual <span class="us-save-badge">SAVE 20%</span></span>
+        <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">Annual <span class="us-save-badge">2 MONTHS FREE</span></span>
       </div>
 
       ${renderUpgradeTierCard('iron', '⚙️ Iron', monthly.iron, annual.iron, [
+        '__highlight__AI coach — 20 messages/month',
         'AI-generated workout programme',
         'AI-generated 7-day nutrition plan',
         'Workout logging (per-set)',
@@ -3954,10 +3955,10 @@ function renderUpgradeSheetContent(highlightTier) {
         'Personal records detection',
         'Daily push reminders',
         '5 app themes · 12 languages',
-        'AI coach — 20 messages/month',
       ], highlightTier === 'iron')}
 
       ${renderUpgradeTierCard('steel', '🔩 Steel', monthly.steel, annual.steel, [
+        '__tagline__The full system. Unlimited coaching. Measurable progress.',
         'Everything in Iron',
         'Unlimited AI coach messages',
         'Weekly AI performance review',
@@ -3972,19 +3973,18 @@ function renderUpgradeSheetContent(highlightTier) {
       ], highlightTier === 'steel' || !highlightTier, true)}
 
       ${renderUpgradeTierCard('forge', '🔥 Forge', monthly.forge, annual.forge, [
+        '__tagline__Maximum performance. Monthly AI coaching review included.',
         'Everything in Steel',
+        'Monthly AI deep-dive coaching review',
         'Exercise video demonstrations',
-        'Monthly AI deep-dive review',
-        'Nutrition barcode scanner (coming soon)',
-        'Wearable sync (coming soon)',
+        '__comingsoon__Nutrition barcode scanner',
+        '__comingsoon__Wearable sync (Apple / Garmin)',
         'Priority support',
         'Early access to new features',
       ], highlightTier === 'forge')}
 
-      <div style="text-align:center;margin-top:8px;font-size:12px;color:var(--muted);">
-        Stripe payments coming soon — plans not yet active.
-      </div>
-      <button class="us-close" onclick="document.getElementById('upgradeSheet').remove()">Maybe later</button>
+
+      <button class="us-close" onclick="document.getElementById('upgradeSheet').remove()">Continue with limited access</button>
     </div>
   `;
 }
@@ -4027,7 +4027,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   // Button
   let btnText, btnDisabled, btnClass;
   if (isCurrent) {
-    btnText = onTrial ? 'Current plan · ' + trialDays + ' days left' : '✓ Your current plan';
+    btnText = onTrial ? 'Current plan · ' + trialDays + ' days left' : '✓ Your trial plan — choose to continue';
     btnDisabled = true;
     btnClass = 'us-btn us-btn-current';
   } else if (recommended && !isCurrent) {
@@ -4045,8 +4045,9 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   }
 
   const price = _upgradeAnnual ? annual : monthly;
+  const annualBilled = { '£11.99': '£143.88', '£19.99': '£239.88', '£27.99': '£335.88' };
   const annualNote = _upgradeAnnual
-    ? '<div class="us-price-annual" style="color:' + annualColor + '">billed annually</div>'
+    ? '<div class="us-price-annual" style="color:' + annualColor + '">billed ' + (annualBilled[annual] || '') + '/year</div>'
     : '<div class="us-price-annual" style="color:var(--muted)">' + annual + '/mo if annual</div>';
 
   return `<div class="${cardClass}">
@@ -4059,7 +4060,18 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
       </div>
     </div>
     <div class="us-features">
-      ${features.map(f => `<div class="us-feature"><span class="us-check">✓</span><span>${f}</span></div>`).join('')}
+      ${features.map(f => {
+        if (f.startsWith('__tagline__')) {
+          return '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4;">' + f.replace('__tagline__','') + '</div>';
+        }
+        if (f.startsWith('__highlight__')) {
+          return '<div class="us-feature" style="margin-bottom:6px;"><span class="us-check">✓</span><span style="color:var(--accent);font-weight:600;">' + f.replace('__highlight__','') + '</span></div>';
+        }
+        if (f.startsWith('__comingsoon__')) {
+          return '<div class="us-feature"><span class="us-check">✓</span><span>' + f.replace('__comingsoon__','') + ' <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:DM Mono,monospace;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;">SOON</span></span></div>';
+        }
+        return '<div class="us-feature"><span class="us-check">✓</span><span>' + f + '</span></div>';
+      }).join('')}
     </div>
     <button class="${btnClass}" ${btnDisabled ? 'disabled' : `onclick="handleUpgradeClick('${tier}')"`}>${btnText}</button>
   </div>`;
@@ -6414,6 +6426,5 @@ function urlBase64ToUint8Array(base64String) {
 })();
 
 </script>
-  <div style="position:fixed;top:12px;right:12px;z-index:99999;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:4px 8px;border-radius:4px;pointer-events:none;">STAGING</div>
 </body>
 </html>
