@@ -532,6 +532,31 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 </head>
 <body>
 
+<!-- Global language button — visible on ALL screens including auth and onboarding -->
+<div id="globalLangBtn" onclick="toggleGlobalLangDropdown()" style="
+  position:fixed;top:14px;right:14px;z-index:99990;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:5px 10px;
+  font-size:16px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+" id="globalLangBtn">
+  <span id="globalLangFlag">🇬🇧</span>
+  <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">▾</span>
+</div>
+
+<!-- Dropdown -->
+<div id="globalLangDropdown" style="
+  position:fixed;top:46px;right:14px;z-index:99991;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:6px;
+  display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  max-height:70vh;overflow-y:auto;
+  min-width:160px;
+"></div>
+
 <!-- ═══ AUTH SCREEN ═══ -->
 <div class="screen active" id="screen-auth">
   <div class="auth-screen">
@@ -1031,7 +1056,76 @@ let logDay = 0;
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
+  // Show global lang button on auth/onboarding/generating, hide inside app
+  const globalBtn = document.getElementById('globalLangBtn');
+  if (globalBtn) globalBtn.style.display = id === 'app' ? 'none' : 'flex';
+  if (id === 'auth') renderAuthLangPicker();
 }
+
+function renderAuthLangPicker() {
+  // No-op — replaced by global lang button
+}
+
+function setAuthLanguage(code) {
+  setLanguage(code);
+}
+
+function toggleGlobalLangDropdown() {
+  const dropdown = document.getElementById('globalLangDropdown');
+  if (!dropdown) return;
+  const isOpen = dropdown.style.display === 'block';
+  if (isOpen) {
+    dropdown.style.display = 'none';
+    return;
+  }
+  // Build dropdown content
+  dropdown.innerHTML = LANGUAGES.map(l => {
+    const isActive = l.code === appLanguage;
+    return `<div onclick="selectGlobalLang('${l.code}')" style="
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:8px;cursor:pointer;
+      background:${isActive ? 'rgba(232,255,61,0.08)' : 'transparent'};
+      -webkit-tap-highlight-color:transparent;
+    ">
+      <span style="font-size:18px">${l.flag}</span>
+      <span style="font-size:13px;font-family:'DM Sans',sans-serif;
+        color:${isActive ? 'var(--accent)' : 'var(--text)'};
+        font-weight:${isActive ? '600' : '400'}">${l.label}</span>
+      ${isActive ? '<span style="margin-left:auto;color:var(--accent);font-size:12px">✓</span>' : ''}
+    </div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function selectGlobalLang(code) {
+  document.getElementById('globalLangDropdown').style.display = 'none';
+  // Update flag button
+  const lang = LANGUAGES.find(l => l.code === code) || LANGUAGES[0];
+  const flag = document.getElementById('globalLangFlag');
+  if (flag) flag.textContent = lang.flag;
+  // If in app, use full setLanguage; if on auth/onboarding screens just set appLanguage + applyLanguage
+  const inApp = document.getElementById('screen-app')?.classList.contains('active');
+  if (inApp) {
+    setLanguage(code);
+  } else {
+    appLanguage = code;
+    localStorage.setItem('forge_language', code);
+    applyLanguage();
+    // Also update the in-app lang button
+    const btn = document.getElementById('langBtn');
+    if (btn) btn.textContent = lang.flag;
+    loadLanguage();
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('globalLangBtn');
+  const drop = document.getElementById('globalLangDropdown');
+  if (drop && btn && !btn.contains(e.target) && !drop.contains(e.target)) {
+    drop.style.display = 'none';
+  }
+});
 
 // ═══════════════════════════════════════════════════════
 // AUTH — Direct REST API (bypasses Supabase JS library for Safari compatibility)
@@ -7696,7 +7790,13 @@ function closeLangDrawer() {
 loadTheme();
 loadLanguage();
 // Apply translations after DOM is ready
-setTimeout(applyLanguage, 50);
+setTimeout(() => {
+  applyLanguage();
+  // Set global lang button flag
+  const lang = LANGUAGES.find(l => l.code === appLanguage) || LANGUAGES[0];
+  const flag = document.getElementById('globalLangFlag');
+  if (flag) flag.textContent = lang.flag;
+}, 50);
 
 // ── HANDLE AUTH REDIRECTS FROM EMAIL LINKS ──────
 // Supabase puts the token in the URL hash when redirecting from email links
