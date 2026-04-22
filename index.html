@@ -3506,9 +3506,7 @@ async function sendMessage() {
     const lastMsg = msgs?.lastElementChild;
     if (lastMsg) lastMsg.remove();
     currentConvMessages.pop();
-    // Show upgrade prompt
-    openUpgradeSheet('steel');
-    // Re-fetch subscription to update counter
+    // Re-fetch subscription to update counter and apply limit UI
     api('/api/subscription').then(sub => { if (sub) { userSubscription = sub; renderCoachCounter(); } });
   } else if (res?.reply) {
     currentConvMessages.push({ role: 'assistant', content: res.reply, timestamp: Date.now() });
@@ -3520,11 +3518,14 @@ async function sendMessage() {
 
     // Optimistically increment counter immediately
     if (userSubscription && !userSubscription.isExempt && !userSubscription.hasUnlimitedCoach) {
-      userSubscription = {
-        ...userSubscription,
-        coachUsage: (userSubscription.coachUsage || 0) + 1
-      };
+      const newUsage = (userSubscription.coachUsage || 0) + 1;
+      userSubscription = { ...userSubscription, coachUsage: newUsage };
       renderCoachCounter();
+
+      // At exactly 20 messages — inject upgrade prompt into chat
+      if (newUsage >= (userSubscription.coachLimit || 20)) {
+        setTimeout(() => { injectCoachLimitMessage(); }, 400);
+      }
     }
     // Sync from server after delay — use whichever count is higher to avoid snap-back
     setTimeout(async () => {
@@ -3831,41 +3832,101 @@ function renderTrialBanner() {
 }
 
 // ── COACH MESSAGE COUNTER ─────────────────────────────
+function injectCoachLimitMessage() {
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:16px;';
+  div.innerHTML = "<strong>That’s your 20 for this month.</strong><br><br>I’ve got more to say — on your progress, your plan, your next phase. But I’m out of messages until your billing period resets.<br><br>If you want to keep the conversation going, Steel gives you unlimited coaching. No cap, no waiting.";
+  const btn = document.createElement('button');
+  btn.textContent = 'Upgrade to Steel →';
+  btn.style.cssText = 'display:block;width:100%;padding:11px;background:var(--accent);color:#000;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;margin-top:12px;';
+  btn.onclick = function() { openUpgradeSheet('steel'); };
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(div);
+  wrapper.appendChild(btn);
+  addMessage(wrapper.innerHTML, 'ai');
+}
+
 function renderCoachCounter() {
   const existing = document.getElementById('coachCounter');
   if (existing) existing.remove();
   if (!userSubscription) return;
   const { coachUsage, coachLimit, isExempt, tier, status, hasUnlimitedCoach } = userSubscription;
-  // Show counter only for Iron tier users — not exempt, not steel/forge
   const showCounter = !isExempt && tier === 'iron' && !hasUnlimitedCoach;
   if (!showCounter) return;
 
-  const remaining = Math.max(0, coachLimit - coachUsage);
-  const pct = (coachUsage / coachLimit) * 100;
-  const color = pct >= 90 ? 'var(--red)' : pct >= 60 ? '#f59e0b' : 'var(--accent)';
+  const used = coachUsage || 0;
+  const limit = coachLimit || 20;
+  const remaining = Math.max(0, limit - used);
+  const pct = Math.min(100, (used / limit) * 100);
+
+  // Progressive colour states
+  let barColor, textColor, labelText;
+  if (used >= limit) {
+    // Hard limit
+    barColor = 'var(--red)';
+    textColor = 'var(--red)';
+    labelText = limit + ' / ' + limit + ' used';
+  } else if (remaining === 1) {
+    // Critical — one left
+    barColor = 'var(--red)';
+    textColor = 'var(--red)';
+    labelText = '1 message remaining';
+  } else if (used >= 15) {
+    // Warning — running low
+    barColor = '#f59e0b';
+    textColor = '#f59e0b';
+    labelText = used + ' / ' + limit + ' used — running low';
+  } else {
+    // Default
+    barColor = 'var(--accent)';
+    textColor = 'var(--muted)';
+    labelText = used + ' / ' + limit + ' used';
+  }
 
   const counter = document.createElement('div');
   counter.id = 'coachCounter';
-  counter.style.cssText = `padding:10px 16px 0;`;
-  counter.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px">' + t('ai_coach_messages') + '</span>
-        <span style="font-size:12px;font-weight:600;color:${color}">${coachUsage} / ${coachLimit} used</span>
-      </div>
-      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width 0.3s"></div>
-      </div>
-      ${remaining <= 5 ? `<div style="margin-top:8px;font-size:12px;color:${color}">
-        ${remaining === 0 ? 'No messages remaining this month.' : `${remaining} message${remaining === 1 ? '' : 's'} remaining.`}
-        <span onclick="openUpgradeSheet()" style="color:var(--accent);cursor:pointer;text-decoration:underline;margin-left:4px">${t('upgrade_steel')}</span>
-      </div>` : ''}
-    </div>
-  `;
+  counter.style.cssText = 'padding:10px 16px 0;';
+  counter.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<span style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px">AI COACH</span>' +
+        '<span style="font-size:12px;font-weight:600;color:' + textColor + '">' + labelText + '</span>' +
+      '</div>' +
+      '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:2px;transition:width 0.3s"></div>' +
+      '</div>' +
+    '</div>';
 
   const chatMessages = document.getElementById('chatMessages');
   if (chatMessages?.parentNode) {
     chatMessages.parentNode.insertBefore(counter, chatMessages);
+  }
+
+  // Apply hard limit UI state
+  applyCoachLimitUI(used >= limit);
+}
+
+function applyCoachLimitUI(isAtLimit) {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const quickPrompts = document.querySelector('.quick-prompts');
+
+  if (isAtLimit) {
+    if (input) {
+      input.disabled = true;
+      input.placeholder = "You've used all 20 coaching messages for this month.";
+      input.style.opacity = '0.5';
+    }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.3'; }
+    if (quickPrompts) quickPrompts.style.display = 'none';
+  } else {
+    if (input) {
+      input.disabled = false;
+      input.placeholder = 'Ask your coach...';
+      input.style.opacity = '';
+    }
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = ''; }
+    if (quickPrompts) quickPrompts.style.display = '';
   }
 }
 
