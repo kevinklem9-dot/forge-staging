@@ -968,9 +968,9 @@ if ('serviceWorker' in navigator) {
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
-const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const SUPABASE_URL = 'https://ozhtiqoregcwxkkxohbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aHRpcW9yZWdjd3hra3hvaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjAxMTAsImV4cCI6MjA5MDMzNjExMH0.DrrZLUgLgtBTfSrhDC_acZ48ZrKQdqltBfAi_0-aTeI';
+const BACKEND_URL = 'https://forge-production-db97.up.railway.app';
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
@@ -2321,7 +2321,7 @@ function renderWorkoutPanel() {
     const isActive = i === selectedDay;
     return `<div class="day-chip ${isActive ? 'active' : ''} ${isRest ? 'rest' : ''}" onclick="selectDay(${i})">
       <div class="chip-day">${shortName}</div>
-      <div class="chip-label">${d.label || (isRest ? 'Rest' : '—')}</div>
+      <div class="chip-label">${d.label || (isRest ? t('rest') : '—')}</div>
     </div>`;
   }).join('');
 
@@ -3410,7 +3410,7 @@ async function renderMetricsHistory() {
   const prev = metrics[1];
 
   const fields = [
-    { key: 'weight_kg', label: 'Weight', unit: 'kg' },
+    { key: 'weight_kg', label: t('ob_stats_weight'), unit: 'kg' },
     { key: 'body_fat_pct', label: 'Body Fat', unit: '%' },
     { key: 'chest_cm', label: 'Chest', unit: 'cm' },
     { key: 'waist_cm', label: 'Waist', unit: 'cm' },
@@ -4056,8 +4056,8 @@ function renderUpgradeSheetContent(highlightTier) {
   const sheet = document.getElementById('upgradeSheet');
   if (!sheet) return;
 
-  const monthly = { iron: '£14.99', steel: '£24.99', forge: '£34.99' };
-  const annual  = { iron: '£11.99', steel: '£19.99', forge: '£27.99' };
+  const monthly = { iron: 'CHF 14.99', steel: 'CHF 24.99', forge: 'CHF 34.99' };
+  const annual  = { iron: 'CHF 11.99', steel: 'CHF 19.99', forge: 'CHF 27.99' };
 
   sheet.innerHTML = `
     <style>
@@ -4104,7 +4104,6 @@ function renderUpgradeSheetContent(highlightTier) {
       <div class="us-handle"></div>
       <div class="us-header">
         <div class="us-title" style="font-size:24px;line-height:1.2;">${t('upgrade_headline').replace('. ', '.<br>')}</div>
-        <div class="us-sub">${t('upgrade_sub')}</div>
       </div>
       <div class="us-toggle">
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--muted)' : 'var(--text)'}">${t('upgrade_monthly')}</span>
@@ -4213,7 +4212,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   }
 
   const price = _upgradeAnnual ? annual : monthly;
-  const annualBilled = { '£11.99': '£143.88', '£19.99': '£239.88', '£27.99': '£335.88' };
+  const annualBilled = { 'CHF 11.99': 'CHF 143.88', 'CHF 19.99': 'CHF 239.88', 'CHF 27.99': 'CHF 335.88' };
   const annualNote = _upgradeAnnual
     ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: annualBilled[annual] || ''}) + '</div>'
     : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: annual}) + '</div>';
@@ -4617,7 +4616,7 @@ async function showExerciseModal(exerciseIndex) {
         '<div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:20px 0;"><div class="spin" style="width:18px;height:18px;border-width:2px"></div> Loading form guide...</div>' +
       '</div>' +
       '<div style="padding:16px 20px 0;">' +
-        '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">COACHING NOTES</div>' +
+        '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">' + t('ex_coaching_notes') + '</div>' +
         '<div style="font-size:14px;color:var(--text);line-height:1.65;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">' + (exercise.note || 'Focus on controlled movement through the full range of motion.') + '</div>' +
       '</div>' +
       '<div id="exerciseTipsArea" style="padding:16px 20px 0;"></div>' +
@@ -4679,7 +4678,7 @@ async function loadExerciseVideo(exerciseName, mwId) {
         videoArea.innerHTML =
           '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">' +
             '<div style="font-size:28px;margin-bottom:8px;">🏋️</div>' +
-            '<div style="font-size:13px;color:var(--muted);">No video available — follow the coaching notes below.</div>' +
+            '<div style="font-size:13px;color:var(--muted);">' + t('ex_no_video') + '</div>' +
           '</div>';
       }
 
@@ -4688,7 +4687,7 @@ async function loadExerciseVideo(exerciseName, mwId) {
 
       if (primary.length || category) {
         tipsHtml +=
-          '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">MUSCLES WORKED</div>' +
+          '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">' + t('ex_muscles_worked') + '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">' +
             (category ? '<span style="background:var(--surface);border:1px solid var(--accent);color:var(--accent);border-radius:20px;padding:4px 10px;font-size:12px;font-family:DM Mono,monospace;text-transform:capitalize">' + category + '</span>' : '') +
             primary.map(m => '<span style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:4px 10px;font-size:12px;font-family:DM Mono,monospace;text-transform:capitalize">' + m + '</span>').join('') +
@@ -4697,7 +4696,7 @@ async function loadExerciseVideo(exerciseName, mwId) {
 
       if (instructions.length > 0) {
         tipsHtml +=
-          '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">STEP BY STEP</div>' +
+          '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">' + t('ex_step_by_step') + '</div>' +
           '<ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;">' +
           instructions.slice(0, 6).map(step => '<li style="font-size:13px;color:var(--text);line-height:1.55;">' + step + '</li>').join('') +
           '</ol>';
@@ -5363,6 +5362,11 @@ const STRINGS = {
     day_friday: 'Friday',
     day_saturday: 'Saturday',
     day_sunday: 'Sunday',
+
+    ex_coaching_notes: 'COACHING NOTES',
+    ex_muscles_worked: 'MUSCLES WORKED',
+    ex_step_by_step: 'STEP BY STEP',
+    ex_no_video: 'No video available — follow the coaching notes below.',
 },
   es: {
     nav_coach: 'Coach',
@@ -5676,6 +5680,11 @@ const STRINGS = {
     day_friday: 'Viernes',
     day_saturday: 'Sábado',
     day_sunday: 'Domingo',
+
+    ex_coaching_notes: 'NOTAS DE ENTRENAMIENTO',
+    ex_muscles_worked: 'MÚSCULOS TRABAJADOS',
+    ex_step_by_step: 'PASO A PASO',
+    ex_no_video: 'Video no disponible — sigue las notas de entrenamiento abajo.',
 },
   fr: {
     nav_coach: 'Coach',
@@ -5989,6 +5998,11 @@ const STRINGS = {
     day_friday: 'Vendredi',
     day_saturday: 'Samedi',
     day_sunday: 'Dimanche',
+
+    ex_coaching_notes: 'NOTES DE COACHING',
+    ex_muscles_worked: 'MUSCLES TRAVAILLÉS',
+    ex_step_by_step: 'ÉTAPE PAR ÉTAPE',
+    ex_no_video: 'Vidéo non disponible — suivez les notes de coaching ci-dessous.',
 },
   de: {
     nav_coach: 'Coach',
@@ -6302,6 +6316,11 @@ const STRINGS = {
     day_friday: 'Freitag',
     day_saturday: 'Samstag',
     day_sunday: 'Sonntag',
+
+    ex_coaching_notes: 'COACHING-HINWEISE',
+    ex_muscles_worked: 'TRAINIERTE MUSKELN',
+    ex_step_by_step: 'SCHRITT FÜR SCHRITT',
+    ex_no_video: 'Kein Video verfügbar — folge den Coaching-Hinweisen unten.',
 },
   it: {
     nav_coach: 'Coach',
@@ -6615,6 +6634,11 @@ const STRINGS = {
     day_friday: 'Venerdì',
     day_saturday: 'Sabato',
     day_sunday: 'Domenica',
+
+    ex_coaching_notes: 'NOTE DI ALLENAMENTO',
+    ex_muscles_worked: 'MUSCOLI ALLENATI',
+    ex_step_by_step: 'PASSO DOPO PASSO',
+    ex_no_video: 'Video non disponibile — segui le note di allenamento sotto.',
 },
   pt: {
     nav_coach: 'Coach',
@@ -6928,6 +6952,11 @@ const STRINGS = {
     day_friday: 'Sexta',
     day_saturday: 'Sábado',
     day_sunday: 'Domingo',
+
+    ex_coaching_notes: 'NOTAS DE TREINO',
+    ex_muscles_worked: 'MÚSCULOS TRABALHADOS',
+    ex_step_by_step: 'PASSO A PASSO',
+    ex_no_video: 'Vídeo não disponível — siga as notas de treino abaixo.',
 },
   nl: {
     nav_coach: 'Coach',
@@ -7241,6 +7270,11 @@ const STRINGS = {
     day_friday: 'Vrijdag',
     day_saturday: 'Zaterdag',
     day_sunday: 'Zondag',
+
+    ex_coaching_notes: 'TRAININGSNOTITIES',
+    ex_muscles_worked: 'GETRAINDE SPIEREN',
+    ex_step_by_step: 'STAP VOOR STAP',
+    ex_no_video: 'Geen video beschikbaar — volg de trainingsnotities hieronder.',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -7554,6 +7588,11 @@ const STRINGS = {
     day_friday: 'П\'ятниця',
     day_saturday: 'Субота',
     day_sunday: 'Неділя',
+
+    ex_coaching_notes: 'НОТАТКИ ТРЕНЕРА',
+    ex_muscles_worked: 'М\'ЯЗИ ЩО ПРАЦЮЮТЬ',
+    ex_step_by_step: 'КРОК ЗА КРОКОМ',
+    ex_no_video: 'Відео недоступне — дотримуйся нотаток тренера нижче.',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -7867,6 +7906,11 @@ const STRINGS = {
     day_friday: 'Perjantai',
     day_saturday: 'Lauantai',
     day_sunday: 'Sunnuntai',
+
+    ex_coaching_notes: 'VALMENNUS­MUISTIINPANOT',
+    ex_muscles_worked: 'HARJOITETUT LIHAKSET',
+    ex_step_by_step: 'ASKEL ASKELEELTA',
+    ex_no_video: 'Ei videota saatavilla — seuraa valmennusmuistiinpanoja alla.',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -8180,6 +8224,11 @@ const STRINGS = {
     day_friday: 'الجمعة',
     day_saturday: 'السبت',
     day_sunday: 'الأحد',
+
+    ex_coaching_notes: 'ملاحظات التدريب',
+    ex_muscles_worked: 'العضلات المُستهدفة',
+    ex_step_by_step: 'خطوة بخطوة',
+    ex_no_video: 'لا يوجد فيديو — اتبع ملاحظات التدريب أدناه.',
 },
   zh: {
     nav_coach: '教练',
@@ -8493,6 +8542,11 @@ const STRINGS = {
     day_friday: '周五',
     day_saturday: '周六',
     day_sunday: '周日',
+
+    ex_coaching_notes: '教练笔记',
+    ex_muscles_worked: '目标肌肉',
+    ex_step_by_step: '步骤指导',
+    ex_no_video: '暂无视频 — 请参阅下方教练笔记。',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -8806,6 +8860,11 @@ const STRINGS = {
     day_friday: '金曜日',
     day_saturday: '土曜日',
     day_sunday: '日曜日',
+
+    ex_coaching_notes: 'コーチングノート',
+    ex_muscles_worked: '鍛える筋肉',
+    ex_step_by_step: 'ステップバイステップ',
+    ex_no_video: '動画なし — 下のコーチングノートに従ってください。',
 },
 };
 
@@ -9237,6 +9296,5 @@ function urlBase64ToUint8Array(base64String) {
 })();
 
 </script>
-  <div style="position:fixed;top:50px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
 </body>
 </html>
