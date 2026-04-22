@@ -2201,13 +2201,13 @@ async function loadPlanAndLaunch() {
     if (planRes?.plan) {
       userPlan = planRes.plan;
       updated = true;
-      // If user has a non-English language set, translate first then cache+render
-      // Don't render the English version briefly before translation
       if (appLanguage && appLanguage !== 'en') {
-        translateAndRefreshPlan(appLanguage); // handles cache + render after translation
+        // Non-English: translate first — translateAndRefreshPlan handles cache + render
+        // Set updated=false so the renderWorkoutPanel/renderNutritionPanel below don't fire with English
+        updated = false;
+        translateAndRefreshPlan(appLanguage);
       } else {
         localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
-        // Only re-render if we got a different plan than cached
       }
     }
     if (profileRes?.profile) {
@@ -2238,12 +2238,16 @@ async function loadPlanAndLaunch() {
   setTimeout(() => {
     api('/api/exercise/remap-plan', 'POST').then(r => {
       if (r?.remapped > 0) {
-        // Reload plan silently to get remapped names
         api('/api/plan').then(res => {
           if (res?.plan) {
             userPlan = res.plan;
-            localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
-            renderWorkoutPanel();
+            if (appLanguage && appLanguage !== 'en') {
+              // Re-translate after remap — don't cache English
+              translateAndRefreshPlan(appLanguage);
+            } else {
+              localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+              renderWorkoutPanel();
+            }
           }
         });
       }
@@ -3710,9 +3714,14 @@ async function reloadPlan() {
   const res = await api('/api/plan');
   if (res?.plan) {
     userPlan = res.plan;
-    localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
-    renderWorkoutPanel();
-    renderNutritionPanel();
+    if (appLanguage && appLanguage !== 'en') {
+      // Re-translate to current language
+      await translateAndRefreshPlan(appLanguage);
+    } else {
+      localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+      renderWorkoutPanel();
+      renderNutritionPanel();
+    }
   }
 }
 
