@@ -2709,8 +2709,8 @@ function renderShoppingList() {
   if (!canAccess('shopping_list')) {
     el.innerHTML = `<div onclick="showLockedFeature('Weekly Shopping List','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Weekly Shopping List</div>
-      <div style="font-size:12px;color:var(--muted);">Available on 🔩 Steel and above</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_shopping')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
     </div>`;
     return;
   }
@@ -3065,8 +3065,8 @@ async function renderWeeklyReview() {
     section.style.display = '';
     if (card) card.innerHTML = `<div onclick="showLockedFeature('Weekly AI Review','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Weekly AI Review</div>
-      <div style="font-size:12px;color:var(--muted);">Available on 🔩 Steel and above</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_weekly_review')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
     </div>`;
     return;
   }
@@ -3133,8 +3133,8 @@ async function renderMonthlyReview() {
     section.style.display = '';
     if (card) card.innerHTML = `<div onclick="showLockedFeature('Monthly AI Deep-Dive Review','forge')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Monthly Deep-Dive Review</div>
-      <div style="font-size:12px;color:var(--muted);">Available on 🔥 Forge</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_monthly_review')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_forge_badge')}</div>
     </div>`;
     return;
   }
@@ -3214,8 +3214,8 @@ async function renderAdherence() {
   if (!canAccess('overload_tracker')) {
     el.innerHTML = `<div onclick="showLockedFeature('Plan Adherence','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Plan Adherence</div>
-      <div style="font-size:12px;color:var(--muted);">Available on 🔩 Steel and above</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_adherence')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
     </div>`;
     return;
   }
@@ -3284,8 +3284,8 @@ async function renderMetricsHistory() {
   if (!canAccess('body_metrics')) {
     el.innerHTML = `<div onclick="showLockedFeature('Body Metrics & AI Insights','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Body Metrics & AI Insights</div>
-      <div style="font-size:12px;color:var(--muted);">Available on 🔩 Steel and above</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_body_metrics')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
     </div>`;
     return;
   }
@@ -3889,7 +3889,6 @@ function renderCoachCounter() {
   counter.innerHTML =
     '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-        t('coach_limit_title') + '</span>' +
         '<span style="font-size:12px;font-weight:600;color:' + textColor + '">' + labelText + '</span>' +
       '</div>' +
       '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">' +
@@ -5147,7 +5146,16 @@ const STRINGS = {
     upgrade_per_mo: '/mo',
     coach_limit_msg: 'That’s your 20 for this month. I’ve got more to say — on your progress, your plan, your next phase. But I’m out of messages until your billing period resets. If you want to keep the conversation going, Steel gives you unlimited coaching. No cap, no waiting.',
     coach_input_disabled: 'You’ve used all 20 coaching messages for this month.',
-  },
+  
+    locked_shopping: 'Weekly Shopping List',
+    locked_weekly_review: 'Weekly AI Review',
+    locked_monthly_review: 'Monthly Deep-Dive Review',
+    locked_adherence: 'Plan Adherence',
+    locked_body_metrics: 'Body Metrics & AI Insights',
+    locked_programmes: 'Multiple Saved Programmes',
+    locked_steel_badge: 'Available on 🔩 Steel and above',
+    locked_forge_badge: 'Available on 🔥 Forge',
+},
   es: {
     nav_coach: 'Coach',
     nav_plan: 'Plan',
@@ -5351,7 +5359,16 @@ const STRINGS = {
     upgrade_per_mo: '/mes',
     coach_limit_msg: 'Esos son tus 20 mensajes de este mes. Tengo más que decirte, pero se acabaron los mensajes hasta que se renueve tu período. Steel te da coaching ilimitado. Sin límite, sin esperas.',
     coach_input_disabled: 'Has usado los 20 mensajes de coaching de este mes.',
-  },
+  
+    locked_shopping: 'Lista de compras semanal',
+    locked_weekly_review: 'Revisión semanal IA',
+    locked_monthly_review: 'Revisión mensual profunda',
+    locked_adherence: 'Adherencia al plan',
+    locked_body_metrics: 'Métricas corporales e IA',
+    locked_programmes: 'Múltiples programas guardados',
+    locked_steel_badge: 'Disponible en 🔩 Steel y superior',
+    locked_forge_badge: 'Disponible en 🔥 Forge',
+},
   fr: {
     nav_coach: 'Coach',
     nav_plan: 'Plan',
@@ -5555,7 +5572,16 @@ const STRINGS = {
     upgrade_per_mo: '/mois',
     coach_limit_msg: 'C\'est vos 20 messages du mois. J\'ai plus à dire, mais je n\'ai plus de messages jusqu\'à la prochaine période. Steel vous donne un coaching illimité. Sans limite, sans attente.',
     coach_input_disabled: 'Vous avez utilisé vos 20 messages de coaching ce mois-ci.',
-  },
+  
+    locked_shopping: 'Liste de courses hebdomadaire',
+    locked_weekly_review: 'Bilan hebdomadaire IA',
+    locked_monthly_review: 'Bilan mensuel approfondi',
+    locked_adherence: 'Adhérence au plan',
+    locked_body_metrics: 'Métriques corporelles & IA',
+    locked_programmes: 'Programmes multiples sauvegardés',
+    locked_steel_badge: 'Disponible sur 🔩 Steel et plus',
+    locked_forge_badge: 'Disponible sur 🔥 Forge',
+},
   de: {
     nav_coach: 'Coach',
     nav_plan: 'Plan',
@@ -5759,7 +5785,16 @@ const STRINGS = {
     upgrade_per_mo: '/Mo',
     coach_limit_msg: 'Das waren deine 20 Nachrichten diesen Monat. Steel gibt dir unbegrenztes Coaching. Kein Limit, kein Warten.',
     coach_input_disabled: 'Du hast alle 20 Coaching-Nachrichten diesen Monat verbraucht.',
-  },
+  
+    locked_shopping: 'Wöchentliche Einkaufsliste',
+    locked_weekly_review: 'Wöchentliche KI-Auswertung',
+    locked_monthly_review: 'Monatliche Tiefenauswertung',
+    locked_adherence: 'Planeinhaltung',
+    locked_body_metrics: 'Körpermetriken & KI',
+    locked_programmes: 'Mehrere gespeicherte Programme',
+    locked_steel_badge: 'Verfügbar ab 🔩 Steel',
+    locked_forge_badge: 'Verfügbar bei 🔥 Forge',
+},
   it: {
     nav_coach: 'Coach',
     nav_plan: 'Piano',
@@ -5963,7 +5998,16 @@ const STRINGS = {
     upgrade_per_mo: '/mese',
     coach_limit_msg: 'Questi sono i tuoi 20 messaggi del mese. Steel ti dà coaching illimitato. Nessun limite, nessuna attesa.',
     coach_input_disabled: 'Hai usato tutti i 20 messaggi di coaching di questo mese.',
-  },
+  
+    locked_shopping: 'Lista della spesa settimanale',
+    locked_weekly_review: 'Revisione settimanale IA',
+    locked_monthly_review: 'Revisione mensile approfondita',
+    locked_adherence: 'Aderenza al piano',
+    locked_body_metrics: 'Metriche corporee & IA',
+    locked_programmes: 'Programmi multipli salvati',
+    locked_steel_badge: 'Disponibile su 🔩 Steel e superiore',
+    locked_forge_badge: 'Disponibile su 🔥 Forge',
+},
   pt: {
     nav_coach: 'Coach',
     nav_plan: 'Plano',
@@ -6167,7 +6211,16 @@ const STRINGS = {
     upgrade_per_mo: '/mês',
     coach_limit_msg: 'Esses são seus 20 mensagens deste mês. Steel te dá coaching ilimitado. Sem limite, sem espera.',
     coach_input_disabled: 'Você usou todas as 20 mensagens de coaching deste mês.',
-  },
+  
+    locked_shopping: 'Lista de compras semanal',
+    locked_weekly_review: 'Revisão semanal IA',
+    locked_monthly_review: 'Revisão mensal aprofundada',
+    locked_adherence: 'Adesão ao plano',
+    locked_body_metrics: 'Métricas corporais & IA',
+    locked_programmes: 'Múltiplos programas salvos',
+    locked_steel_badge: 'Disponível no 🔩 Steel e acima',
+    locked_forge_badge: 'Disponível no 🔥 Forge',
+},
   nl: {
     nav_coach: 'Coach',
     nav_plan: 'Plan',
@@ -6371,7 +6424,16 @@ const STRINGS = {
     upgrade_per_mo: '/mnd',
     coach_limit_msg: 'Dat waren je 20 berichten van deze maand. Steel geeft je onbeperkt coaching. Geen limiet, geen wachten.',
     coach_input_disabled: 'Je hebt alle 20 coachingberichten van deze maand gebruikt.',
-  },
+  
+    locked_shopping: 'Wekelijkse boodschappenlijst',
+    locked_weekly_review: 'Wekelijkse AI-beoordeling',
+    locked_monthly_review: 'Maandelijkse diepgaande beoordeling',
+    locked_adherence: 'Planadherentie',
+    locked_body_metrics: 'Lichaamsmetingen & AI',
+    locked_programmes: 'Meerdere opgeslagen programma\'s',
+    locked_steel_badge: 'Beschikbaar op 🔩 Steel en hoger',
+    locked_forge_badge: 'Beschikbaar op 🔥 Forge',
+},
   uk: {
     nav_coach: 'Тренер',
     nav_plan: 'План',
@@ -6575,7 +6637,16 @@ const STRINGS = {
     upgrade_per_mo: '/міс',
     coach_limit_msg: 'Це ваші 20 повідомлень цього місяця. Steel дає вам необмежений коучинг. Без ліміту, без очікування.',
     coach_input_disabled: 'Ви використали всі 20 повідомлень коучингу цього місяця.',
-  },
+  
+    locked_shopping: 'Щотижневий список покупок',
+    locked_weekly_review: 'Тижневий огляд ШІ',
+    locked_monthly_review: 'Місячний детальний огляд',
+    locked_adherence: 'Дотримання плану',
+    locked_body_metrics: 'Метрики тіла та ШІ',
+    locked_programmes: 'Кілька збережених програм',
+    locked_steel_badge: 'Доступно на 🔩 Steel і вище',
+    locked_forge_badge: 'Доступно на 🔥 Forge',
+},
   fi: {
     nav_coach: 'Valmentaja',
     nav_plan: 'Suunnitelma',
@@ -6779,7 +6850,16 @@ const STRINGS = {
     upgrade_per_mo: '/kk',
     coach_limit_msg: 'Nämä olivat 20 viestisi tältä kuulta. Steel antaa sinulle rajoittamattoman valmennuksen. Ei rajaa, ei odottamista.',
     coach_input_disabled: 'Olet käyttänyt kaikki 20 valmennusviestiä tältä kuulta.',
-  },
+  
+    locked_shopping: 'Viikottainen ostoslista',
+    locked_weekly_review: 'Viikottainen AI-arvio',
+    locked_monthly_review: 'Kuukausittainen syväarvio',
+    locked_adherence: 'Suunnitelman noudattaminen',
+    locked_body_metrics: 'Kehon mittaukset & AI',
+    locked_programmes: 'Useita tallennettuja ohjelmia',
+    locked_steel_badge: 'Saatavilla 🔩 Steel ja ylöspäin',
+    locked_forge_badge: 'Saatavilla 🔥 Forge',
+},
   ar: {
     nav_coach: 'المدرب',
     nav_plan: 'الخطة',
@@ -6983,7 +7063,16 @@ const STRINGS = {
     upgrade_per_mo: '/شهر',
     coach_limit_msg: 'هذه رسائلك العشرون لهذا الشهر. Steel يمنحك تدريباً غير محدود. بلا حد، بلا انتظار.',
     coach_input_disabled: 'لقد استخدمت جميع رسائل التدريب العشرين لهذا الشهر.',
-  },
+  
+    locked_shopping: 'قائمة التسوق الأسبوعية',
+    locked_weekly_review: 'المراجعة الأسبوعية بالذكاء الاصطناعي',
+    locked_monthly_review: 'المراجعة الشهرية المعمقة',
+    locked_adherence: 'الالتزام بالخطة',
+    locked_body_metrics: 'مقاييس الجسم والذكاء الاصطناعي',
+    locked_programmes: 'برامج متعددة محفوظة',
+    locked_steel_badge: 'متاح في 🔩 Steel وما فوق',
+    locked_forge_badge: 'متاح في 🔥 Forge',
+},
   zh: {
     nav_coach: '教练',
     nav_plan: '计划',
@@ -7187,7 +7276,16 @@ const STRINGS = {
     view_plans: '查看计划',
     coach_greeting_1: '嗨 {name}。开始训练吧。',
     coach_greeting_2: '你的计划已经根据你的情况制定并个性化。随时问我任何问题--动作技术、饮食、恢复或何时加重。我在这里。',
-  },
+  
+    locked_shopping: '每周购物清单',
+    locked_weekly_review: '每周AI回顾',
+    locked_monthly_review: '月度深度回顾',
+    locked_adherence: '计划执行率',
+    locked_body_metrics: '身体数据与AI洞察',
+    locked_programmes: '多个保存的训练计划',
+    locked_steel_badge: '需要 🔩 Steel 或以上',
+    locked_forge_badge: '需要 🔥 Forge',
+},
   ja: {
     nav_coach: 'コーチ',
     nav_plan: 'プラン',
@@ -7391,7 +7489,16 @@ const STRINGS = {
     view_plans: 'プランを見る',
     coach_greeting_1: 'やあ {name}。さあ、始めよう。',
     coach_greeting_2: 'あなたのプログラムはあなた専用に作られています。何でも聞いてください。ここにいます。',
-  },
+  
+    locked_shopping: '週次ショッピングリスト',
+    locked_weekly_review: '週次AIレビュー',
+    locked_monthly_review: '月次詳細レビュー',
+    locked_adherence: 'プラン達成率',
+    locked_body_metrics: 'ボディメトリクス & AI',
+    locked_programmes: '複数の保存プログラム',
+    locked_steel_badge: '🔩 Steel以上が必要',
+    locked_forge_badge: '🔥 Forgeが必要',
+},
 };
 
 // Get a string in the current language, fallback to English
