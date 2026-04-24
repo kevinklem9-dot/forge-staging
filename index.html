@@ -1442,19 +1442,10 @@ async function handleSession(session) {
 
   userProfile = profileData;
 
-  // If localStorage hasn't picked a language but the profile has one, adopt it
-  // before fetching the plan so we never fetch the wrong language.
-  if (userProfile?.preferred_language && !localStorage.getItem('forge_language')) {
-    appLanguage = userProfile.preferred_language;
-    localStorage.setItem('forge_language', appLanguage);
-    if (typeof applyLanguage === 'function') applyLanguage();
-  }
-
-  // Fetch plan — always in the current language. Retry up to 3 times.
+  // Fetch plan — retry up to 3 times
   let planData = null;
-  const planLangParam = `?lang=${encodeURIComponent(appLanguage || 'en')}`;
   for (let i = 0; i < 3; i++) {
-    const planRes = await api('/api/plan' + planLangParam);
+    const planRes = await api('/api/plan');
     // planRes.plan can be null (no plan) or an object (has plan)
     // Only retry on null response (network failure), not on explicit null plan
     if (planRes !== null) {
@@ -2199,12 +2190,10 @@ async function loadPlanAndLaunch() {
   renderStatGrid();
   showPanel('coach');
 
-  // Fetch plan + profile + subscription in parallel in background.
-  // Plan is requested in the current app language — server returns it already translated.
+  // Fetch plan + profile + subscription in parallel in background
   try {
-    const lang = appLanguage || 'en';
     const [planRes, profileRes, subRes] = await Promise.all([
-      api(`/api/plan?lang=${encodeURIComponent(lang)}`),
+      api(`/api/plan?lang=${encodeURIComponent(appLanguage || 'en')}`),
       api('/api/profile'),
       api('/api/subscription')
     ]);
@@ -2218,17 +2207,14 @@ async function loadPlanAndLaunch() {
       userProfile = profileRes.profile;
       localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile));
       document.getElementById('userAvatar').textContent = (userProfile.name || 'U').charAt(0).toUpperCase();
-      updated = true;
-      // First-launch fallback: if this device hasn't picked a language yet but the
-      // user already has one on their profile, adopt it and re-fetch in that language.
-      const remoteLang = userProfile.preferred_language;
-      const localPicked = !!localStorage.getItem('forge_language');
-      if (remoteLang && remoteLang !== appLanguage && !localPicked) {
-        appLanguage = remoteLang;
-        localStorage.setItem('forge_language', remoteLang);
+      // Adopt server language preference if no local preference set
+      if (profileRes.profile.preferred_language && !localStorage.getItem('forge_language')) {
+        appLanguage = profileRes.profile.preferred_language;
+        localStorage.setItem('forge_language', appLanguage);
         applyLanguage();
-        loadPlanInCurrentLanguage(); // fire-and-forget; will re-render with correct plan
+        loadPlanInCurrentLanguage(); // re-fetch in correct language
       }
+      updated = true;
     }
     if (subRes) {
       userSubscription = subRes;
@@ -2248,12 +2234,12 @@ async function loadPlanAndLaunch() {
   api('/api/missions/complete_profile/complete', 'POST').catch(() => {});
   if (userPlan) api('/api/missions/generate_plan/complete', 'POST').catch(() => {});
   setTimeout(() => initPushNotifications(), 3000);
-  // Silently remap exercise names to MuscleWiki exact names for video matching.
-  // After remap, re-fetch in the current language — server resets the translation cache
-  // when the plan is rewritten, so this picks up the remapped names in the right language.
+  // Silently remap exercise names to MuscleWiki exact names for video matching
   setTimeout(() => {
     api('/api/exercise/remap-plan', 'POST').then(r => {
-      if (r?.remapped > 0) loadPlanInCurrentLanguage();
+      if (r?.remapped > 0) {
+        loadPlanInCurrentLanguage();
+      }
     }).catch(() => {});
   }, 5000);
 
@@ -3713,8 +3699,6 @@ async function sendMessage() {
 // PLAN RELOAD + UPDATE BADGE
 // ═══════════════════════════════════════════════════════
 async function reloadPlan() {
-  // Server resets its translation cache on every plan write, so this fetch
-  // returns the freshly-translated plan in the current language.
   localStorage.removeItem('forge-cached-plan');
   await loadPlanInCurrentLanguage();
 }
@@ -9210,40 +9194,27 @@ function setLanguage(code) {
   if (btn) btn.textContent = lang.flag;
   loadLanguage();
   applyLanguage();
-  // Re-render all dynamic content in new language
+  // Save preference to server profile so it persists across devices
+  api('/api/profile', 'PATCH', { preferred_language: code }).catch(() => {});
+  // Re-render all UI panels
   if (typeof renderWorkoutPanel === 'function') renderWorkoutPanel();
   if (typeof renderNutritionPanel === 'function') renderNutritionPanel();
   if (typeof renderStatGrid === 'function') renderStatGrid();
   if (typeof initCoach === 'function') initCoach();
-  if (typeof renderAccount === 'function' && document.getElementById('panel-account')?.classList.contains('active')) renderAccount();
   if (typeof renderTrialBanner === 'function') renderTrialBanner();
   if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
   if (typeof renderAccount === 'function' && document.getElementById('accountPanel')?.innerHTML) renderAccount();
-  // Re-render progress panel if open
   if (typeof renderProgress === 'function' && document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
-  // Re-render onboarding if active
   if (document.getElementById('screen-onboarding')?.classList.contains('active') && typeof renderObStep === 'function') renderObStep();
-  // Re-render shopping list if visible
-  if (document.getElementById('nview-shopping')?.style.display !== 'none' && typeof renderShoppingList === 'function') renderShoppingList();
-  // Re-render upgrade sheet if open
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
-  // Re-render coach counter
   if (typeof renderCoachCounter === 'function') renderCoachCounter();
+  if (document.getElementById('nview-shopping')?.style.display !== 'none' && typeof renderShoppingList === 'function') renderShoppingList();
   closeLangDrawer();
   showToast(`${lang.flag} ${lang.label}`, 'success');
-
-  // Persist language to the user's profile so other devices pick it up.
-  // Fire and forget — local state is already authoritative.
-  if (currentUser) {
-    api('/api/profile', 'PATCH', { preferred_language: code }).catch(() => {});
-  }
-
-  // Re-fetch the plan in the new language. Single code path — server handles translation + cache.
+  // Reload plan in new language from server (handles both English and non-English)
   if (userPlan) loadPlanInCurrentLanguage();
 }
 
-// Single source of truth for fetching the plan in the user's current language.
-// Server returns the plan already translated (cached after first call).
 async function loadPlanInCurrentLanguage() {
   const lang = appLanguage || 'en';
   const res = await api(`/api/plan?lang=${encodeURIComponent(lang)}`);
@@ -9255,7 +9226,16 @@ async function loadPlanInCurrentLanguage() {
     if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
     if (typeof renderShoppingList === 'function' && document.getElementById('nview-shopping')?.style.display !== 'none') renderShoppingList();
   }
-  return res;
+}
+
+async function translateAndRefreshPlan(code) {
+  // Now just calls loadPlanInCurrentLanguage with the new code set
+  appLanguage = code;
+  await loadPlanInCurrentLanguage();
+}
+
+async function reloadPlanFromServer() {
+  await loadPlanInCurrentLanguage();
 }
 
 function toggleLangDrawer() {
@@ -9449,18 +9429,29 @@ function urlBase64ToUint8Array(base64String) {
         return;
       }
 
-      // Token valid — launch from cache, update with fresh data.
-      // loadPlanAndLaunch handles the lang-aware /api/plan fetch internally,
-      // so we don't duplicate the plan refresh here — only refresh profile.
+      // Token valid — launch from cache, update with fresh data
       userProfile = cachedProfile;
       userPlan    = cachedPlan;
       await loadPlanAndLaunch();
 
+      // Also refresh plan cache in background
       try {
         const profileData = await quickCheck.json();
         if (profileData?.profile) {
           localStorage.setItem('forge-cached-profile', JSON.stringify(profileData.profile));
           userProfile = profileData.profile;
+        }
+        const planRes = await fetch(BACKEND_URL + '/api/plan', {
+          headers: { Authorization: 'Bearer ' + session.access_token }
+        });
+        if (planRes.ok) {
+          const planData = await planRes.json();
+          if (planData?.plan) {
+            localStorage.setItem('forge-cached-plan', JSON.stringify(planData.plan));
+            userPlan = planData.plan;
+            renderWorkoutPanel();
+            renderNutritionPanel();
+          }
         }
       } catch(e) {}
 
