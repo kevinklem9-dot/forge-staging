@@ -9196,9 +9196,7 @@ function setLanguage(code) {
   applyLanguage();
   // Save preference to server profile so it persists across devices
   api('/api/profile', 'PATCH', { preferred_language: code }).catch(() => {});
-  // Re-render all UI panels
-  if (typeof renderWorkoutPanel === 'function') renderWorkoutPanel();
-  if (typeof renderNutritionPanel === 'function') renderNutritionPanel();
+  // Re-render all UI string panels immediately (these don't need plan data)
   if (typeof renderStatGrid === 'function') renderStatGrid();
   if (typeof initCoach === 'function') initCoach();
   if (typeof renderTrialBanner === 'function') renderTrialBanner();
@@ -9208,11 +9206,12 @@ function setLanguage(code) {
   if (document.getElementById('screen-onboarding')?.classList.contains('active') && typeof renderObStep === 'function') renderObStep();
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
   if (typeof renderCoachCounter === 'function') renderCoachCounter();
-  if (document.getElementById('nview-shopping')?.style.display !== 'none' && typeof renderShoppingList === 'function') renderShoppingList();
   closeLangDrawer();
   showToast(`${lang.flag} ${lang.label}`, 'success');
-  // Reload plan in new language from server (handles both English and non-English)
-  if (userPlan) loadPlanInCurrentLanguage();
+  // Reload plan from server in new language — renders workout + nutrition + shopping after fetch
+  if (userPlan) {
+    loadPlanInCurrentLanguage();
+  }
 }
 
 async function loadPlanInCurrentLanguage() {
