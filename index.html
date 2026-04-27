@@ -754,7 +754,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
                 <button class="quick-btn" onclick="sendQuick('Is creatine worth taking?')">Creatine?</button>
               </div>
               <div class="input-row">
-                <textarea class="chat-input" id="chatInput" placeholder="Ask your coach..." rows="1" onkeydown="handleKey(event)"></textarea>
+                <textarea class="chat-input" id="chatInput" placeholder="${t('ask_coach')}" rows="1" onkeydown="handleKey(event)"></textarea>
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
               </div>
             </div>
@@ -2683,14 +2683,14 @@ function switchNutritionTab(tab) {
 function renderNutritionPanel() {
   if (!userPlan?.nutrition_plan) return;
   const n = userPlan.nutrition_plan;
-  document.getElementById('nutrition-sub').textContent = n.strategy || 'Personalised to your goal';
+  document.getElementById('nutrition-sub').textContent = n.strategy || t('nutrition_personalised');
 
   // Macros
   document.getElementById('macroRow').innerHTML = `
-    <div class="macro-card kcal"><div class="macro-val">${n.calories}<span class="macro-unit"> kcal</span></div><div class="macro-lbl">Calories</div></div>
-    <div class="macro-card prot"><div class="macro-val">${n.protein_g}<span class="macro-unit">g</span></div><div class="macro-lbl">Protein</div></div>
-    <div class="macro-card carb"><div class="macro-val">${n.carbs_g}<span class="macro-unit">g</span></div><div class="macro-lbl">Carbs</div></div>
-    <div class="macro-card fat"><div class="macro-val">${n.fat_g}<span class="macro-unit">g</span></div><div class="macro-lbl">Fat</div></div>
+    <div class="macro-card kcal"><div class="macro-val">${n.calories}<span class="macro-unit"> kcal</span></div><div class="macro-lbl">${t('macro_calories')}</div></div>
+    <div class="macro-card prot"><div class="macro-val">${n.protein_g}<span class="macro-unit">g</span></div><div class="macro-lbl">${t('macro_protein')}</div></div>
+    <div class="macro-card carb"><div class="macro-val">${n.carbs_g}<span class="macro-unit">g</span></div><div class="macro-lbl">${t('macro_carbs')}</div></div>
+    <div class="macro-card fat"><div class="macro-val">${n.fat_g}<span class="macro-unit">g</span></div><div class="macro-lbl">${t('macro_fat')}</div></div>
   `;
 
   // Daily meals
@@ -3152,15 +3152,17 @@ async function saveWeight() {
 }
 
 // ── MISSIONS ────────────────────────────────────
-const MISSION_LABELS = {
-  complete_profile: { icon: '👤', text: 'Complete your profile', xp: '+10 XP' },
-  generate_plan:   { icon: '🤖', text: 'Generate your AI plan', xp: '+20 XP' },
-  first_workout:   { icon: '🏋️', text: 'Log your first workout', xp: '+30 XP' },
-  log_bodyweight:  { icon: '⚖️', text: 'Log your bodyweight', xp: '+10 XP' },
-  ask_ai_coach:    { icon: '💬', text: 'Ask your AI coach a question', xp: '+10 XP' },
-  check_stats:     { icon: '📊', text: 'Check your progress stats', xp: '+10 XP' },
-  three_day_streak:{ icon: '🔥', text: 'Hit a 3-day streak', xp: '+50 XP' }
-};
+function getMissionLabels() {
+  return {
+    complete_profile: { icon: '👤', text: t('mission_complete_profile'), xp: '+10 XP' },
+    generate_plan:   { icon: '🤖', text: t('mission_generate_plan'),   xp: '+20 XP' },
+    first_workout:   { icon: '🏋️', text: t('mission_first_workout'),   xp: '+30 XP' },
+    log_bodyweight:  { icon: '⚖️', text: t('mission_log_bodyweight'),  xp: '+10 XP' },
+    ask_ai_coach:    { icon: '💬', text: t('mission_ask_coach'),       xp: '+10 XP' },
+    check_stats:     { icon: '📊', text: t('mission_check_stats'),     xp: '+10 XP' },
+    three_day_streak:{ icon: '🔥', text: t('mission_streak'),          xp: '+50 XP' },
+  };
+}
 
 async function renderMissions() {
   const res = await api('/api/missions');
@@ -3182,13 +3184,13 @@ async function renderMissions() {
   list.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:6px">
       <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">${completedCount}/${total} COMPLETE</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">${completedCount}/${total} ${t('missions_complete').toUpperCase()}</div>
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">${pct}%</div>
       </div>
       <div style="height:4px;background:var(--surface2)"><div style="height:100%;background:var(--accent);width:${pct}%;transition:width 0.6s ease"></div></div>
     </div>
     ${missions.map(m => {
-      const def = MISSION_LABELS[m.mission_key] || { icon: '✓', text: m.mission_key, xp: '' };
+      const def = getMissionLabels()[m.mission_key] || { icon: '✓', text: m.mission_key, xp: '' };
       return `<div class="mission-row ${m.completed ? 'done' : ''}">
         <div class="mission-check">${m.completed ? '✓' : ''}</div>
         <div style="font-size:18px">${def.icon}</div>
@@ -3224,8 +3226,8 @@ async function renderWeeklyReview() {
     // No review yet — show generate button
     card.innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Your weekly review analyses your training, highlights PRs, and tells you what to focus on next week.</div>
-        <button onclick="generateWeeklyReview(this)" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Generate This Week's Review</button>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">${t('weekly_review_description')}</div>
+        <button onclick="generateWeeklyReview(this)" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('weekly_review_btn')}</button>
       </div>`;
     return;
   }
@@ -3243,14 +3245,14 @@ function renderWeeklyReviewData(review) {
   card.innerHTML = `
     <div class="review-card">
       <div class="review-card-header">
-        <div class="review-week">WEEK OF ${weekLabel.toUpperCase()}</div>
+        <div class="review-week">${t('review_week_of')} ${weekLabel.toUpperCase()}</div>
         <div class="review-stats">
-          ${review.workouts_completed !== undefined ? `<div class="review-stat"><span>${review.workouts_completed}</span>${review.workouts_planned ? '/'+review.workouts_planned : ''} sessions</div>` : ''}
-          ${review.prs_hit !== undefined ? `<div class="review-stat"><span>${review.prs_hit}</span> PRs</div>` : ''}
+          ${review.workouts_completed !== undefined ? `<div class="review-stat"><span>${review.workouts_completed}</span>${review.workouts_planned ? '/'+review.workouts_planned : ''} ${t('review_sessions')}</div>` : ''}
+          ${review.prs_hit !== undefined ? `<div class="review-stat"><span>${review.prs_hit}</span> ${t('review_prs')}</div>` : ''}
         </div>
       </div>
       <div class="review-body">${review.summary || review.ai_insights || ''}</div>
-      <button onclick="generateWeeklyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">REGENERATE REVIEW</button>
+      <button onclick="generateWeeklyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review').toUpperCase()}</button>
     </div>
   `;
 }
@@ -3259,11 +3261,11 @@ async function generateWeeklyReview(btn) {
   if (btn) { btn.disabled = true; btn.textContent = t('generating'); }
   const res = await api('/api/review/generate', 'POST');
   if (res?.review) {
-    showToast('Weekly review ready', 'success');
+    showToast(t('weekly_review_ready'), 'success');
     renderWeeklyReviewData(res.review);
   } else {
-    showToast('Failed to generate — try again', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = "Generate This Week's Review"; }
+    showToast(t('review_failed'), 'error');
+    if (btn) { btn.disabled = false; btn.textContent = t('weekly_review_btn'); }
   }
 }
 
@@ -3293,8 +3295,8 @@ async function renderMonthlyReview() {
     const monthName = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     card.innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">MONTHLY DEEP-DIVE · ${monthName.toUpperCase()}</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Your monthly deep-dive review analyses your full month of training — volume trends, strength progression, recovery patterns, and personalised recommendations for next month.</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">${t('monthly_review_label')} · ${monthName.toUpperCase()}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">${t('monthly_review_description')}</div>
         <button onclick="generateMonthlyReview(this)" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('generate_review')}</button>
       </div>`;
     return;
@@ -3306,11 +3308,11 @@ async function renderMonthlyReview() {
 
   card.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">MONTHLY DEEP-DIVE · ${monthLabel.toUpperCase()}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
       <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">SESSIONS</div></div>` : ''}
-        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">PRs HIT</div></div>` : ''}
-        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ADHERENCE</div></div>` : ''}
+        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
+        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
+        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
       </div>
       <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.ai_insights || ''}</div>
       <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
@@ -3321,11 +3323,11 @@ async function generateMonthlyReview(btn) {
   if (btn) { btn.disabled = true; btn.textContent = t('generating'); }
   const res = await api('/api/monthly-review/generate', 'POST');
   if (res?.review) {
-    showToast('Monthly review ready', 'success');
+    showToast(t('monthly_review_ready'), 'success');
     // Render directly from the returned data — don't re-fetch, DB save may lag
     renderMonthlyReviewData(res.review);
   } else {
-    showToast('Failed to generate — try again', 'error');
+    showToast(t('review_failed'), 'error');
     if (btn) { btn.disabled = false; btn.textContent = t('generate_review'); }
   }
 }
@@ -3339,11 +3341,11 @@ function renderMonthlyReviewData(review) {
   const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   card.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">MONTHLY DEEP-DIVE · ${monthLabel.toUpperCase()}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
       <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">SESSIONS</div></div>` : ''}
-        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">PRs HIT</div></div>` : ''}
-        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">ADHERENCE</div></div>` : ''}
+        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
+        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
+        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
       </div>
       <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.review_content || ''}</div>
       <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
@@ -3369,7 +3371,7 @@ async function renderAdherence() {
 
   const { adherence_pct, workouts_completed, workouts_planned } = res;
   const color = adherence_pct >= 80 ? 'var(--green)' : adherence_pct >= 50 ? 'var(--accent)' : 'var(--red)';
-  const label = adherence_pct >= 80 ? 'Excellent consistency' : adherence_pct >= 50 ? 'Room to improve' : 'Needs attention';
+  const label = adherence_pct >= 80 ? t('adherence_excellent') : adherence_pct >= 50 ? t('adherence_improve') : t('adherence_attention');
 
   el.innerHTML = `
     <div class="adherence-card">
@@ -3377,7 +3379,7 @@ async function renderAdherence() {
         <div class="adherence-pct" style="color:${color}">${adherence_pct}%</div>
         <div style="padding-bottom:10px">
           <div style="font-weight:600;font-size:13px">${label}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${workouts_completed} of ${workouts_planned} planned sessions — last 4 weeks</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${workouts_completed} ${t('adherence_of')} ${workouts_planned} ${t('adherence_sessions_planned')}</div>
         </div>
       </div>
       <div class="adherence-bar-bg">
@@ -3407,7 +3409,7 @@ async function saveMetrics() {
   };
 
   if (!Object.values(data).some(v => v !== null)) {
-    showToast('Enter at least one measurement', '');
+    showToast(t('metrics_enter_one'), '');
     return;
   }
 
@@ -4059,7 +4061,7 @@ function applyCoachLimitUI(isAtLimit) {
   } else {
     if (input) {
       input.disabled = false;
-      input.placeholder = 'Ask your coach...';
+      input.placeholder = t('ask_coach');
       input.style.opacity = '';
     }
     if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = ''; }
@@ -5410,6 +5412,38 @@ const STRINGS = {
     shop_ingredients: 'ingredients',
     shop_clear: 'Clear ticks',
     shopping_no_plan: 'No meal plan found. Ask your coach to build one.',
+
+    nutrition_personalised: 'Personalised to your goal',
+    macro_calories: 'Calories',
+    macro_protein: 'Protein',
+    macro_carbs: 'Carbs',
+    macro_fat: 'Fat',
+    weekly_review_description: 'Your weekly review analyses your training, highlights PRs, and tells you what to focus on next week.',
+    weekly_review_btn: 'Generate This Week\'s Review',
+    weekly_review_ready: 'Weekly review ready',
+    review_week_of: 'WEEK OF',
+    review_sessions: 'sessions',
+    review_prs: 'PRs',
+    review_prs_hit: 'PRs Hit',
+    review_adherence: 'Adherence',
+    review_failed: 'Failed to generate — try again',
+    monthly_review_label: 'MONTHLY DEEP-DIVE',
+    monthly_review_description: 'Your monthly deep-dive review analyses your full month of training — volume trends, strength progression, recovery patterns, and personalised recommendations for next month.',
+    monthly_review_ready: 'Monthly review ready',
+    adherence_excellent: 'Excellent consistency',
+    adherence_improve: 'Room to improve',
+    adherence_attention: 'Needs attention',
+    adherence_of: 'of',
+    adherence_sessions_planned: 'planned sessions — last 4 weeks',
+    mission_complete_profile: 'Complete your profile',
+    mission_generate_plan: 'Generate your AI plan',
+    mission_first_workout: 'Log your first workout',
+    mission_log_bodyweight: 'Log your bodyweight',
+    mission_ask_coach: 'Ask your AI coach a question',
+    mission_check_stats: 'Check your progress stats',
+    mission_streak: 'Hit a 3-day streak',
+    missions_complete: 'Complete',
+    metrics_enter_one: 'Enter at least one measurement',
 },
   es: {
     nav_coach: 'Coach',
@@ -5741,6 +5775,38 @@ const STRINGS = {
     shop_ingredients: 'ingredientes',
     shop_clear: 'Limpiar marcas',
     shopping_no_plan: 'No se encontró plan de comidas. Pide a tu coach que cree uno.',
+
+    nutrition_personalised: 'Personalizado para tu objetivo',
+    macro_calories: 'Calorías',
+    macro_protein: 'Proteína',
+    macro_carbs: 'Carbos',
+    macro_fat: 'Grasa',
+    weekly_review_description: 'Tu revisión semanal analiza tu entrenamiento, destaca PRs y te dice en qué enfocarte la próxima semana.',
+    weekly_review_btn: 'Generar revisión de esta semana',
+    weekly_review_ready: 'Revisión semanal lista',
+    review_week_of: 'SEMANA DEL',
+    review_sessions: 'sesiones',
+    review_prs: 'PRs',
+    review_prs_hit: 'PRs logrados',
+    review_adherence: 'Adherencia',
+    review_failed: 'Error al generar — inténtalo de nuevo',
+    monthly_review_label: 'REVISIÓN MENSUAL',
+    monthly_review_description: 'Tu revisión mensual profunda analiza todo tu mes de entrenamiento — tendencias de volumen, progresión de fuerza, patrones de recuperación y recomendaciones personalizadas.',
+    monthly_review_ready: 'Revisión mensual lista',
+    adherence_excellent: 'Consistencia excelente',
+    adherence_improve: 'Hay margen de mejora',
+    adherence_attention: 'Necesita atención',
+    adherence_of: 'de',
+    adherence_sessions_planned: 'sesiones planificadas — últimas 4 semanas',
+    mission_complete_profile: 'Completa tu perfil',
+    mission_generate_plan: 'Genera tu plan de IA',
+    mission_first_workout: 'Registra tu primer entrenamiento',
+    mission_log_bodyweight: 'Registra tu peso corporal',
+    mission_ask_coach: 'Haz una pregunta a tu coach de IA',
+    mission_check_stats: 'Revisa tus estadísticas',
+    mission_streak: 'Consigue una racha de 3 días',
+    missions_complete: 'Completado',
+    metrics_enter_one: 'Introduce al menos una medida',
 },
   fr: {
     nav_coach: 'Coach',
@@ -6072,6 +6138,38 @@ const STRINGS = {
     shop_ingredients: 'ingrédients',
     shop_clear: 'Effacer les coches',
     shopping_no_plan: 'Aucun plan alimentaire trouvé. Demandez à votre coach d\'en créer un.',
+
+    nutrition_personalised: 'Personnalisé pour votre objectif',
+    macro_calories: 'Calories',
+    macro_protein: 'Protéines',
+    macro_carbs: 'Glucides',
+    macro_fat: 'Lipides',
+    weekly_review_description: 'Votre bilan hebdomadaire analyse votre entraînement, met en valeur les PRs et vous indique sur quoi vous concentrer la semaine prochaine.',
+    weekly_review_btn: 'Générer le bilan de cette semaine',
+    weekly_review_ready: 'Bilan hebdomadaire prêt',
+    review_week_of: 'SEMAINE DU',
+    review_sessions: 'séances',
+    review_prs: 'PRs',
+    review_prs_hit: 'PRs atteints',
+    review_adherence: 'Adhérence',
+    review_failed: 'Échec de génération — réessayez',
+    monthly_review_label: 'BILAN MENSUEL APPROFONDI',
+    monthly_review_description: 'Votre bilan mensuel approfondi analyse tout votre mois d\'entraînement — tendances de volume, progression de force, schémas de récupération et recommandations personnalisées.',
+    monthly_review_ready: 'Bilan mensuel prêt',
+    adherence_excellent: 'Excellente régularité',
+    adherence_improve: 'Des progrès possibles',
+    adherence_attention: 'Nécessite attention',
+    adherence_of: 'sur',
+    adherence_sessions_planned: 'séances prévues — 4 dernières semaines',
+    mission_complete_profile: 'Complétez votre profil',
+    mission_generate_plan: 'Générez votre plan IA',
+    mission_first_workout: 'Enregistrez votre premier entraînement',
+    mission_log_bodyweight: 'Enregistrez votre poids',
+    mission_ask_coach: 'Posez une question à votre coach IA',
+    mission_check_stats: 'Consultez vos stats',
+    mission_streak: 'Atteignez une série de 3 jours',
+    missions_complete: 'Terminé',
+    metrics_enter_one: 'Entrez au moins une mesure',
 },
   de: {
     nav_coach: 'Coach',
@@ -6403,6 +6501,38 @@ const STRINGS = {
     shop_ingredients: 'Zutaten',
     shop_clear: 'Häkchen löschen',
     shopping_no_plan: 'Kein Ernährungsplan gefunden. Bitte deinen Coach einen zu erstellen.',
+
+    nutrition_personalised: 'Auf dein Ziel zugeschnitten',
+    macro_calories: 'Kalorien',
+    macro_protein: 'Protein',
+    macro_carbs: 'Kohlenhydrate',
+    macro_fat: 'Fett',
+    weekly_review_description: 'Deine Wochenauswertung analysiert dein Training, hebt PRs hervor und sagt dir, worauf du dich nächste Woche konzentrieren solltest.',
+    weekly_review_btn: 'Diese Woche auswerten',
+    weekly_review_ready: 'Wochenauswertung bereit',
+    review_week_of: 'WOCHE VOM',
+    review_sessions: 'Einheiten',
+    review_prs: 'PRs',
+    review_prs_hit: 'Erreichte PRs',
+    review_adherence: 'Einhaltung',
+    review_failed: 'Generierung fehlgeschlagen — erneut versuchen',
+    monthly_review_label: 'MONATSAUSWERTUNG',
+    monthly_review_description: 'Deine monatliche Tiefenauswertung analysiert deinen gesamten Trainingsmonat — Volumentrends, Kraftprogression, Erholungsmuster und personalisierte Empfehlungen.',
+    monthly_review_ready: 'Monatsauswertung bereit',
+    adherence_excellent: 'Hervorragende Konsistenz',
+    adherence_improve: 'Verbesserungspotenzial',
+    adherence_attention: 'Aufmerksamkeit erforderlich',
+    adherence_of: 'von',
+    adherence_sessions_planned: 'geplanten Einheiten — letzte 4 Wochen',
+    mission_complete_profile: 'Profil vervollständigen',
+    mission_generate_plan: 'KI-Plan generieren',
+    mission_first_workout: 'Erstes Training protokollieren',
+    mission_log_bodyweight: 'Körpergewicht eintragen',
+    mission_ask_coach: 'KI-Coach fragen',
+    mission_check_stats: 'Fortschrittsstatistiken prüfen',
+    mission_streak: '3-Tage-Serie erreichen',
+    missions_complete: 'Abgeschlossen',
+    metrics_enter_one: 'Mindestens eine Messung eingeben',
 },
   it: {
     nav_coach: 'Coach',
@@ -6734,6 +6864,38 @@ const STRINGS = {
     shop_ingredients: 'ingredienti',
     shop_clear: 'Cancella spunte',
     shopping_no_plan: 'Nessun piano alimentare trovato. Chiedi al tuo coach di crearne uno.',
+
+    nutrition_personalised: 'Personalizzato per il tuo obiettivo',
+    macro_calories: 'Calorie',
+    macro_protein: 'Proteine',
+    macro_carbs: 'Carboidrati',
+    macro_fat: 'Grassi',
+    weekly_review_description: 'La tua revisione settimanale analizza l\'allenamento, evidenzia i PR e ti dice su cosa concentrarti la settimana prossima.',
+    weekly_review_btn: 'Genera la revisione di questa settimana',
+    weekly_review_ready: 'Revisione settimanale pronta',
+    review_week_of: 'SETTIMANA DEL',
+    review_sessions: 'sessioni',
+    review_prs: 'PR',
+    review_prs_hit: 'PR raggiunti',
+    review_adherence: 'Aderenza',
+    review_failed: 'Generazione fallita — riprova',
+    monthly_review_label: 'REVISIONE MENSILE APPROFONDITA',
+    monthly_review_description: 'La tua revisione mensile approfondita analizza l\'intero mese di allenamento — tendenze del volume, progressione della forza, schemi di recupero e raccomandazioni personalizzate.',
+    monthly_review_ready: 'Revisione mensile pronta',
+    adherence_excellent: 'Ottima costanza',
+    adherence_improve: 'Margine di miglioramento',
+    adherence_attention: 'Necessita attenzione',
+    adherence_of: 'su',
+    adherence_sessions_planned: 'sessioni pianificate — ultime 4 settimane',
+    mission_complete_profile: 'Completa il tuo profilo',
+    mission_generate_plan: 'Genera il tuo piano IA',
+    mission_first_workout: 'Registra il primo allenamento',
+    mission_log_bodyweight: 'Registra il peso corporeo',
+    mission_ask_coach: 'Fai una domanda al coach IA',
+    mission_check_stats: 'Controlla le statistiche',
+    mission_streak: 'Raggiungi una serie di 3 giorni',
+    missions_complete: 'Completato',
+    metrics_enter_one: 'Inserisci almeno una misurazione',
 },
   pt: {
     nav_coach: 'Coach',
@@ -7065,6 +7227,38 @@ const STRINGS = {
     shop_ingredients: 'ingredientes',
     shop_clear: 'Limpar marcas',
     shopping_no_plan: 'Nenhum plano alimentar encontrado. Peça ao seu coach para criar um.',
+
+    nutrition_personalised: 'Personalizado para o seu objetivo',
+    macro_calories: 'Calorias',
+    macro_protein: 'Proteína',
+    macro_carbs: 'Carboidratos',
+    macro_fat: 'Gordura',
+    weekly_review_description: 'Sua revisão semanal analisa o treino, destaca PRs e diz em que se concentrar na próxima semana.',
+    weekly_review_btn: 'Gerar revisão desta semana',
+    weekly_review_ready: 'Revisão semanal pronta',
+    review_week_of: 'SEMANA DE',
+    review_sessions: 'sessões',
+    review_prs: 'PRs',
+    review_prs_hit: 'PRs atingidos',
+    review_adherence: 'Adesão',
+    review_failed: 'Falha ao gerar — tente novamente',
+    monthly_review_label: 'REVISÃO MENSAL APROFUNDADA',
+    monthly_review_description: 'Sua revisão mensal aprofundada analisa todo o seu mês de treino — tendências de volume, progressão de força, padrões de recuperação e recomendações personalizadas.',
+    monthly_review_ready: 'Revisão mensal pronta',
+    adherence_excellent: 'Consistência excelente',
+    adherence_improve: 'Há espaço para melhorar',
+    adherence_attention: 'Precisa de atenção',
+    adherence_of: 'de',
+    adherence_sessions_planned: 'sessões planeadas — últimas 4 semanas',
+    mission_complete_profile: 'Complete o seu perfil',
+    mission_generate_plan: 'Gere o seu plano de IA',
+    mission_first_workout: 'Registe o primeiro treino',
+    mission_log_bodyweight: 'Registe o peso corporal',
+    mission_ask_coach: 'Faça uma pergunta ao coach de IA',
+    mission_check_stats: 'Verifique as suas estatísticas',
+    mission_streak: 'Consiga uma sequência de 3 dias',
+    missions_complete: 'Concluído',
+    metrics_enter_one: 'Introduza pelo menos uma medida',
 },
   nl: {
     nav_coach: 'Coach',
@@ -7396,6 +7590,38 @@ const STRINGS = {
     shop_ingredients: 'ingrediënten',
     shop_clear: 'Vinkjes wissen',
     shopping_no_plan: 'Geen maaltijdplan gevonden. Vraag je coach er een te maken.',
+
+    nutrition_personalised: 'Gepersonaliseerd voor jouw doel',
+    macro_calories: 'Calorieën',
+    macro_protein: 'Eiwit',
+    macro_carbs: 'Koolhydraten',
+    macro_fat: 'Vet',
+    weekly_review_description: 'Jouw wekelijkse beoordeling analyseert je training, markeert PRs en vertelt je waarop je je de volgende week moet richten.',
+    weekly_review_btn: 'Genereer de beoordeling van deze week',
+    weekly_review_ready: 'Wekelijkse beoordeling klaar',
+    review_week_of: 'WEEK VAN',
+    review_sessions: 'sessies',
+    review_prs: 'PRs',
+    review_prs_hit: 'Behaalde PRs',
+    review_adherence: 'Naleving',
+    review_failed: 'Genereren mislukt — probeer opnieuw',
+    monthly_review_label: 'MAANDELIJKSE DIEPGAANDE BEOORDELING',
+    monthly_review_description: 'Jouw maandelijkse diepgaande beoordeling analyseert je volledige trainingsmaand — volumetrends, krachtprogressie, herstelpatronen en gepersonaliseerde aanbevelingen.',
+    monthly_review_ready: 'Maandelijkse beoordeling klaar',
+    adherence_excellent: 'Uitstekende consistentie',
+    adherence_improve: 'Ruimte voor verbetering',
+    adherence_attention: 'Vereist aandacht',
+    adherence_of: 'van',
+    adherence_sessions_planned: 'geplande sessies — afgelopen 4 weken',
+    mission_complete_profile: 'Voltooi je profiel',
+    mission_generate_plan: 'Genereer je AI-plan',
+    mission_first_workout: 'Log je eerste training',
+    mission_log_bodyweight: 'Log je lichaamsgewicht',
+    mission_ask_coach: 'Stel je AI-coach een vraag',
+    mission_check_stats: 'Controleer je voortgangsstatistieken',
+    mission_streak: 'Bereik een serie van 3 dagen',
+    missions_complete: 'Voltooid',
+    metrics_enter_one: 'Voer minimaal één meting in',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -7727,6 +7953,38 @@ const STRINGS = {
     shop_ingredients: 'інгредієнтів',
     shop_clear: 'Зняти відмітки',
     shopping_no_plan: 'План харчування не знайдено. Попросіть тренера створити його.',
+
+    nutrition_personalised: 'Персоналізовано для вашої мети',
+    macro_calories: 'Калорії',
+    macro_protein: 'Білок',
+    macro_carbs: 'Вуглеводи',
+    macro_fat: 'Жири',
+    weekly_review_description: 'Ваш тижневий огляд аналізує тренування, виділяє особисті рекорди та каже, на чому зосередитися наступного тижня.',
+    weekly_review_btn: 'Згенерувати огляд цього тижня',
+    weekly_review_ready: 'Тижневий огляд готовий',
+    review_week_of: 'ТИЖДЕНЬ ВІД',
+    review_sessions: 'тренувань',
+    review_prs: 'ОР',
+    review_prs_hit: 'Досягнуті ОР',
+    review_adherence: 'Дотримання',
+    review_failed: 'Помилка генерації — спробуйте ще раз',
+    monthly_review_label: 'МІСЯЧНИЙ ДЕТАЛЬНИЙ ОГЛЯД',
+    monthly_review_description: 'Ваш місячний детальний огляд аналізує весь місяць тренувань — тенденції обсягу, прогрес сили, патерни відновлення та персоналізовані рекомендації.',
+    monthly_review_ready: 'Місячний огляд готовий',
+    adherence_excellent: 'Відмінна послідовність',
+    adherence_improve: 'Є куди рости',
+    adherence_attention: 'Потребує уваги',
+    adherence_of: 'з',
+    adherence_sessions_planned: 'запланованих тренувань — останні 4 тижні',
+    mission_complete_profile: 'Заповніть профіль',
+    mission_generate_plan: 'Згенеруйте план ШІ',
+    mission_first_workout: 'Запишіть перше тренування',
+    mission_log_bodyweight: 'Запишіть вагу тіла',
+    mission_ask_coach: 'Поставте запитання тренеру ШІ',
+    mission_check_stats: 'Перевірте статистику',
+    mission_streak: 'Досягніть серії 3 дні',
+    missions_complete: 'Виконано',
+    metrics_enter_one: 'Введіть хоча б одне вимірювання',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -8058,6 +8316,38 @@ const STRINGS = {
     shop_ingredients: 'ainesosaa',
     shop_clear: 'Tyhjennä valinnat',
     shopping_no_plan: 'Ruokavaliosuunnitelmaa ei löydy. Pyydä valmentajaasi luomaan sellainen.',
+
+    nutrition_personalised: 'Henkilökohtaistettu tavoitteellesi',
+    macro_calories: 'Kalorit',
+    macro_protein: 'Proteiini',
+    macro_carbs: 'Hiilihydraatit',
+    macro_fat: 'Rasva',
+    weekly_review_description: 'Viikottainen arviosi analysoi harjoittelusi, korostaa PR:t ja kertoo mihin keskittyä ensi viikolla.',
+    weekly_review_btn: 'Luo tämän viikon arvio',
+    weekly_review_ready: 'Viikkoarvio valmis',
+    review_week_of: 'VIIKKO',
+    review_sessions: 'harjoitusta',
+    review_prs: 'PR:t',
+    review_prs_hit: 'Saavutetut PR:t',
+    review_adherence: 'Noudattaminen',
+    review_failed: 'Luonti epäonnistui — yritä uudelleen',
+    monthly_review_label: 'KUUKAUSITTAINEN SYVÄARVIO',
+    monthly_review_description: 'Kuukausittainen syväarviosi analysoi koko kuukauden harjoittelusi — volyymisuuntaukset, voimaprogression, palautumismallit ja henkilökohtaiset suositukset.',
+    monthly_review_ready: 'Kuukausiarvio valmis',
+    adherence_excellent: 'Erinomainen johdonmukaisuus',
+    adherence_improve: 'Parantamisen varaa',
+    adherence_attention: 'Vaatii huomiota',
+    adherence_of: '/',
+    adherence_sessions_planned: 'suunnitellusta — viimeiset 4 viikkoa',
+    mission_complete_profile: 'Täytä profiilisi',
+    mission_generate_plan: 'Luo AI-suunnitelmasi',
+    mission_first_workout: 'Kirjaa ensimmäinen harjoitus',
+    mission_log_bodyweight: 'Kirjaa kehonpaino',
+    mission_ask_coach: 'Kysy AI-valmentajalta',
+    mission_check_stats: 'Tarkista edistymistilastot',
+    mission_streak: 'Saavuta 3 päivän putki',
+    missions_complete: 'Valmis',
+    metrics_enter_one: 'Syötä vähintään yksi mittaus',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -8389,6 +8679,38 @@ const STRINGS = {
     shop_ingredients: 'مكونات',
     shop_clear: 'مسح العلامات',
     shopping_no_plan: 'لم يتم العثور على خطة وجبات. اطلب من مدربك إنشاء واحدة.',
+
+    nutrition_personalised: 'مخصص لهدفك',
+    macro_calories: 'سعرات',
+    macro_protein: 'بروتين',
+    macro_carbs: 'كربوهيدرات',
+    macro_fat: 'دهون',
+    weekly_review_description: 'مراجعتك الأسبوعية تحلل تدريبك وتبرز الأرقام القياسية وتخبرك بما تركز عليه الأسبوع القادم.',
+    weekly_review_btn: 'إنشاء مراجعة هذا الأسبوع',
+    weekly_review_ready: 'المراجعة الأسبوعية جاهزة',
+    review_week_of: 'أسبوع',
+    review_sessions: 'جلسات',
+    review_prs: 'أرقام قياسية',
+    review_prs_hit: 'أرقام قياسية محققة',
+    review_adherence: 'الالتزام',
+    review_failed: 'فشل الإنشاء — حاول مرة أخرى',
+    monthly_review_label: 'مراجعة شهرية معمقة',
+    monthly_review_description: 'مراجعتك الشهرية المعمقة تحلل شهرك الكامل من التدريب — اتجاهات الحجم والتقدم في القوة وأنماط التعافي والتوصيات الشخصية.',
+    monthly_review_ready: 'المراجعة الشهرية جاهزة',
+    adherence_excellent: 'اتساق ممتاز',
+    adherence_improve: 'يمكن تحسينه',
+    adherence_attention: 'يحتاج انتباهاً',
+    adherence_of: 'من',
+    adherence_sessions_planned: 'جلسات مخططة — آخر 4 أسابيع',
+    mission_complete_profile: 'أكمل ملفك الشخصي',
+    mission_generate_plan: 'أنشئ خطة الذكاء الاصطناعي',
+    mission_first_workout: 'سجل أول تمرين',
+    mission_log_bodyweight: 'سجل وزن جسمك',
+    mission_ask_coach: 'اسأل مدرب الذكاء الاصطناعي',
+    mission_check_stats: 'تحقق من إحصائيات تقدمك',
+    mission_streak: 'حقق سلسلة 3 أيام',
+    missions_complete: 'مكتمل',
+    metrics_enter_one: 'أدخل قياساً واحداً على الأقل',
 },
   zh: {
     nav_coach: '教练',
@@ -8720,6 +9042,38 @@ const STRINGS = {
     shop_ingredients: '种食材',
     shop_clear: '清除勾选',
     shopping_no_plan: '未找到饮食计划。请让你的教练创建一个。',
+
+    nutrition_personalised: '根据你的目标定制',
+    macro_calories: '卡路里',
+    macro_protein: '蛋白质',
+    macro_carbs: '碳水',
+    macro_fat: '脂肪',
+    weekly_review_description: '你的每周回顾分析训练情况、突出个人记录，并告诉你下周的重点。',
+    weekly_review_btn: '生成本周回顾',
+    weekly_review_ready: '每周回顾已就绪',
+    review_week_of: '周次',
+    review_sessions: '次训练',
+    review_prs: '个PR',
+    review_prs_hit: '达成PR',
+    review_adherence: '执行率',
+    review_failed: '生成失败 — 请重试',
+    monthly_review_label: '月度深度回顾',
+    monthly_review_description: '你的月度深度回顾分析整个月的训练情况 — 训练量趋势、力量进步、恢复模式和个性化建议。',
+    monthly_review_ready: '月度回顾已就绪',
+    adherence_excellent: '执行优秀',
+    adherence_improve: '有提升空间',
+    adherence_attention: '需要关注',
+    adherence_of: '/',
+    adherence_sessions_planned: '计划训练 — 过去4周',
+    mission_complete_profile: '完善个人资料',
+    mission_generate_plan: '生成AI计划',
+    mission_first_workout: '记录第一次训练',
+    mission_log_bodyweight: '记录体重',
+    mission_ask_coach: '向AI教练提问',
+    mission_check_stats: '查看进度统计',
+    mission_streak: '达成3天连续',
+    missions_complete: '已完成',
+    metrics_enter_one: '请至少输入一项数据',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -9051,6 +9405,38 @@ const STRINGS = {
     shop_ingredients: '食材',
     shop_clear: 'チェックをクリア',
     shopping_no_plan: '食事プランが見つかりません。コーチに作成を依頼してください。',
+
+    nutrition_personalised: '目標に合わせてカスタマイズ',
+    macro_calories: 'カロリー',
+    macro_protein: 'タンパク質',
+    macro_carbs: '炭水化物',
+    macro_fat: '脂質',
+    weekly_review_description: '週次レビューはトレーニングを分析し、PRを強調し、来週の重点を伝えます。',
+    weekly_review_btn: '今週のレビューを生成',
+    weekly_review_ready: '週次レビュー完成',
+    review_week_of: '週',
+    review_sessions: 'セッション',
+    review_prs: 'PR',
+    review_prs_hit: '達成PR',
+    review_adherence: '達成率',
+    review_failed: '生成失敗 — もう一度試してください',
+    monthly_review_label: '月次詳細レビュー',
+    monthly_review_description: '月次詳細レビューはトレーニング全体を分析します — ボリュームトレンド、筋力進歩、回復パターン、個別アドバイス。',
+    monthly_review_ready: '月次レビュー完成',
+    adherence_excellent: '優れた一貫性',
+    adherence_improve: '改善の余地あり',
+    adherence_attention: '要注意',
+    adherence_of: '/',
+    adherence_sessions_planned: '計画セッション — 過去4週間',
+    mission_complete_profile: 'プロフィールを完成させる',
+    mission_generate_plan: 'AIプランを生成',
+    mission_first_workout: '最初のトレーニングを記録',
+    mission_log_bodyweight: '体重を記録',
+    mission_ask_coach: 'AIコーチに質問',
+    mission_check_stats: '進捗統計を確認',
+    mission_streak: '3日間連続を達成',
+    missions_complete: '完了',
+    metrics_enter_one: '少なくとも1つの測定値を入力',
 },
 };
 
@@ -9203,6 +9589,9 @@ function setLanguage(code) {
   if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
   if (typeof renderAccount === 'function' && document.getElementById('accountPanel')?.innerHTML) renderAccount();
   if (typeof renderProgress === 'function' && document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
+  if (typeof renderWeeklyReview === 'function' && document.getElementById('weeklyReviewSection')) renderWeeklyReview();
+  if (typeof renderMonthlyReview === 'function' && document.getElementById('monthlyReviewSection')) renderMonthlyReview();
+  if (typeof renderMissions === 'function') renderMissions();
   if (document.getElementById('screen-onboarding')?.classList.contains('active') && typeof renderObStep === 'function') renderObStep();
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
   if (typeof renderCoachCounter === 'function') renderCoachCounter();
