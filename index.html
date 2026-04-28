@@ -2416,14 +2416,14 @@ async function openFoundingMemberPage() {
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">⚙️ Iron — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At CHF 9.99/mo annual, this pays for itself in 15 months.</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Everything in Iron. Forever. No monthly fees.</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
         ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Iron Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
       </div>
       <div style="border:2px solid rgba(232,255,61,0.3);border-radius:14px;padding:20px;margin-bottom:16px;background:rgba(232,255,61,0.03);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔩 Steel — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${_launchPromo.steel_active ? 'At CHF 13.99/mo launch annual, this pays for itself in 18 months.' : 'At CHF 16.99/mo annual, this pays for itself in 15 months.'}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">The full coaching system. Forever.</div>
         <div style="margin-bottom:16px;">${featureList(steelFeatures)}</div>
         ${steelLeft > 0 ? `<button onclick="claimFoundingMember('steel')" style="width:100%;padding:13px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Steel Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
@@ -4138,7 +4138,9 @@ const TIER_LABELS = { iron: '⚙️ Iron', steel: '🔩 Steel', forge: '🔥 For
 const IRON_COACH_LIMIT = 20;
 
 // ── TRIAL BANNER ─────────────────────────────────────
-function renderTrialBanner() {
+async function renderTrialBanner() {
+  // Load promo status so banner copy is accurate
+  await loadLaunchPricingStatus();
   const existing = document.getElementById('trialBanner');
   if (existing) existing.remove();
   if (!userSubscription) return;
@@ -4164,8 +4166,13 @@ function renderTrialBanner() {
       // Day 7 or last day
       daysText = `⏱ Last ${daysLeft === 1 ? 'day' : daysLeft + ' days'} of your trial. Your coaching doesn't have to stop here.`;
     } else if (daysLeft <= 4) {
-      // Days 5-6
-      daysText = `⚡ ${daysLeft} ${dayWord} left in your trial — your plan and progress are saved. Keep them.`;
+      // Days 3-4 — show promo copy if Steel promo active, otherwise standard copy
+      if (_launchPromo.steel_active) {
+        const spotsLeft = 500 - (_launchPromo.steel_sold || 0);
+        daysText = `⚡ Launch pricing active — ${spotsLeft} Steel spots remaining. Locks in your price forever.`;
+      } else {
+        daysText = `⚡ ${daysLeft} ${dayWord} left in your trial — your plan and progress are saved. Keep them.`;
+      }
     } else {
       // Days 1-4 (7,6,5 days remaining)
       daysText = `🔥 Trial — ${daysLeft} ${dayWord} of full access remaining. Upgrade anytime.`;
@@ -4301,6 +4308,15 @@ function applyCoachLimitUI(isAtLimit) {
 
 // ── UPGRADE SHEET ─────────────────────────────────────
 let _upgradeAnnual = true; // toggle state — default annual
+let _launchPromo = { steel_active: false, steel_sold: 0, forge_active: false, forge_sold: 0 }; // loaded from server
+
+// Load launch pricing status from backend
+async function loadLaunchPricingStatus() {
+  try {
+    const res = await api('/api/launch-pricing');
+    if (res) _launchPromo = res;
+  } catch(e) {}
+}
 
 function openUpgradeSheet(highlightTier) {
   const existing = document.getElementById('upgradeSheet');
@@ -4311,7 +4327,8 @@ function openUpgradeSheet(highlightTier) {
   sheet.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;flex-direction:column;justify-content:flex-end;';
   document.body.appendChild(sheet);
   sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
-  renderUpgradeSheetContent(highlightTier);
+  // Load promo status then render
+  loadLaunchPricingStatus().then(() => renderUpgradeSheetContent(highlightTier));
   // Load dynamic testimonial
   loadUpgradeTestimonial();
 }
@@ -4320,8 +4337,32 @@ function renderUpgradeSheetContent(highlightTier) {
   const sheet = document.getElementById('upgradeSheet');
   if (!sheet) return;
 
+  // Full pricing (never changes)
   const monthly = { iron: 'CHF 14.99', steel: 'CHF 24.99', forge: 'CHF 34.99' };
-  const annual  = { iron: 'CHF 9.99', steel: 'CHF 16.99', forge: 'CHF 23.99' };
+  const annual  = { iron: 'CHF 9.99',  steel: 'CHF 16.99', forge: 'CHF 23.99' };
+
+  // Promo pricing (active until thresholds hit)
+  const promoMonthly = { steel: 'CHF 19.99', forge: 'CHF 27.99' };
+  const promoAnnual  = { steel: 'CHF 13.99', forge: 'CHF 19.99' };
+  const promoBilled  = { steel: 'CHF 167.88', forge: 'CHF 239.88' };
+  const promoSavings = { steel: 'Save CHF 5/mo versus full price. Locked in forever.', forge: 'Save CHF 7/mo versus full price. Locked in forever.' };
+
+  // Active prices — use promo if active
+  const steelPromo = _launchPromo.steel_active;
+  const forgePromo = _launchPromo.forge_active;
+  const steelRemaining = (_launchPromo.steel_active) ? (500 - (_launchPromo.steel_sold || 0)) : 0;
+  const forgeRemaining = (_launchPromo.forge_active) ? (500 - (_launchPromo.forge_sold || 0)) : 0;
+
+  const activeMonthly = {
+    iron: monthly.iron,
+    steel: steelPromo ? promoMonthly.steel : monthly.steel,
+    forge: forgePromo ? promoMonthly.forge : monthly.forge,
+  };
+  const activeAnnual = {
+    iron: annual.iron,
+    steel: steelPromo ? promoAnnual.steel : annual.steel,
+    forge: forgePromo ? promoAnnual.forge : annual.forge,
+  };
 
   sheet.innerHTML = `
     <style>
@@ -4339,6 +4380,7 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-pill { width:48px;height:26px;border-radius:13px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s; }
       #upgradeSheet .us-knob { position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left 0.2s; }
       #upgradeSheet .us-save-badge { background:rgba(232,255,61,0.12);border:1px solid rgba(232,255,61,0.3);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--accent);font-family:'DM Mono',monospace; }
+      #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:20px;padding:3px 12px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;white-space:nowrap;text-align:center;margin:6px 0 -4px; }
       #upgradeSheet .us-card { border:2px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;background:var(--surface);transition:all 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.3); }
       #upgradeSheet .us-card.us-current { border-color:var(--border);opacity:0.75; }
       #upgradeSheet .us-card.us-recommended { border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);box-shadow:0 4px 30px rgba(255,255,255,0.08),0 0 0 1px rgba(255,255,255,0.06) inset;transform:scale(1.02); }
@@ -4393,10 +4435,12 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_iron_prs'),
         t('feat_iron_push'),
         t('feat_iron_themes'),
-      ], highlightTier === 'iron')}
+      ], highlightTier === 'iron', false, false, 0)}
 
-      ${renderUpgradeTierCard('steel', '🔩 Steel', monthly.steel, annual.steel, [
+      ${steelPromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${steelRemaining} of 500 spots remaining</div>` : ''}
+      ${renderUpgradeTierCard('steel', '🔩 Steel', activeMonthly.steel, activeAnnual.steel, [
         '__tagline__' + t('feat_steel_tagline'),
+        steelPromo ? '__savings__Save CHF 5/mo versus full price. Locked in forever.' : '',
         t('feat_everything_iron'),
         t('feat_steel_coach'),
         t('feat_steel_weekly'),
@@ -4408,10 +4452,12 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_steel_shopping'),
         t('feat_steel_programmes'),
         t('feat_steel_export'),
-      ], highlightTier === 'steel' || !highlightTier, true)}
+      ].filter(Boolean), highlightTier === 'steel' || !highlightTier, true, steelPromo, steelPromo ? monthly.steel : null)}
 
-      ${renderUpgradeTierCard('forge', '🔥 Forge', monthly.forge, annual.forge, [
+      ${forgePromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${forgeRemaining} of 500 spots remaining</div>` : ''}
+      ${renderUpgradeTierCard('forge', '🔥 Forge', activeMonthly.forge, activeAnnual.forge, [
         '__tagline__' + t('feat_forge_tagline'),
+        forgePromo ? '__savings__Save CHF 7/mo versus full price. Locked in forever.' : '',
         t('feat_everything_steel'),
         t('feat_forge_monthly'),
         t('feat_forge_video'),
@@ -4419,8 +4465,7 @@ function renderUpgradeSheetContent(highlightTier) {
         '__comingsoon__' + t('feat_forge_wearable'),
         t('feat_forge_support'),
         t('feat_forge_early'),
-      ], highlightTier === 'forge')}
-
+      ].filter(Boolean), highlightTier === 'forge', false, forgePromo, forgePromo ? monthly.forge : null)}
 
       <button class="us-close" onclick="triggerGracePeriod();document.getElementById('upgradeSheet').remove()">${t('upgrade_close')}</button>
     </div>
@@ -4433,7 +4478,7 @@ function toggleUpgradeBilling() {
   renderUpgradeSheetContent(ht);
 }
 
-function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended) {
+function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended, isPromo, fullMonthlyPrice) {
   const currentTier = userSubscription?.tier || 'iron';
   const isCurrent = currentTier === tier;
   const _trialEndsAt = userSubscription?.trialEndsAt;
@@ -4483,24 +4528,39 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   }
 
   const price = _upgradeAnnual ? annual : monthly;
-  const annualBilled = { 'CHF 9.99': 'CHF 119.88', 'CHF 16.99': 'CHF 203.88', 'CHF 23.99': 'CHF 287.88' };
+  const annualBilled = {
+    'CHF 9.99': 'CHF 119.88', 'CHF 16.99': 'CHF 203.88', 'CHF 23.99': 'CHF 287.88',
+    'CHF 13.99': 'CHF 167.88', 'CHF 19.99': 'CHF 239.88'
+  };
   const annualNote = _upgradeAnnual
     ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: annualBilled[annual] || ''}) + '</div>'
     : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: annual}) + '</div>';
+
+  // Promo strikethrough price display
+  const priceDisplay = isPromo && fullMonthlyPrice
+    ? `<div style="text-align:right">
+        <div style="font-size:13px;color:var(--muted);text-decoration:line-through;">${fullMonthlyPrice}<span style="font-size:10px">/mo</span></div>
+        <div class="us-price-val" style="color:${priceColor}">${price}<span class="us-price-period">${t('upgrade_per_mo')}</span></div>
+        ${annualNote}
+       </div>`
+    : `<div style="text-align:right">
+        <div class="us-price-val" style="color:${priceColor}">${price}<span class="us-price-period">${t('upgrade_per_mo')}</span></div>
+        ${annualNote}
+       </div>`;
 
   return `<div class="${cardClass}">
     ${badge}
     <div class="us-card-row">
       <div class="us-tier-name">${label}</div>
-      <div style="text-align:right">
-        <div class="us-price-val" style="color:${priceColor}">${price}<span class="us-price-period">${t('upgrade_per_mo')}</span></div>
-        ${annualNote}
-      </div>
+      ${priceDisplay}
     </div>
     <div class="us-features">
       ${features.map(f => {
         if (f.startsWith('__tagline__')) {
           return '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4;">' + f.replace('__tagline__','') + '</div>';
+        }
+        if (f.startsWith('__savings__')) {
+          return '<div style="font-size:11px;color:#ff6b35;margin-bottom:10px;line-height:1.4;font-family:\'DM Mono\',monospace;">' + f.replace('__savings__','') + '</div>';
         }
         if (f.startsWith('__highlight__')) {
           return '<div class="us-feature" style="margin-bottom:6px;"><span class="us-check">✓</span><span style="color:var(--accent);font-weight:600;">' + f.replace('__highlight__','') + '</span></div>';
@@ -5098,7 +5158,9 @@ function renderAdminList(users) {
         <input id="adminSearch" type="text" placeholder="Search by name or email..." oninput="filterAdminUsers()" style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;">
         <button onclick="renderAdmin()" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">↺</button>
       </div>
-      <button onclick="clearAllTranslationCaches()" style="width:100%;margin-bottom:14px;padding:10px;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">🌐 CLEAR ALL TRANSLATION CACHES</button>
+      <button onclick="clearAllTranslationCaches()" style="width:100%;margin-bottom:8px;padding:10px;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">🌐 CLEAR ALL TRANSLATION CACHES</button>
+      <button onclick="renderAdminLaunchPricing()" style="width:100%;margin-bottom:14px;padding:10px;background:rgba(232,255,61,0.08);border:1px solid rgba(232,255,61,0.3);color:var(--accent);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">🚀 LAUNCH PRICING CONTROLS</button>
+      <div id="adminLaunchPricingSection"></div>
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">${users.length} USERS</div>
       <div id="adminUserListInner">${renderAdminUserCards(users)}</div>
     </div>
@@ -5188,6 +5250,47 @@ async function confirmDelete(userId, email) {
 }
 
 
+
+async function renderAdminLaunchPricing() {
+  const el = document.getElementById('adminLaunchPricingSection');
+  if (!el) return;
+  const res = await api('/api/admin/launch-pricing');
+  if (!res) return;
+  el.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">LAUNCH PRICING STATUS</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;">🔩 Steel</div>
+          <div style="font-size:12px;color:var(--muted);">${res.steel_sold} / ${res.steel_threshold} sold · ${res.steel_active ? '<span style="color:var(--accent)">ACTIVE</span>' : '<span style="color:var(--muted)">ENDED</span>'}</div>
+        </div>
+        <button onclick="toggleLaunchPromo('steel', ${!res.steel_active})" style="padding:8px 14px;background:${res.steel_active ? 'rgba(255,68,68,0.1)' : 'rgba(232,255,61,0.1)'};border:1px solid ${res.steel_active ? 'rgba(255,68,68,0.4)' : 'rgba(232,255,61,0.4)'};color:${res.steel_active ? 'var(--red)' : 'var(--accent)'};border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;">
+          ${res.steel_active ? 'END PROMO' : 'REACTIVATE'}
+        </button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;font-weight:600;">🔥 Forge</div>
+          <div style="font-size:12px;color:var(--muted);">${res.forge_sold} / ${res.forge_threshold} sold · ${res.forge_active ? '<span style="color:var(--accent)">ACTIVE</span>' : '<span style="color:var(--muted)">ENDED</span>'}</div>
+        </div>
+        <button onclick="toggleLaunchPromo('forge', ${!res.forge_active})" style="padding:8px 14px;background:${res.forge_active ? 'rgba(255,68,68,0.1)' : 'rgba(232,255,61,0.1)'};border:1px solid ${res.forge_active ? 'rgba(255,68,68,0.4)' : 'rgba(232,255,61,0.4)'};color:${res.forge_active ? 'var(--red)' : 'var(--accent)'};border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;">
+          ${res.forge_active ? 'END PROMO' : 'REACTIVATE'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function toggleLaunchPromo(tier, active) {
+  const body = tier === 'steel' ? { steel_active: active } : { forge_active: active };
+  const res = await api('/api/admin/launch-pricing', 'PATCH', body);
+  if (res?.ok) {
+    showToast(`${tier} promo ${active ? 'reactivated' : 'ended'}`, 'success');
+    renderAdminLaunchPricing();
+  } else {
+    showToast('Failed', 'error');
+  }
+}
 
 async function clearAllTranslationCaches() {
   if (!confirm('Clear all translation caches? All users will get fresh translations on next language switch. This cannot be undone.')) return;
