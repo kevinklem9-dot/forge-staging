@@ -628,6 +628,9 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
           </div>
         </div>
         <button class="auth-btn" onclick="signUp()">Create Account</button>
+        <div style="margin-top:12px;text-align:center;">
+          <input id="signup-code" type="text" placeholder="Have a code? Enter it here" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;text-align:center;box-sizing:border-box;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+        </div>
       </div>
       <div class="auth-error" id="auth-error"></div>
     </div>
@@ -968,9 +971,9 @@ if ('serviceWorker' in navigator) {
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://ozhtiqoregcwxkkxohbk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96aHRpcW9yZWdjd3hra3hvaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjAxMTAsImV4cCI6MjA5MDMzNjExMH0.DrrZLUgLgtBTfSrhDC_acZ48ZrKQdqltBfAi_0-aTeI';
-const BACKEND_URL = 'https://forge-production-db97.up.railway.app';
+const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
+const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
@@ -1227,9 +1230,23 @@ async function signUp() {
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
+  const code = document.getElementById('signup-code')?.value.trim().toUpperCase() || '';
 
   if (!name || !email || !password) return showAuthError('Fill in all fields.');
   if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
+
+  // Validate code if entered
+  if (code) {
+    const codeCheck = await fetch(BACKEND_URL + '/api/creator-code/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    }).then(r => r.json()).catch(() => null);
+    // Also check referral codes
+    if (!codeCheck?.ok && !code.startsWith('FORGE-')) {
+      return showAuthError('Invalid code — check and try again.');
+    }
+  }
 
   const btn = document.querySelector('#auth-signup .auth-btn');
   btn.disabled = true; btn.textContent = 'Creating account...';
@@ -1238,7 +1255,7 @@ async function signUp() {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name })
+      body: JSON.stringify({ email, password, name, code })
     });
     const data = await res.json();
     btn.disabled = false; btn.textContent = 'Create Account';
@@ -1247,7 +1264,6 @@ async function signUp() {
       return showAuthError(data.error || 'Sign up failed.');
     }
 
-    // Show email confirmation message instead of going straight to onboarding
     if (data.requires_confirmation) {
       showEmailConfirmationMessage(email);
     }
@@ -2222,6 +2238,8 @@ async function loadPlanAndLaunch() {
       renderCoachCounter();
       // Re-render account panel if open
       if (document.getElementById('panel-account')?.classList.contains('active')) renderAccount();
+      // Check day 4 founding member notification
+      checkDay4FoundingNotification();
     }
     if (updated) {
       renderWorkoutPanel();
@@ -2301,12 +2319,211 @@ function showPanel(name) {
   if (name === 'admin') renderAdmin();
   if (name === 'programmes') renderProgrammes();
   if (name === 'account') renderAccount();
-  if (name === 'coach') renderCoachCounter();
+  if (name === 'coach') {
+    renderCoachCounter();
+    checkDay7Prompt();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
-// WORKOUT PANEL
+// SECTION 6 — DAY 7 IN-APP TESTIMONIAL PROMPT
 // ═══════════════════════════════════════════════════════
+async function checkDay7Prompt() {
+  if (!userSubscription) return;
+  const { status, trialEndsAt, tier } = userSubscription;
+  if (status !== 'trial') return;
+  if (tier !== 'iron') return; // paid users don't get this
+  // Check if already shown
+  if (localStorage.getItem('forge_day7_prompt_shown')) return;
+  // Calculate trial day
+  if (!trialEndsAt) return;
+  const daysLeft = Math.ceil((new Date(trialEndsAt) - new Date()) / (1000*60*60*24));
+  const trialDay = 8 - daysLeft; // trial is 7 days, so day 7 = 1 day left
+  if (daysLeft > 1) return; // only on day 7
+  // Mark as shown immediately
+  localStorage.setItem('forge_day7_prompt_shown', '1');
+  // Inject after a short delay
+  setTimeout(() => injectDay7Prompt(), 1500);
+}
+
+function injectDay7Prompt() {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML =
+    '<div style="margin-bottom:16px;line-height:1.6;">Seven days in. Your first programme is built. Your nutrition plan is live.<br><br>Before we talk about what\'s next — how has this felt so far? I\'d love to hear it.</div>' +
+    '<div style="display:flex;gap:8px;margin-top:12px;">' +
+      '<button onclick="openFeedbackModal()" style="flex:1;padding:10px;background:var(--accent);color:#000;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;">Share my experience</button>' +
+      '<button onclick="dismissDay7Prompt(this)" style="flex:1;padding:10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:9px;font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif;">Skip for now</button>' +
+    '</div>';
+  addMessage(wrapper.innerHTML, 'ai');
+  // Scroll to bottom
+  const msgs = document.getElementById('chatMessages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function dismissDay7Prompt(btn) {
+  if (btn?.closest) btn.closest('.msg-bubble')?.querySelectorAll('button').forEach(b => b.remove());
+}
+
+function openFeedbackModal() {
+  const modal = document.createElement('div');
+  modal.id = 'feedbackModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;align-items:flex-end;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-height:80vh;">
+      <div style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px;">How has FORGE felt so far?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Write anything — honest feedback helps.</div>
+      <textarea id="feedbackText" style="width:100%;height:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;box-sizing:border-box;" placeholder="Write anything — honest feedback helps."></textarea>
+      <button onclick="submitFeedback()" style="width:100%;margin-top:12px;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+      <button onclick="document.getElementById('feedbackModal').remove()" style="width:100%;margin-top:8px;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function submitFeedback() {
+  const text = document.getElementById('feedbackText')?.value?.trim();
+  if (!text) return;
+  document.getElementById('feedbackModal')?.remove();
+  await api('/api/trial-feedback', 'POST', { feedback: text });
+  // Inject coach confirmation
+  addMessage("Thanks. That means a lot. Now — let's talk about keeping this going.", 'ai');
+  setTimeout(() => openUpgradeSheet(), 2000);
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 7 — FOUNDING MEMBER PAGE
+// ═══════════════════════════════════════════════════════
+async function openFoundingMemberPage() {
+  const existing = document.getElementById('foundingMemberSheet');
+  if (existing) { existing.remove(); return; }
+  const slots = await api('/api/founding-member/slots');
+  const ironLeft = (slots?.iron_total || 500) - (slots?.iron_sold || 0);
+  const steelLeft = (slots?.steel_total || 250) - (slots?.steel_sold || 0);
+  const totalLeft = ironLeft + steelLeft;
+  const sheet = document.createElement('div');
+  sheet.id = 'foundingMemberSheet';
+  sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;';
+  const ironFeatures = ['AI-generated workout programme','AI-generated 7-day nutrition plan','Workout logging (per-set)','Streak tracking & badges','Personal records detection','Daily push reminders','5 app themes · 12 languages','AI coach — 20 messages/month'];
+  const steelFeatures = ['Everything in Iron','Unlimited AI coach messages','Weekly AI performance review','Post-workout AI check-in','Progressive overload tracker','Body metrics & AI insights','Plan editing via AI chat','Deload detection & alerts','Weekly shopping list','Multiple saved programmes','Workout history export'];
+  const featureList = (items) => items.map(f => `<div style="display:flex;gap:8px;padding:3px 0;font-size:13px;"><span style="color:var(--accent);">✓</span><span>${f}</span></div>`).join('');
+  sheet.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;padding:32px 20px 60px;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--accent);">FOUNDING MEMBER</div>
+        <div style="font-size:14px;color:var(--text);margin-top:6px;">Pay once. Train forever. Limited to the first 500 members.</div>
+        ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${totalLeft} of 500 slots remaining</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">Founding Member access is now closed.</div>`}
+      </div>
+      ${totalLeft > 0 ? `
+      <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">⚙️ Iron — Founding Member</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Everything in Iron. Forever. No monthly fees.</div>
+        <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
+        ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Iron Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
+      </div>
+      <div style="border:2px solid rgba(232,255,61,0.3);border-radius:14px;padding:20px;margin-bottom:16px;background:rgba(232,255,61,0.03);">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔩 Steel — Founding Member</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">The full coaching system. Forever.</div>
+        <div style="margin-bottom:16px;">${featureList(steelFeatures)}</div>
+        ${steelLeft > 0 ? `<button onclick="claimFoundingMember('steel')" style="width:100%;padding:13px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Steel Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin:12px 0;">Same 30-day money-back guarantee. Same product. One payment.</div>
+      ` : `<div style="text-align:center;padding:20px;"><button onclick="openUpgradeSheet()" style="padding:13px 24px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">See monthly and annual plans</button></div>`}
+      <div style="text-align:center;margin-top:8px;">
+        <button onclick="document.getElementById('foundingMemberSheet').remove();openUpgradeSheet();" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">See monthly and annual plans instead</button>
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <button onclick="document.getElementById('foundingMemberSheet').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 24px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(sheet);
+}
+
+async function claimFoundingMember(tier) {
+  const res = await api('/api/founding-member/claim', 'POST', { tier });
+  if (res?.ok) {
+    showToast(`✓ Welcome, Founding Member! ${tier === 'steel' ? 'Steel' : 'Iron'} lifetime access activated.`, 'success');
+    document.getElementById('foundingMemberSheet')?.remove();
+    userSubscription = { ...userSubscription, tier, accessTier: tier, status: 'lifetime' };
+    renderTrialBanner();
+  } else {
+    showToast(res?.error || 'Failed — try again', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 9 — REFERRAL PROGRAMME (in Account panel)
+// ═══════════════════════════════════════════════════════
+async function renderReferralSection(container) {
+  const res = await api('/api/referral');
+  if (!res?.code) return;
+  const { code, stats } = res;
+  const referralUrl = `${window.location.origin}${window.location.pathname}?ref=${code}`;
+  container.innerHTML = `
+    <div style="margin-top:24px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">SHARE FORGE</div>
+      <div style="font-size:14px;color:var(--text);margin-bottom:16px;line-height:1.6;">Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7.</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${referralUrl}</div>
+        <button onclick="copyReferralLink('${referralUrl}')" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;">Copy</button>
+      </div>
+      <button onclick="shareReferralLink('${referralUrl}')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">Share →</button>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;text-align:center;">
+        <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.signups || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Referred</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.conversions || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Subscribed</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.credits || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Free months</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function copyReferralLink(url) {
+  navigator.clipboard.writeText(url).then(() => showToast('Link copied ✓', 'success')).catch(() => showToast('Copy failed', 'error'));
+}
+
+function shareReferralLink(url) {
+  const text = `I've been using FORGE — it's an AI fitness coach that actually builds your programme and coaches you properly. Try it free for 14 days: ${url}`;
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard ✓', 'success'));
+  }
+}
+
+// Load testimonial from backend dynamically
+async function loadUpgradeTestimonial() {
+  const res = await api('/api/testimonial');
+  if (res?.quote) {
+    const q = document.getElementById('upgradeTestimonialQuote');
+    const a = document.getElementById('upgradeTestimonialAttr');
+    if (q) q.textContent = '"' + res.quote + '"';
+    if (a) a.textContent = res.attribution || '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 5 — GRACE PERIOD TRIGGER
+// ═══════════════════════════════════════════════════════
+function triggerGracePeriod() {
+  // Called when user clicks "Continue with limited access"
+  api('/api/push/grace-period', 'POST').catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 8 — DAY 3-4 FOUNDING MEMBER PUSH
+// ═══════════════════════════════════════════════════════
+function checkDay4FoundingNotification() {
+  if (!userSubscription) return;
+  const { status, trialEndsAt } = userSubscription;
+  if (status !== 'trial') return;
+  if (!trialEndsAt) return;
+  const daysLeft = Math.ceil((new Date(trialEndsAt) - new Date()) / (1000*60*60*24));
+  if (daysLeft === 4 || daysLeft === 3) {
+    api('/api/push/founding-member-notify', 'POST').catch(() => {});
+  }
+}
 function renderWorkoutPanel() {
   if (!userPlan?.workout_plan) return;
   const plan = userPlan.workout_plan;
@@ -3942,9 +4159,21 @@ function renderTrialBanner() {
 
   let daysText;
   if (status === 'trial' && daysLeft > 0) {
-    daysText = t('trial_banner_days', {n: daysLeft, s: daysLeft === 1 ? '' : 's'});
+    const dayWord = daysLeft === 1 ? 'day' : 'days';
+    if (daysLeft <= 2) {
+      // Day 7 or last day
+      daysText = `⏱ Last ${daysLeft === 1 ? 'day' : daysLeft + ' days'} of your trial. Your coaching doesn't have to stop here.`;
+    } else if (daysLeft <= 4) {
+      // Days 5-6
+      daysText = `⚡ ${daysLeft} ${dayWord} left in your trial — your plan and progress are saved. Keep them.`;
+    } else {
+      // Days 1-4 (7,6,5 days remaining)
+      daysText = `🔥 Trial — ${daysLeft} ${dayWord} of full access remaining. Upgrade anytime.`;
+    }
   } else if (status === 'trial') {
     daysText = t('trial_banner_active');
+  } else if (status === 'expired' || (status !== 'trial' && tier === 'iron')) {
+    daysText = `🔒 Your trial has ended. Your progress is saved — pick a plan to continue.`;
   } else {
     daysText = t('trial_banner_free');
   }
@@ -4083,6 +4312,8 @@ function openUpgradeSheet(highlightTier) {
   document.body.appendChild(sheet);
   sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
   renderUpgradeSheetContent(highlightTier);
+  // Load dynamic testimonial
+  loadUpgradeTestimonial();
 }
 
 function renderUpgradeSheetContent(highlightTier) {
@@ -4090,7 +4321,7 @@ function renderUpgradeSheetContent(highlightTier) {
   if (!sheet) return;
 
   const monthly = { iron: 'CHF 14.99', steel: 'CHF 24.99', forge: 'CHF 34.99' };
-  const annual  = { iron: 'CHF 11.99', steel: 'CHF 19.99', forge: 'CHF 27.99' };
+  const annual  = { iron: 'CHF 9.99', steel: 'CHF 16.99', forge: 'CHF 23.99' };
 
   sheet.innerHTML = `
     <style>
@@ -4146,6 +4377,13 @@ function renderUpgradeSheetContent(highlightTier) {
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">${t('upgrade_annual')} <span class="us-save-badge">${t('upgrade_months_free')}</span></span>
       </div>
 
+      <!-- PT anchor + testimonial -->
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">One PT session costs more than 3 months of Steel.</div>
+      <div id="upgradeTestimonial" style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;background:var(--surface);">
+        <div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;" id="upgradeTestimonialQuote">"Built me a full programme in under 2 minutes. I've tried four other apps. This is the first one that felt like it actually knew what I needed."</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="upgradeTestimonialAttr">— James, training for football season</div>
+      </div>
+
       ${renderUpgradeTierCard('iron', '⚙️ Iron', monthly.iron, annual.iron, [
         '__highlight__' + t('feat_iron_coach_limit'),
         t('feat_iron_programme'),
@@ -4184,7 +4422,7 @@ function renderUpgradeSheetContent(highlightTier) {
       ], highlightTier === 'forge')}
 
 
-      <button class="us-close" onclick="document.getElementById('upgradeSheet').remove()">${t('upgrade_close')}</button>
+      <button class="us-close" onclick="triggerGracePeriod();document.getElementById('upgradeSheet').remove()">${t('upgrade_close')}</button>
     </div>
   `;
 }
@@ -4245,7 +4483,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   }
 
   const price = _upgradeAnnual ? annual : monthly;
-  const annualBilled = { 'CHF 11.99': 'CHF 143.88', 'CHF 19.99': 'CHF 239.88', 'CHF 27.99': 'CHF 335.88' };
+  const annualBilled = { 'CHF 9.99': 'CHF 119.88', 'CHF 16.99': 'CHF 203.88', 'CHF 23.99': 'CHF 287.88' };
   const annualNote = _upgradeAnnual
     ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: annualBilled[annual] || ''}) + '</div>'
     : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: annual}) + '</div>';
@@ -4556,8 +4794,13 @@ function renderAccount() {
         </button>
       </div>
 
+      <!-- Referral Programme -->
+      <div id="referralSection"></div>
+
     </div>
   `;
+  // Load referral section async
+  renderReferralSection(document.getElementById('referralSection'));
 }
 
 async function saveAccountProfile() {
@@ -4851,10 +5094,11 @@ function renderAdminList(users) {
 
   el.innerHTML = `
     <div style="padding:0 0 12px;">
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
         <input id="adminSearch" type="text" placeholder="Search by name or email..." oninput="filterAdminUsers()" style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;">
         <button onclick="renderAdmin()" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">↺</button>
       </div>
+      <button onclick="clearAllTranslationCaches()" style="width:100%;margin-bottom:14px;padding:10px;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">🌐 CLEAR ALL TRANSLATION CACHES</button>
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">${users.length} USERS</div>
       <div id="adminUserListInner">${renderAdminUserCards(users)}</div>
     </div>
@@ -4944,6 +5188,16 @@ async function confirmDelete(userId, email) {
 }
 
 
+
+async function clearAllTranslationCaches() {
+  if (!confirm('Clear all translation caches? All users will get fresh translations on next language switch. This cannot be undone.')) return;
+  const res = await api('/api/admin/clear-translation-cache', 'POST');
+  if (res?.success) {
+    showToast('✓ All translation caches cleared — fresh translations on next switch', 'success');
+  } else {
+    showToast('Failed: ' + (res?.error || 'unknown error'), 'error');
+  }
+}
 
 async function expireTrial(userId) {
   const res = await api('/api/admin/users/' + userId + '/expire-trial', 'PATCH');
@@ -5197,7 +5451,7 @@ const STRINGS = {
     feat_iron_prs: 'Personal records detection',
     feat_iron_push: 'Daily push reminders',
     feat_iron_themes: '5 app themes · 12 languages',
-    feat_steel_tagline: 'The full system. Unlimited coaching. Measurable progress.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Unlimited AI coach messages',
     feat_steel_weekly: 'Weekly AI performance review',
     feat_steel_checkin: 'Post-workout AI check-in',
@@ -5567,7 +5821,7 @@ const STRINGS = {
     feat_iron_prs: 'Detección de récords personales',
     feat_iron_push: 'Recordatorios diarios',
     feat_iron_themes: '5 temas · 12 idiomas',
-    feat_steel_tagline: 'El sistema completo. Coaching ilimitado. Progreso medible.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Mensajes ilimitados al coach IA',
     feat_steel_weekly: 'Revisión semanal de rendimiento',
     feat_steel_checkin: 'Check-in post-entreno',
@@ -5937,7 +6191,7 @@ const STRINGS = {
     feat_iron_prs: 'Détection des records personnels',
     feat_iron_push: 'Rappels quotidiens',
     feat_iron_themes: '5 thèmes · 12 langues',
-    feat_steel_tagline: 'Le système complet. Coaching illimité. Progrès mesurables.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Messages illimités au coach IA',
     feat_steel_weekly: 'Bilan hebdomadaire de performance',
     feat_steel_checkin: 'Check-in post-entraînement',
@@ -6307,7 +6561,7 @@ const STRINGS = {
     feat_iron_prs: 'Persönliche Rekorde erkennen',
     feat_iron_push: 'Tägliche Erinnerungen',
     feat_iron_themes: '5 Designs · 12 Sprachen',
-    feat_steel_tagline: 'Das komplette System. Unbegrenztes Coaching. Messbarer Fortschritt.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Unbegrenzte KI-Coach-Nachrichten',
     feat_steel_weekly: 'Wöchentliche Leistungsauswertung',
     feat_steel_checkin: 'Post-Training Check-in',
@@ -6677,7 +6931,7 @@ const STRINGS = {
     feat_iron_prs: 'Rilevamento record personali',
     feat_iron_push: 'Promemoria giornalieri',
     feat_iron_themes: '5 temi · 12 lingue',
-    feat_steel_tagline: 'Il sistema completo. Coaching illimitato. Progresso misurabile.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Messaggi illimitati al coach IA',
     feat_steel_weekly: 'Revisione settimanale delle prestazioni',
     feat_steel_checkin: 'Check-in post-allenamento',
@@ -7047,7 +7301,7 @@ const STRINGS = {
     feat_iron_prs: 'Deteção de recordes pessoais',
     feat_iron_push: 'Lembretes diários',
     feat_iron_themes: '5 temas · 12 idiomas',
-    feat_steel_tagline: 'O sistema completo. Coaching ilimitado. Progresso mensurável.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Mensagens ilimitadas ao coach IA',
     feat_steel_weekly: 'Revisão semanal de desempenho',
     feat_steel_checkin: 'Check-in pós-treino',
@@ -7417,7 +7671,7 @@ const STRINGS = {
     feat_iron_prs: 'Persoonlijke records detecteren',
     feat_iron_push: 'Dagelijkse herinneringen',
     feat_iron_themes: '5 thema\'s · 12 talen',
-    feat_steel_tagline: 'Het complete systeem. Onbeperkte coaching. Meetbare vooruitgang.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Onbeperkte AI-coachberichten',
     feat_steel_weekly: 'Wekelijkse prestatiebeoordeling',
     feat_steel_checkin: 'Check-in na training',
@@ -7787,7 +8041,7 @@ const STRINGS = {
     feat_iron_prs: 'Виявлення особистих рекордів',
     feat_iron_push: 'Щоденні нагадування',
     feat_iron_themes: '5 тем · 12 мов',
-    feat_steel_tagline: 'Повна система. Необмежений коучинг. Вимірний прогрес.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Необмежені повідомлення AI-тренеру',
     feat_steel_weekly: 'Щотижневий огляд результатів',
     feat_steel_checkin: 'Чек-ін після тренування',
@@ -8157,7 +8411,7 @@ const STRINGS = {
     feat_iron_prs: 'Henkilökohtaisten ennätysten tunnistus',
     feat_iron_push: 'Päivittäiset muistutukset',
     feat_iron_themes: '5 teemaa · 12 kieltä',
-    feat_steel_tagline: 'Täydellinen järjestelmä. Rajaton valmennus. Mitattava edistys.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'Rajattomat AI-valmennusviestit',
     feat_steel_weekly: 'Viikoittainen suoritusarvio',
     feat_steel_checkin: 'Harjoituksen jälkeinen kirjautuminen',
@@ -8527,7 +8781,7 @@ const STRINGS = {
     feat_iron_prs: 'كشف الأرقام القياسية الشخصية',
     feat_iron_push: 'تذكيرات يومية',
     feat_iron_themes: '5 ثيمات · 12 لغة',
-    feat_steel_tagline: 'النظام الكامل. تدريب غير محدود. تقدم قابل للقياس.',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: 'رسائل غير محدودة للمدرب الذكي',
     feat_steel_weekly: 'مراجعة أسبوعية للأداء',
     feat_steel_checkin: 'تسجيل دخول بعد التدريب',
@@ -8897,7 +9151,7 @@ const STRINGS = {
     feat_iron_prs: '个人记录检测',
     feat_iron_push: '每日提醒',
     feat_iron_themes: '5个主题 · 12种语言',
-    feat_steel_tagline: '完整系统。无限教练。可量化进步。',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: '无限AI教练消息',
     feat_steel_weekly: '每周表现回顾',
     feat_steel_checkin: '训练后打卡',
@@ -9267,7 +9521,7 @@ const STRINGS = {
     feat_iron_prs: '自己記録検出',
     feat_iron_push: '毎日のリマインダー',
     feat_iron_themes: '5テーマ · 12言語',
-    feat_steel_tagline: '完全なシステム。無制限コーチング。測定可能な進歩。',
+    feat_steel_tagline: 'Full coaching. No PT required.',
     feat_steel_coach: '無制限AIコーチメッセージ',
     feat_steel_weekly: '週次パフォーマンスレビュー',
     feat_steel_checkin: 'トレーニング後チェックイン',
@@ -9959,5 +10213,6 @@ function urlBase64ToUint8Array(base64String) {
 })();
 
 </script>
+  <div style="position:fixed;top:50px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
 </body>
 </html>
