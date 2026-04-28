@@ -2677,7 +2677,7 @@ function switchNutritionTab(tab) {
   });
   // Always re-render these views so they reflect latest plan data
   if (tab === 'calendar') renderNutritionCalendar();
-  if (tab === 'shopping') renderShoppingList();
+  if (tab === 'shopping') { loadLanguage(); renderShoppingList(); }
 }
 
 function renderNutritionPanel() {
@@ -2713,9 +2713,9 @@ function renderMealCards(meals) {
           <div class="meal-kcal">${m.kcal}</div>
         </div>
         <div class="meal-macros-row">
-          <div class="meal-macro"><strong>${m.protein_g}g</strong> protein</div>
-          <div class="meal-macro"><strong>${m.carbs_g}g</strong> carbs</div>
-          <div class="meal-macro"><strong>${m.fat_g}g</strong> fat</div>
+          <div class="meal-macro"><strong>${m.protein_g}g</strong> ${t('macro_protein').toLowerCase()}</div>
+          <div class="meal-macro"><strong>${m.carbs_g}g</strong> ${t('macro_carbs').toLowerCase()}</div>
+          <div class="meal-macro"><strong>${m.fat_g}g</strong> ${t('macro_fat').toLowerCase()}</div>
         </div>
       </div>
       <div class="meal-foods">
@@ -2732,8 +2732,8 @@ function renderNutritionCalendar() {
   // Day selector
   document.getElementById('nutritionDayScroll').innerHTML = WEEK_DAYS.map((d, i) => `
     <div class="day-chip ${i === activeNutritionDay ? 'active' : ''}" onclick="selectNutritionDay(${i})" style="min-width:52px">
-      <div class="chip-day">${WEEK_SHORT[i]}</div>
-      <div class="chip-label" style="font-size:10px">${d.slice(0,3)}</div>
+      <div class="chip-day">${t('day_' + ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'][i]).slice(0,3).toUpperCase()}</div>
+      <div class="chip-label" style="font-size:10px">${t('day_' + ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'][i]).slice(0,3)}</div>
     </div>
   `).join('');
 
@@ -2761,11 +2761,11 @@ function renderNutritionDayMeals() {
       <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--accent)">${dayName}</div>
       <div style="display:flex;gap:6px;align-items:center">
         ${hasCustom ? `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);background:rgba(232,255,61,0.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(232,255,61,0.3)">✎ CUSTOM</span>` : ''}
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)">${isTrainingDay ? '🏋️ Training' : '😴 Rest'}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)">${isTrainingDay ? '🏋️ ' + t('training_day') : '😴 ' + t('rest_day_short')}</span>
       </div>
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:14px">
-      ${n.calories} kcal · ${n.protein_g}g protein · ${n.carbs_g}g carbs · ${n.fat_g}g fat
+      ${n.calories} kcal · ${n.protein_g}g ${t('macro_protein').toLowerCase()} · ${n.carbs_g}g ${t('macro_carbs').toLowerCase()} · ${n.fat_g}g ${t('macro_fat').toLowerCase()}
     </div>
     ${renderMealCards(meals)}
   `;
@@ -3038,9 +3038,10 @@ async function renderStatGrid() {
   const start = weights.length ? weights[0].weight_kg : (userProfile?.weight_kg || null);
   const diff = (start && weights.length > 1) ? (current - start).toFixed(1) : null;
 
+  const goalKeyMap = { muscle:'ob_goal_muscle', fat_loss:'ob_goal_fat_loss', strength:'ob_goal_strength', endurance:'ob_goal_endurance', sport:'ob_goal_sport' };
   const goalStr = Array.isArray(userProfile?.goal)
-    ? userProfile.goal.map(g => g.replace('_',' ')).join(' + ').toUpperCase()
-    : (userProfile?.goal || 'muscle').replace('_',' ').toUpperCase();
+    ? userProfile.goal.map(g => t(goalKeyMap[g] || 'ob_goal_muscle')).join(' + ').toUpperCase()
+    : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
 
   document.getElementById('statGrid').innerHTML = `
     <div class="stat-card">
@@ -3051,7 +3052,7 @@ async function renderStatGrid() {
     <div class="stat-card">
       <div class="stat-lbl">${t('ob_goal_title')}</div>
       <div class="stat-val" style="font-size:18px;margin-top:8px">${goalStr}</div>
-      <div class="stat-change">${userProfile?.experience || ''} · ${userProfile?.days_per_week || ''} days/wk</div>
+      <div class="stat-change">${userProfile?.experience || ''} · ${userProfile?.days_per_week || ''} ${t('stat_days_wk')}</div>
     </div>
   `;
 }
@@ -3116,7 +3117,7 @@ async function renderProgress() {
           ${advice ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:${advColor}">${advice.headline.split('—')[0].trim()}</div>` : ''}
         </div>
         <div style="padding:12px 14px">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">LAST ${last4.length} SESSION${last4.length > 1 ? 'S' : ''} — VOLUME</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">${t('overload_last_sessions').replace('{n}', last4.length)}</div>
           <div style="display:flex;gap:8px;align-items:flex-end">${bars}</div>
         </div>
         ${advice ? `<div style="padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.5">${advice.detail}</div>` : ''}
@@ -3133,12 +3134,12 @@ async function renderProgress() {
           <div>
             <div class="pr-name">${p.exercise_name}</div>
             <div class="pr-date">${p.achieved_at} · ${p.sets}×${p.reps}</div>
-            <div class="pr-badge">PR · ${p.est_1rm}kg e1RM</div>
+            <div class="pr-badge">${t('pr_badge')} · ${p.est_1rm}kg e1RM</div>
           </div>
           <div class="pr-val">${p.weight_kg}<span style="font-size:14px;color:var(--muted)">kg</span></div>
         </div>
       `).join('')
-    : `<div class="empty-state">No records yet.<br>Log your first session.</div>`;
+    : `<div class="empty-state">${t('pr_no_records')}</div>`;
 }
 
 async function saveWeight() {
@@ -5444,6 +5445,13 @@ const STRINGS = {
     mission_streak: 'Hit a 3-day streak',
     missions_complete: 'Complete',
     metrics_enter_one: 'Enter at least one measurement',
+
+    training_day: 'Training',
+    rest_day_short: 'Rest',
+    stat_days_wk: 'days/wk',
+    pr_no_records: 'No records yet.<br>Log your first session.',
+    pr_badge: 'PR',
+    overload_last_sessions: 'LAST {n} SESSIONS — VOLUME',
 },
   es: {
     nav_coach: 'Coach',
@@ -5807,6 +5815,13 @@ const STRINGS = {
     mission_streak: 'Consigue una racha de 3 días',
     missions_complete: 'Completado',
     metrics_enter_one: 'Introduce al menos una medida',
+
+    training_day: 'Entrenamiento',
+    rest_day_short: 'Descanso',
+    stat_days_wk: 'días/sem',
+    pr_no_records: 'Sin registros aún.<br>Registra tu primera sesión.',
+    pr_badge: 'RP',
+    overload_last_sessions: 'ÚLTIMAS {n} SESIONES — VOLUMEN',
 },
   fr: {
     nav_coach: 'Coach',
@@ -6170,6 +6185,13 @@ const STRINGS = {
     mission_streak: 'Atteignez une série de 3 jours',
     missions_complete: 'Terminé',
     metrics_enter_one: 'Entrez au moins une mesure',
+
+    training_day: 'Entraînement',
+    rest_day_short: 'Repos',
+    stat_days_wk: 'jours/sem',
+    pr_no_records: 'Aucun record encore.<br>Enregistrez votre première séance.',
+    pr_badge: 'RP',
+    overload_last_sessions: '{n} DERNIÈRES SÉANCES — VOLUME',
 },
   de: {
     nav_coach: 'Coach',
@@ -6533,6 +6555,13 @@ const STRINGS = {
     mission_streak: '3-Tage-Serie erreichen',
     missions_complete: 'Abgeschlossen',
     metrics_enter_one: 'Mindestens eine Messung eingeben',
+
+    training_day: 'Training',
+    rest_day_short: 'Ruhe',
+    stat_days_wk: 'Tage/Wo',
+    pr_no_records: 'Noch keine Rekorde.<br>Protokolliere deine erste Einheit.',
+    pr_badge: 'PR',
+    overload_last_sessions: 'LETZTE {n} EINHEITEN — VOLUMEN',
 },
   it: {
     nav_coach: 'Coach',
@@ -6896,6 +6925,13 @@ const STRINGS = {
     mission_streak: 'Raggiungi una serie di 3 giorni',
     missions_complete: 'Completato',
     metrics_enter_one: 'Inserisci almeno una misurazione',
+
+    training_day: 'Allenamento',
+    rest_day_short: 'Riposo',
+    stat_days_wk: 'giorni/sett',
+    pr_no_records: 'Nessun record ancora.<br>Registra la tua prima sessione.',
+    pr_badge: 'PR',
+    overload_last_sessions: 'ULTIME {n} SESSIONI — VOLUME',
 },
   pt: {
     nav_coach: 'Coach',
@@ -7259,6 +7295,13 @@ const STRINGS = {
     mission_streak: 'Consiga uma sequência de 3 dias',
     missions_complete: 'Concluído',
     metrics_enter_one: 'Introduza pelo menos uma medida',
+
+    training_day: 'Treino',
+    rest_day_short: 'Descanso',
+    stat_days_wk: 'dias/sem',
+    pr_no_records: 'Sem recordes ainda.<br>Registe a sua primeira sessão.',
+    pr_badge: 'RP',
+    overload_last_sessions: 'ÚLTIMAS {n} SESSÕES — VOLUME',
 },
   nl: {
     nav_coach: 'Coach',
@@ -7622,6 +7665,13 @@ const STRINGS = {
     mission_streak: 'Bereik een serie van 3 dagen',
     missions_complete: 'Voltooid',
     metrics_enter_one: 'Voer minimaal één meting in',
+
+    training_day: 'Training',
+    rest_day_short: 'Rust',
+    stat_days_wk: 'dagen/wk',
+    pr_no_records: 'Nog geen records.<br>Log je eerste sessie.',
+    pr_badge: 'PR',
+    overload_last_sessions: 'LAATSTE {n} SESSIES — VOLUME',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -7985,6 +8035,13 @@ const STRINGS = {
     mission_streak: 'Досягніть серії 3 дні',
     missions_complete: 'Виконано',
     metrics_enter_one: 'Введіть хоча б одне вимірювання',
+
+    training_day: 'Тренування',
+    rest_day_short: 'Відпочинок',
+    stat_days_wk: 'днів/тиж',
+    pr_no_records: 'Записів ще немає.<br>Запишіть першу сесію.',
+    pr_badge: 'ОР',
+    overload_last_sessions: 'ОСТАННІ {n} СЕСІЇ — ОБ\'ЄМ',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -8348,6 +8405,13 @@ const STRINGS = {
     mission_streak: 'Saavuta 3 päivän putki',
     missions_complete: 'Valmis',
     metrics_enter_one: 'Syötä vähintään yksi mittaus',
+
+    training_day: 'Harjoitus',
+    rest_day_short: 'Lepo',
+    stat_days_wk: 'päivää/vk',
+    pr_no_records: 'Ei ennätyksiä vielä.<br>Kirjaa ensimmäinen harjoituksesi.',
+    pr_badge: 'PR',
+    overload_last_sessions: 'VIIMEISET {n} HARJOITUSTA — VOLYYMI',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -8711,6 +8775,13 @@ const STRINGS = {
     mission_streak: 'حقق سلسلة 3 أيام',
     missions_complete: 'مكتمل',
     metrics_enter_one: 'أدخل قياساً واحداً على الأقل',
+
+    training_day: 'تدريب',
+    rest_day_short: 'راحة',
+    stat_days_wk: 'أيام/أسبوع',
+    pr_no_records: 'لا توجد سجلات بعد.<br>سجل جلستك الأولى.',
+    pr_badge: 'رقم قياسي',
+    overload_last_sessions: 'آخر {n} جلسات — الحجم',
 },
   zh: {
     nav_coach: '教练',
@@ -9074,6 +9145,13 @@ const STRINGS = {
     mission_streak: '达成3天连续',
     missions_complete: '已完成',
     metrics_enter_one: '请至少输入一项数据',
+
+    training_day: '训练',
+    rest_day_short: '休息',
+    stat_days_wk: '天/周',
+    pr_no_records: '暂无记录。<br>记录你的第一次训练。',
+    pr_badge: 'PR',
+    overload_last_sessions: '最近{n}次训练 — 训练量',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -9437,6 +9515,13 @@ const STRINGS = {
     mission_streak: '3日間連続を達成',
     missions_complete: '完了',
     metrics_enter_one: '少なくとも1つの測定値を入力',
+
+    training_day: 'トレーニング',
+    rest_day_short: '休息',
+    stat_days_wk: '日/週',
+    pr_no_records: 'まだ記録なし。<br>最初のセッションを記録してください。',
+    pr_badge: 'PR',
+    overload_last_sessions: '直近{n}セッション — ボリューム',
 },
 };
 
