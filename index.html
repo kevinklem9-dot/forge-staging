@@ -2416,14 +2416,14 @@ async function openFoundingMemberPage() {
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">⚙️ Iron — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At CHF 9.99/mo annual, this pays for itself in 15 months.</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At CHF 6.99/mo annual, this pays for itself in 22 months.</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Everything in Iron. Forever. No monthly fees.</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
         ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Iron Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
       </div>
       <div style="border:2px solid rgba(232,255,61,0.3);border-radius:14px;padding:20px;margin-bottom:16px;background:rgba(232,255,61,0.03);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔩 Steel — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${_launchPromo.steel_active ? 'At CHF 13.99/mo launch annual, this pays for itself in 18 months.' : 'At CHF 16.99/mo annual, this pays for itself in 15 months.'}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${_launchPromo.steel_active ? 'At CHF 8.99/mo launch annual, this pays for itself in 28 months.' : 'At CHF 9.99/mo annual, this pays for itself in 25 months.'}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">The full coaching system. Forever.</div>
         <div style="margin-bottom:16px;">${featureList(steelFeatures)}</div>
         ${steelLeft > 0 ? `<button onclick="claimFoundingMember('steel')" style="width:100%;padding:13px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Steel Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
@@ -2464,7 +2464,7 @@ async function renderReferralSection(container) {
   container.innerHTML = `
     <div style="margin-top:24px;">
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">SHARE FORGE</div>
-      <div style="font-size:14px;color:var(--text);margin-bottom:16px;line-height:1.6;">Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7.</div>
+      <div style="font-size:14px;color:var(--text);margin-bottom:16px;line-height:1.6;">Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7. Steel starts from CHF 9.99/mo annual — less than a coffee a week.</div>
       <div style="display:flex;gap:8px;margin-bottom:12px;">
         <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${referralUrl}</div>
         <button onclick="copyReferralLink('${referralUrl}')" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;">Copy</button>
@@ -4169,7 +4169,7 @@ async function renderTrialBanner() {
       // Days 3-4 — show promo copy if Steel promo active, otherwise standard copy
       if (_launchPromo.steel_active) {
         const spotsLeft = 500 - (_launchPromo.steel_sold || 0);
-        daysText = `⚡ Launch pricing active — ${spotsLeft} Steel spots remaining. Locks in your price forever.`;
+        daysText = `⚡ Launch pricing active — Steel from CHF 11.99/mo while spots remain. Locks in forever.`;
       } else {
         daysText = `⚡ ${daysLeft} ${dayWord} left in your trial — your plan and progress are saved. Keep them.`;
       }
@@ -4338,14 +4338,14 @@ function renderUpgradeSheetContent(highlightTier) {
   if (!sheet) return;
 
   // Full pricing (never changes)
-  const monthly = { iron: 'CHF 14.99', steel: 'CHF 24.99', forge: 'CHF 34.99' };
-  const annual  = { iron: 'CHF 9.99',  steel: 'CHF 16.99', forge: 'CHF 23.99' };
+  const monthly = { iron: 'CHF 9.99', steel: 'CHF 13.99', forge: 'CHF 19.99' };
+  const annual  = { iron: 'CHF 6.99',  steel: 'CHF 9.99',  forge: 'CHF 13.99' };
 
   // Promo pricing (active until thresholds hit)
-  const promoMonthly = { steel: 'CHF 19.99', forge: 'CHF 27.99' };
-  const promoAnnual  = { steel: 'CHF 13.99', forge: 'CHF 19.99' };
-  const promoBilled  = { steel: 'CHF 167.88', forge: 'CHF 239.88' };
-  const promoSavings = { steel: 'Save CHF 5/mo versus full price. Locked in forever.', forge: 'Save CHF 7/mo versus full price. Locked in forever.' };
+  const promoMonthly = { steel: 'CHF 11.99', forge: 'CHF 16.99' };
+  const promoAnnual  = { steel: 'CHF 8.99',  forge: 'CHF 11.99' };
+  const promoBilled  = { steel: 'CHF 107.88', forge: 'CHF 143.88' };
+  const promoSavings = { steel: 'Save CHF 2/mo versus full price. Locked in forever.', forge: 'Save CHF 3/mo versus full price. Locked in forever.' };
 
   // Active prices — use promo if active
   const steelPromo = _launchPromo.steel_active;
@@ -4380,7 +4380,7 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-pill { width:48px;height:26px;border-radius:13px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s; }
       #upgradeSheet .us-knob { position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left 0.2s; }
       #upgradeSheet .us-save-badge { background:rgba(232,255,61,0.12);border:1px solid rgba(232,255,61,0.3);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--accent);font-family:'DM Mono',monospace; }
-      #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:20px;padding:3px 12px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;white-space:nowrap;text-align:center;margin:6px 0 -4px; }
+      #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;text-align:center;margin:8px 0 4px;display:block;width:100%;box-sizing:border-box; }
       #upgradeSheet .us-card { border:2px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;background:var(--surface);transition:all 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.3); }
       #upgradeSheet .us-card.us-current { border-color:var(--border);opacity:0.75; }
       #upgradeSheet .us-card.us-recommended { border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);box-shadow:0 4px 30px rgba(255,255,255,0.08),0 0 0 1px rgba(255,255,255,0.06) inset;transform:scale(1.02); }
@@ -4420,7 +4420,7 @@ function renderUpgradeSheetContent(highlightTier) {
       </div>
 
       <!-- PT anchor + testimonial -->
-      <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">One PT session costs more than 3 months of Steel.</div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">One PT session costs more than 6 months of Steel annual.</div>
       <div id="upgradeTestimonial" style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;background:var(--surface);">
         <div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;" id="upgradeTestimonialQuote">"Built me a full programme in under 2 minutes. I've tried four other apps. This is the first one that felt like it actually knew what I needed."</div>
         <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="upgradeTestimonialAttr">— James, training for football season</div>
@@ -4440,7 +4440,7 @@ function renderUpgradeSheetContent(highlightTier) {
       ${steelPromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${steelRemaining} of 500 spots remaining</div>` : ''}
       ${renderUpgradeTierCard('steel', '🔩 Steel', activeMonthly.steel, activeAnnual.steel, [
         '__tagline__' + t('feat_steel_tagline'),
-        steelPromo ? '__savings__Save CHF 5/mo versus full price. Locked in forever.' : '',
+        steelPromo ? '__savings__Save CHF 2/mo versus full price. Locked in forever.' : '',
         t('feat_everything_iron'),
         t('feat_steel_coach'),
         t('feat_steel_weekly'),
@@ -4457,7 +4457,7 @@ function renderUpgradeSheetContent(highlightTier) {
       ${forgePromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${forgeRemaining} of 500 spots remaining</div>` : ''}
       ${renderUpgradeTierCard('forge', '🔥 Forge', activeMonthly.forge, activeAnnual.forge, [
         '__tagline__' + t('feat_forge_tagline'),
-        forgePromo ? '__savings__Save CHF 7/mo versus full price. Locked in forever.' : '',
+        forgePromo ? '__savings__Save CHF 3/mo versus full price. Locked in forever.' : '',
         t('feat_everything_steel'),
         t('feat_forge_monthly'),
         t('feat_forge_video'),
@@ -4529,8 +4529,8 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
 
   const price = _upgradeAnnual ? annual : monthly;
   const annualBilled = {
-    'CHF 9.99': 'CHF 119.88', 'CHF 16.99': 'CHF 203.88', 'CHF 23.99': 'CHF 287.88',
-    'CHF 13.99': 'CHF 167.88', 'CHF 19.99': 'CHF 239.88'
+    'CHF 6.99': 'CHF 83.88', 'CHF 9.99': 'CHF 119.88', 'CHF 13.99': 'CHF 167.88',
+    'CHF 8.99': 'CHF 107.88', 'CHF 11.99': 'CHF 143.88'
   };
   const annualNote = _upgradeAnnual
     ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: annualBilled[annual] || ''}) + '</div>'
