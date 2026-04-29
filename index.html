@@ -4943,6 +4943,20 @@ function renderAccount() {
             ${displayTier === 'forge' && sub.isExempt ? t('view_plans') : t('upgrade')}
           </button>
         </div>
+
+        ${sub.status === 'active' && sub.renewalDate ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;">NEXT RENEWAL</div>
+            <div style="font-size:14px;font-weight:600;margin-top:2px;">${new Date(sub.renewalDate).toLocaleDateString(undefined, { day:'numeric', month:'long', year:'numeric' })}</div>
+          </div>
+        </div>` : ''}
+
+        ${sub.status === 'lifetime' ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="font-size:12px;color:var(--accent);font-family:'DM Mono',monospace;letter-spacing:0.5px;">⚡ FOUNDING MEMBER — LIFETIME ACCESS</div>
+        </div>` : ''}
+
         ${!sub.hasUnlimitedCoach && !sub.isExempt ? `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
@@ -4955,6 +4969,20 @@ function renderAccount() {
           <div style="font-size:11px;color:var(--muted);margin-top:6px;">${t('resets_monthly')}</div>
         </div>` : ''}
       </div>
+
+      ${sub.status === 'active' && sub.stripe_subscription_id ? `
+      <!-- Subscription Management -->
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">SUBSCRIPTION</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--text);margin-bottom:16px;line-height:1.6;">Upgrade for instant access to new features — you only pay the difference. Cancel anytime, your access continues until the end of your billing period.</div>
+        <button onclick="openUpgradeSheet()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
+          ${displayTier === 'forge' ? 'View current plan' : 'Upgrade plan'}
+        </button>
+        <button onclick="openBillingPortal()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>Manage billing & cancel</span>
+          <span style="font-size:11px;color:var(--muted);">→</span>
+        </button>
+      </div>` : ''}
 
       <!-- Profile Info -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('profile')}</div>
@@ -4983,10 +5011,9 @@ function renderAccount() {
       <!-- Danger zone -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('account_section')}</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
-        <button onclick="signOut()" style="width:100%;padding:12px;background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
+        <button onclick="signOut()" style="width:100%;padding:12px;background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">
           ${t('sign_out')}
         </button>
-        ${userSubscription?.status === 'active' ? `<button onclick="openBillingPortal()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Manage Subscription</button>` : ''}
       </div>
 
       <!-- Referral Programme -->
