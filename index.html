@@ -2171,8 +2171,17 @@ async function submitOnboarding() {
     if (genSubtitle) genSubtitle.textContent = loadingMsgs[msgIdx].sub;
   }, 4000);
 
-  const res = await api('/api/generate-plan', 'POST', { language: appLanguage || 'en' }, 120000);
-  clearInterval(msgInterval);
+  // Show extended loading messages since plan generation can take 60-90 seconds
+  const _planMsgs = ['Building your plan...','Analysing your goals and stats...','Designing your workout programme...','Building your nutrition plan...','Almost ready...'];
+  let _planMsgIdx = 0;
+  const _loadingEl = document.getElementById('ob-generating-text');
+  const _planMsgTimer = setInterval(() => {
+    _planMsgIdx = (_planMsgIdx + 1) % _planMsgs.length;
+    if (_loadingEl) _loadingEl.textContent = _planMsgs[_planMsgIdx];
+  }, 12000);
+
+  const res = await api('/api/generate-plan', 'POST', { language: appLanguage || 'en' }, 300000);
+  clearInterval(_planMsgTimer);
 
   if (res?.plan) {
     userPlan = res.plan;
