@@ -4380,7 +4380,7 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-pill { width:48px;height:26px;border-radius:13px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s; }
       #upgradeSheet .us-knob { position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left 0.2s; }
       #upgradeSheet .us-save-badge { background:rgba(232,255,61,0.12);border:1px solid rgba(232,255,61,0.3);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--accent);font-family:'DM Mono',monospace; }
-      #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;text-align:center;margin:8px 0 4px;display:block;width:100%;box-sizing:border-box; }
+      #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;text-align:center;display:block;width:100%;box-sizing:border-box;margin-bottom:12px; }
       #upgradeSheet .us-card { border:2px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;background:var(--surface);transition:all 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.3); }
       #upgradeSheet .us-card.us-current { border-color:var(--border);opacity:0.75; }
       #upgradeSheet .us-card.us-recommended { border-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);box-shadow:0 4px 30px rgba(255,255,255,0.08),0 0 0 1px rgba(255,255,255,0.06) inset;transform:scale(1.02); }
@@ -4437,7 +4437,6 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_iron_themes'),
       ], highlightTier === 'iron', false, false, 0)}
 
-      ${steelPromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${steelRemaining} of 500 spots remaining</div>` : ''}
       ${renderUpgradeTierCard('steel', '🔩 Steel', activeMonthly.steel, activeAnnual.steel, [
         '__tagline__' + t('feat_steel_tagline'),
         steelPromo ? '__savings__Save CHF 2/mo versus full price. Locked in forever.' : '',
@@ -4452,9 +4451,8 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_steel_shopping'),
         t('feat_steel_programmes'),
         t('feat_steel_export'),
-      ].filter(Boolean), highlightTier === 'steel' || !highlightTier, true, steelPromo, steelPromo ? monthly.steel : null)}
+      ].filter(Boolean), highlightTier === 'steel' || !highlightTier, true, steelPromo, steelPromo ? monthly.steel : null, steelPromo ? `LAUNCH PRICING — ${steelRemaining} of 500 spots remaining` : null)}
 
-      ${forgePromo ? `<div class="us-launch-badge">LAUNCH PRICING — ${forgeRemaining} of 500 spots remaining</div>` : ''}
       ${renderUpgradeTierCard('forge', '🔥 Forge', activeMonthly.forge, activeAnnual.forge, [
         '__tagline__' + t('feat_forge_tagline'),
         forgePromo ? '__savings__Save CHF 3/mo versus full price. Locked in forever.' : '',
@@ -4465,7 +4463,7 @@ function renderUpgradeSheetContent(highlightTier) {
         '__comingsoon__' + t('feat_forge_wearable'),
         t('feat_forge_support'),
         t('feat_forge_early'),
-      ].filter(Boolean), highlightTier === 'forge', false, forgePromo, forgePromo ? monthly.forge : null)}
+      ].filter(Boolean), highlightTier === 'forge', false, forgePromo, forgePromo ? monthly.forge : null, forgePromo ? `LAUNCH PRICING — ${forgeRemaining} of 500 spots remaining` : null)}
 
       <button class="us-close" onclick="triggerGracePeriod();document.getElementById('upgradeSheet').remove()">${t('upgrade_close')}</button>
     </div>
@@ -4478,7 +4476,7 @@ function toggleUpgradeBilling() {
   renderUpgradeSheetContent(ht);
 }
 
-function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended, isPromo, fullMonthlyPrice) {
+function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended, isPromo, fullMonthlyPrice, launchBadgeText) {
   const currentTier = userSubscription?.tier || 'iron';
   const isCurrent = currentTier === tier;
   const _trialEndsAt = userSubscription?.trialEndsAt;
@@ -4550,6 +4548,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
 
   return `<div class="${cardClass}">
     ${badge}
+    ${launchBadgeText ? `<div class="us-launch-badge" style="margin-top:${recommended ? '12px' : '4px'};">${launchBadgeText}</div>` : ''}
     <div class="us-card-row">
       <div class="us-tier-name">${label}</div>
       ${priceDisplay}
