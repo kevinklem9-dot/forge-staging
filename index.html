@@ -974,6 +974,7 @@ if ('serviceWorker' in navigator) {
 const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
 const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TRVSaCP6MFAx438rHQRzgOhIr68s1Bd8KqXZBKtPmU2BVuyUeVEhpEnGPHpdrrOWTrs7UOlCRb6sE7QU3AbBrJG00eXfkbMZM';
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
@@ -2326,7 +2327,70 @@ function showPanel(name) {
 }
 
 // ═══════════════════════════════════════════════════════
-// SECTION 6 — DAY 7 IN-APP TESTIMONIAL PROMPT
+// STRIPE PAYMENT FUNCTIONS
+// ═══════════════════════════════════════════════════════
+
+async function startCheckout(tier, billing, isPromo) {
+  if (!currentUser) { showToast('Please sign in first', 'error'); return; }
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+
+  try {
+    const res = await api('/api/stripe/create-checkout', 'POST', {
+      tier,
+      billing,
+      is_promo: !!isPromo,
+    });
+
+    if (res?.url) {
+      // Open Stripe Checkout in same tab — it redirects back on success/cancel
+      window.location.href = res.url;
+    } else {
+      showToast(res?.error || 'Failed to start checkout', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Get started'; }
+    }
+  } catch(e) {
+    showToast('Connection error — try again', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Get started'; }
+  }
+}
+
+async function openBillingPortal() {
+  const res = await api('/api/stripe/portal', 'POST');
+  if (res?.url) {
+    window.open(res.url, '_blank');
+  } else {
+    showToast('Could not open billing portal', 'error');
+  }
+}
+
+// Handle payment redirect back to app
+function handlePaymentRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get('payment');
+  const tier = params.get('tier');
+
+  if (payment === 'success' && tier) {
+    // Clean up URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Show success message
+    showToast(`✓ Welcome to ${tier.charAt(0).toUpperCase() + tier.slice(1)}! Your plan is now active.`, 'success');
+    // Refresh subscription
+    api('/api/subscription').then(sub => {
+      if (sub) {
+        userSubscription = sub;
+        renderTrialBanner();
+        renderCoachCounter();
+      }
+    });
+    // Close upgrade sheet if open
+    document.getElementById('upgradeSheet')?.remove();
+    document.getElementById('foundingMemberSheet')?.remove();
+  } else if (payment === 'cancelled') {
+    window.history.replaceState({}, '', window.location.pathname);
+    showToast('Payment cancelled — no charge made.', 'error');
+  }
+}
 // ═══════════════════════════════════════════════════════
 async function checkDay7Prompt() {
   if (!userSubscription) return;
@@ -2442,15 +2506,7 @@ async function openFoundingMemberPage() {
 }
 
 async function claimFoundingMember(tier) {
-  const res = await api('/api/founding-member/claim', 'POST', { tier });
-  if (res?.ok) {
-    showToast(`✓ Welcome, Founding Member! ${tier === 'steel' ? 'Steel' : 'Iron'} lifetime access activated.`, 'success');
-    document.getElementById('foundingMemberSheet')?.remove();
-    userSubscription = { ...userSubscription, tier, accessTier: tier, status: 'lifetime' };
-    renderTrialBanner();
-  } else {
-    showToast(res?.error || 'Failed — try again', 'error');
-  }
+  startCheckout(tier, 'lifetime', false);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4604,7 +4660,13 @@ async function handleUpgradeClick(tier) {
     }
   }
 
-  showToast('Great choice! Payments launching soon — your plan will be ready.', 'success');
+  // Determine billing period from toggle state
+  const billing = _upgradeAnnual ? 'annual' : 'monthly';
+  // Check if promo is active for this tier
+  const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
+                  (tier === 'forge' && _launchPromo.forge_active);
+  // Start Stripe checkout
+  startCheckout(tier, billing, isPromo);
 }
 
 // ── LOCKED FEATURE MODAL ──────────────────────────────
@@ -4851,6 +4913,7 @@ function renderAccount() {
         <button onclick="signOut()" style="width:100%;padding:12px;background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
           ${t('sign_out')}
         </button>
+        ${userSubscription?.status === 'active' ? `<button onclick="openBillingPortal()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Manage Subscription</button>` : ''}
       </div>
 
       <!-- Referral Programme -->
@@ -10083,6 +10146,8 @@ function closeLangDrawer() {
 
 loadTheme();
 loadLanguage();
+// Handle Stripe payment redirects
+handlePaymentRedirect();
 // Apply translations after DOM is ready
 setTimeout(() => {
   applyLanguage();
