@@ -4643,7 +4643,6 @@ async function handleUpgradeClick(tier) {
       tier,
       accessTier: userSubscription.status === 'trial' ? 'forge' : tier,
       hasUnlimitedCoach: tier === 'steel' || tier === 'forge',
-      // trialEndsAt and trialDaysLeft stay unchanged — trial continues
     };
     renderTrialBanner();
     renderCoachCounter();
@@ -4660,12 +4659,38 @@ async function handleUpgradeClick(tier) {
     }
   }
 
-  // Determine billing period from toggle state
+  // During trial — set the tier preference without charging, offer optional early payment
+  if (userSubscription?.status === 'trial') {
+    // Save tier preference to server — no charge yet
+    api('/api/subscription/tier', 'PATCH', { tier }).catch(() => {});
+    document.getElementById('upgradeSheet')?.remove();
+
+    // Show a non-blocking option to pay now and lock in pricing
+    const billing = _upgradeAnnual ? 'annual' : 'monthly';
+    const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
+                    (tier === 'forge' && _launchPromo.forge_active);
+    const tierLabel = tier === 'forge' ? '🔥 Forge' : tier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
+    const daysLeft = userSubscription.trialDaysLeft || 0;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10001;background:var(--bg);border:1px solid var(--accent);border-radius:14px;padding:16px 20px;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+    toast.innerHTML = `
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${tierLabel} plan selected ✓</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} left in your trial. You won't be charged until it ends.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Continue trial</button>
+        <button onclick="this.closest('div[style]').remove();startCheckout('${tier}','${billing}',${isPromo})" style="flex:1;padding:10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Pay now${isPromo ? ' (promo price)' : ''}</button>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 8000);
+    return;
+  }
+
+  // Not on trial — go straight to payment
   const billing = _upgradeAnnual ? 'annual' : 'monthly';
-  // Check if promo is active for this tier
   const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
                   (tier === 'forge' && _launchPromo.forge_active);
-  // Start Stripe checkout
   startCheckout(tier, billing, isPromo);
 }
 
