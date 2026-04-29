@@ -4631,12 +4631,54 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
 }
 
 async function handleUpgradeClick(tier) {
+  const status = userSubscription?.status;
+  const currentTier = userSubscription?.tier;
+  const tierRank = { iron: 0, steel: 1, forge: 2 };
+
+  // Already on this tier
+  if (tier === currentTier && status === 'active') {
+    showToast('You are already on this plan.', '');
+    return;
+  }
+
+  // Paid user trying to switch tiers — use billing portal instead of new checkout
+  if (status === 'active' && userSubscription?.stripe_subscription_id) {
+    document.getElementById('upgradeSheet')?.remove();
+    // Show a clear switch tier confirmation
+    const currentLabel = currentTier === 'forge' ? '🔥 Forge' : currentTier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
+    const newLabel = tier === 'forge' ? '🔥 Forge' : tier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
+    const isDowngrade = tierRank[tier] < tierRank[currentTier];
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+      <div style="background:var(--bg);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;">
+        <div style="font-size:28px;margin-bottom:12px;">${isDowngrade ? '⬇️' : '⬆️'}</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">${isDowngrade ? 'Downgrade' : 'Upgrade'} to ${newLabel}?</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+          ${isDowngrade
+            ? `You're currently on ${currentLabel}. Downgrading to ${newLabel} will reduce your access. Your billing will update at the next renewal.`
+            : `You're currently on ${currentLabel}. Upgrading to ${newLabel} will be charged on a pro-rated basis immediately.`
+          }
+        </div>
+        <button onclick="this.closest('div[style]').remove();manageTierSwitch('${tier}')" style="display:block;width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
+          Manage in billing portal
+        </button>
+        <button onclick="this.closest('div[style]').remove()" style="display:block;width:100%;padding:12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          Cancel
+        </button>
+      </div>
+    `;
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+    return;
+  }
+
   document.getElementById('upgradeSheet')?.remove();
 
-  // Save tier to server — preserves trial, just changes tier
+  // Save tier to server — preserves trial, just changes tier preference
   const res = await api('/api/subscription/tier', 'PATCH', { tier });
 
-  // Update local state immediately (optimistic + server-confirmed)
+  // Update local state immediately
   if (userSubscription) {
     userSubscription = {
       ...userSubscription,
@@ -4659,18 +4701,13 @@ async function handleUpgradeClick(tier) {
     }
   }
 
-  // During trial — set the tier preference without charging, offer optional early payment
-  if (userSubscription?.status === 'trial') {
-    // Save tier preference to server — no charge yet
-    api('/api/subscription/tier', 'PATCH', { tier }).catch(() => {});
-    document.getElementById('upgradeSheet')?.remove();
-
-    // Show a non-blocking option to pay now and lock in pricing
+  // During trial — set preference without charging, offer optional early payment
+  if (status === 'trial') {
     const billing = _upgradeAnnual ? 'annual' : 'monthly';
     const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
                     (tier === 'forge' && _launchPromo.forge_active);
     const tierLabel = tier === 'forge' ? '🔥 Forge' : tier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
-    const daysLeft = userSubscription.trialDaysLeft || 0;
+    const daysLeft = userSubscription?.trialDaysLeft || 0;
 
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10001;background:var(--bg);border:1px solid var(--accent);border-radius:14px;padding:16px 20px;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
@@ -4679,7 +4716,7 @@ async function handleUpgradeClick(tier) {
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} left in your trial. You won't be charged until it ends.</div>
       <div style="display:flex;gap:8px;">
         <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Continue trial</button>
-        <button onclick="this.closest('div[style]').remove();startCheckout('${tier}','${billing}',${isPromo})" style="flex:1;padding:10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Pay now${isPromo ? ' (promo price)' : ''}</button>
+        <button onclick="this.closest('div[style]').remove();startCheckout('${tier}','${billing}',${isPromo})" style="flex:1;padding:10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Pay now${isPromo ? ' (promo)' : ''}</button>
       </div>
     `;
     document.body.appendChild(toast);
@@ -4687,11 +4724,22 @@ async function handleUpgradeClick(tier) {
     return;
   }
 
-  // Not on trial — go straight to payment
+  // Not on trial, no active subscription — go straight to payment
   const billing = _upgradeAnnual ? 'annual' : 'monthly';
   const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
                   (tier === 'forge' && _launchPromo.forge_active);
   startCheckout(tier, billing, isPromo);
+}
+
+async function manageTierSwitch(newTier) {
+  // Direct to Stripe billing portal for tier changes on active subscriptions
+  // This handles proration correctly and avoids double charging
+  const res = await api('/api/stripe/portal', 'POST');
+  if (res?.url) {
+    window.location.href = res.url;
+  } else {
+    showToast('Could not open billing portal — try again', 'error');
+  }
 }
 
 // ── LOCKED FEATURE MODAL ──────────────────────────────
