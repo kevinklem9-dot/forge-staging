@@ -2367,7 +2367,7 @@ async function startCheckout(tier, billing, isPromo) {
 async function openBillingPortal() {
   const res = await api('/api/stripe/portal', 'POST');
   if (res?.url) {
-    window.open(res.url, '_blank');
+    window.location.href = res.url;
   } else {
     showToast('Could not open billing portal', 'error');
   }
@@ -2378,13 +2378,11 @@ function handlePaymentRedirect() {
   const params = new URLSearchParams(window.location.search);
   const payment = params.get('payment');
   const tier = params.get('tier');
+  const portalReturn = params.get('portal_return');
 
-  if (payment === 'success' && tier) {
-    // Clean up URL
+  if (portalReturn) {
     window.history.replaceState({}, '', window.location.pathname);
-    // Show success message
-    showToast(`✓ Welcome to ${tier.charAt(0).toUpperCase() + tier.slice(1)}! Your plan is now active.`, 'success');
-    // Refresh subscription
+    // Refresh subscription from server — plan may have changed in portal
     api('/api/subscription').then(sub => {
       if (sub) {
         userSubscription = sub;
@@ -2392,7 +2390,24 @@ function handlePaymentRedirect() {
         renderCoachCounter();
       }
     });
-    // Close upgrade sheet if open
+    // Open account panel so they can see their updated plan
+    setTimeout(() => {
+      showPanel('account');
+      showToast('Subscription updated — your plan is shown below.', 'success');
+    }, 800);
+    return;
+  }
+
+  if (payment === 'success' && tier) {
+    window.history.replaceState({}, '', window.location.pathname);
+    showToast(`✓ Welcome to ${tier.charAt(0).toUpperCase() + tier.slice(1)}! Your plan is now active.`, 'success');
+    api('/api/subscription').then(sub => {
+      if (sub) {
+        userSubscription = sub;
+        renderTrialBanner();
+        renderCoachCounter();
+      }
+    });
     document.getElementById('upgradeSheet')?.remove();
     document.getElementById('foundingMemberSheet')?.remove();
   } else if (payment === 'cancelled') {
