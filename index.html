@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — AI Performance Coach</title>
+<meta name="description" content="Personalised training, full nutrition, and a fitness AI that learns your data and coaches you like it knows you. Free 7-day trial.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111111;--surface2:#1a1a1a;--surface3:#161616;--border:#222222;--border2:#2a2a2a;
+  --accent:#e8ff3d;--accent-dim:#b8cc2e;--accent2:#ff6b35;--text:#f0f0f0;--muted:#666666;--muted2:#8a8a8a;
+  --red:#ff4444;--green:#39d98a;--accent-pressed:#d4eb1e;
+  --shadow-glow:0 0 60px rgba(232,255,61,0.18);
+  --shadow-card:0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.6);
+  --grid-color:rgba(255,255,255,0.025);
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;min-height:100vh;width:100%;max-width:100vw}
+img,svg,video{max-width:100%}
+
+/* Subtle global noise + grid */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:
+    linear-gradient(var(--grid-color) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>");
+}
+nav,section,footer,.pt-bar,.section-divider{position:relative;z-index:2}
+
+/* ── NAV ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.72);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(232,255,61,0.35),transparent)}
+.nav-logo{display:flex;align-items:baseline;gap:10px}
+.nav-logo-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:5px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.35)}
+.nav-logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
+.nav-right{display:flex;align-items:center;gap:10px}
+.currency-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:8px;cursor:pointer;outline:none;transition:all .15s}
+.currency-select:hover{border-color:var(--border2);background:var(--surface2)}
+.currency-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,61,0.1)}
+.nav-cta{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;white-space:nowrap;flex-shrink:0;line-height:1}
+.nav-cta::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.4) 50%,transparent 70%);transform:translateX(-100%);transition:transform .6s}
+.nav-cta:hover{background:var(--accent-pressed);box-shadow:0 8px 30px rgba(232,255,61,0.35),0 0 0 1px rgba(232,255,61,0.4);transform:translateY(-1px)}
+.nav-cta:hover::after{transform:translateX(100%)}
+
+/* ── FOCUS-VISIBLE (a11y) ── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+button:focus-visible,a:focus-visible,.auth-tab:focus-visible,.lang-option:focus-visible,.toggle-pill:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.field-input:focus-visible{outline:none}
+
+/* ── LANG DRAWER ── */
+.lang-drawer{position:fixed;top:68px;right:16px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;z-index:1001;min-width:200px;overflow:hidden;display:none;box-shadow:0 20px 50px rgba(0,0,0,0.5);animation:fadeDown .18s ease-out}
+.lang-drawer.open{display:block}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.lang-option{padding:11px 18px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .12s;border-left:2px solid transparent}
+.lang-option:hover{background:var(--surface2);border-left-color:var(--accent);padding-left:20px}
+
+/* ── SECTIONS ── */
+.section{width:100%;padding:120px 24px;position:relative}
+.section-inner{max-width:1140px;margin:0 auto}
+.section-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border2) 30%,var(--border2) 70%,transparent);position:relative}
+.section-divider::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 16px var(--accent)}
+
+.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;color:var(--accent);margin-bottom:20px;display:inline-flex;align-items:center;gap:10px}
+.section-label::before{content:"";width:24px;height:1px;background:var(--accent)}
+[style*="text-align:center"].section-label{justify-content:center}
+
+h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-height:0.98;letter-spacing:1px;color:var(--text);margin-bottom:24px;font-weight:400}
+.section-body{font-size:17px;color:var(--muted2);max-width:700px;line-height:1.7;margin-bottom:48px}
+
+/* ── HERO ── */
+.hero{padding:160px 24px 100px;position:relative;text-align:center;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;top:-10%;left:50%;transform:translateX(-50%);width:1300px;height:1000px;
+  background:
+    radial-gradient(ellipse 600px 400px at center 45%,rgba(232,255,61,0.22),transparent 65%),
+    radial-gradient(ellipse at center,rgba(232,255,61,0.10),transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.hero::after{
+  content:"";position:absolute;bottom:0;left:0;right:0;height:200px;
+  background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none;z-index:0;
+}
+.hero > *{position:relative;z-index:2}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(232,255,61,0.06);border:1px solid rgba(232,255,61,0.25);padding:8px 16px;border-radius:100px;margin-bottom:32px}
+.hero-eyebrow::before{content:"";width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(54px,8.2vw,108px);line-height:0.95;letter-spacing:1.5px;font-weight:400;max-width:980px;margin:0 auto 28px;color:var(--text);text-shadow:0 0 60px rgba(232,255,61,0.12),0 0 120px rgba(232,255,61,0.06)}
+.hero-sub{font-size:19px;color:var(--muted2);max-width:640px;margin:0 auto 24px;line-height:1.6}
+.hero-trust{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:48px}
+
+/* ── AUTH CARD ── */
+.auth-wrap{max-width:440px;margin:0 auto;position:relative}
+.auth-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border2);border-radius:16px;padding:32px;position:relative;box-shadow:var(--shadow-card),0 0 80px rgba(232,255,61,0.04);text-align:left}
+.auth-card::before,.auth-card::after{content:"";position:absolute;width:18px;height:18px;border:1px solid var(--accent);pointer-events:none}
+.auth-card::before{top:-1px;left:-1px;border-right:none;border-bottom:none;border-top-left-radius:16px}
+.auth-card::after{bottom:-1px;right:-1px;border-left:none;border-top:none;border-bottom-right-radius:16px}
+.auth-tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:4px}
+.auth-tab{flex:1;padding:10px 14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:center;cursor:pointer;border-radius:7px;transition:all .15s}
+.auth-tab.active{background:var(--surface2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--border2)}
+.auth-tab:not(.active):hover{color:var(--text)}
+.field-group{margin-bottom:14px}
+.field-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.field-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:all .15s}
+.field-input::placeholder{color:#444}
+.field-input:hover{border-color:var(--border2)}
+.field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,61,0.1);background:var(--surface)}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px 8px;border-radius:6px;transition:background .15s}
+.pw-toggle:hover{background:var(--surface2)}
+.auth-error{color:var(--red);font-size:12px;margin:8px 0;display:none;font-family:'DM Mono',monospace;letter-spacing:0.5px}
+.auth-btn{width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;margin-top:8px;transition:all .2s;position:relative;overflow:hidden}
+.auth-btn:hover:not(:disabled){background:var(--accent-pressed);box-shadow:0 10px 30px rgba(232,255,61,0.3),0 0 0 1px rgba(232,255,61,0.5);transform:translateY(-1px)}
+.auth-btn:disabled{opacity:0.6;cursor:not-allowed}
+.auth-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:14px;letter-spacing:0.5px;line-height:1.6}
+.auth-note a{color:var(--accent);cursor:pointer;text-decoration:none}
+.auth-note a:hover{text-decoration:underline}
+
+/* ── GRIDS / CARDS ── */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
+.card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:14px;padding:32px;position:relative;transition:all .25s ease;overflow:hidden}
+.card::before{content:"";position:absolute;inset:0;border-radius:14px;padding:1px;background:linear-gradient(135deg,rgba(232,255,61,0.0),rgba(232,255,61,0.0));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;transition:background .3s}
+.card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 20px 50px -20px rgba(0,0,0,0.6)}
+.card:hover::before{background:linear-gradient(135deg,rgba(232,255,61,0.4),rgba(232,255,61,0))}
+
+/* Pain card variant — italic raw quotes */
+.card-a{font-family:'DM Sans',sans-serif;font-size:18px;font-style:italic;color:var(--text);line-height:1.55;font-weight:400;letter-spacing:-0.2px;position:relative;padding-left:18px}
+.card-a::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--accent2);border-radius:2px}
+
+/* Feature card */
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:14px;line-height:1.1;display:flex;align-items:center;gap:12px}
+.card-title::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.card-body{font-size:15px;color:var(--muted2);line-height:1.7}
+
+/* Testimonials */
+.testimonial-quote{font-size:16px;color:var(--text);line-height:1.65;margin-bottom:24px;font-style:italic}
+.testimonial-attr{display:flex;align-items:center;gap:14px;padding-top:20px;border-top:1px solid var(--border)}
+.avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--surface2),var(--bg));border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;letter-spacing:1px;color:var(--accent);flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(232,255,61,0.12),0 0 0 3px rgba(232,255,61,0.06);overflow:hidden;position:relative}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(0.95) contrast(1.05)}
+.avatar::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 12px rgba(0,0,0,0.4);pointer-events:none}
+.attr-name{font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.attr-ctx{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+
+/* ── PT ANCHOR BAR ── */
+.pt-bar{
+  width:100%;padding:80px 24px;text-align:center;
+  background:
+    radial-gradient(ellipse at center,rgba(232,255,61,0.08),transparent 70%),
+    linear-gradient(180deg,#0c0c0c,#080808);
+  border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);
+  position:relative;overflow:hidden;
+}
+.pt-bar::before,.pt-bar::after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.pt-bar::before{top:0}.pt-bar::after{bottom:0}
+.pt-bar-line1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,4.5vw,52px);line-height:1.05;letter-spacing:1.5px;color:var(--text);max-width:900px;margin:0 auto 22px}
+.pt-bar-line1 .pt-highlight{color:var(--accent2);text-shadow:0 0 30px rgba(255,107,53,0.35)}
+.pt-bar-line2{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;letter-spacing:0;color:var(--muted2);text-transform:none;max-width:640px;margin:0 auto;line-height:1.65}
+
+/* ── PRICING ── */
+#pricing{padding:120px 24px}
+.pricing-meta{text-align:center;margin-bottom:32px}
+.pricing-sub{color:var(--muted2);font-size:15px;margin-bottom:8px}
+.pricing-currency-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.pricing-currency-note a{color:var(--accent);cursor:pointer;text-decoration:none}
+.pricing-currency-note a:hover{text-decoration:underline}
+
+.billing-toggle{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:56px;flex-wrap:wrap}
+.toggle-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color .15s;display:inline-flex;align-items:center;gap:10px}
+.toggle-label.active{color:var(--text)}
+.toggle-pill{width:52px;height:28px;background:var(--surface2);border:1px solid var(--border2);border-radius:100px;position:relative;cursor:pointer;transition:background .2s}
+.toggle-knob{position:absolute;top:2px;right:2px;width:22px;height:22px;background:var(--accent);border-radius:50%;transition:right .2s ease,transform .2s ease;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.toggle-pill.monthly .toggle-knob{right:calc(100% - 24px)}
+.save-badge{background:rgba(232,255,61,0.12);color:var(--accent);font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,61,0.25)}
+
+.tier-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.tier-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:all .25s ease;display:flex;flex-direction:column}
+.tier-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 30px 60px -25px rgba(0,0,0,0.7)}
+.tier-card.recommended{
+  border:1px solid rgba(232,255,61,0.5);
+  background:linear-gradient(180deg,#161611,var(--surface3));
+  box-shadow:0 0 0 1px rgba(232,255,61,0.2),0 30px 80px -20px rgba(232,255,61,0.18),0 40px 80px -30px rgba(0,0,0,0.8);
+  transform:translateY(-12px) scale(1.02);
+  z-index:2;
+}
+.tier-card.recommended::before{
+  content:"";position:absolute;inset:-1px;border-radius:16px;padding:1px;
+  background:linear-gradient(135deg,var(--accent),transparent 40%,transparent 60%,var(--accent));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0.6;
+}
+.tier-card.recommended:hover{transform:translateY(-16px) scale(1.02)}
+.tier-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2.5px;padding:5px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(232,255,61,0.4),0 1px 0 rgba(255,107,53,0.6) inset,0 -2px 0 var(--accent2) inset}
+.tier-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--text);margin-bottom:6px}
+.tier-tagline{font-size:13px;color:var(--muted2);margin-bottom:24px;line-height:1.5;min-height:38px}
+.tier-price-main{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:1.5px;color:var(--text);line-height:1;margin-bottom:6px}
+.tier-card.recommended .tier-price-main{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.3)}
+.tier-price-period{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);letter-spacing:1px;margin-left:6px;font-weight:400}
+.tier-card.recommended .tier-price-period{color:var(--muted2)}
+.tier-price-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.tier-features{display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
+.tier-card:not(.recommended) .tier-features{min-height:340px}
+.tier-feature{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--text);line-height:1.5}
+.tier-check{color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px;font-size:13px}
+.tier-btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:auto}
+.tier-btn.primary{background:var(--accent);color:var(--bg);box-shadow:0 6px 24px rgba(232,255,61,0.25)}
+.tier-btn.primary:hover{background:var(--accent-pressed);transform:translateY(-2px);box-shadow:0 12px 36px rgba(232,255,61,0.4)}
+.tier-btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.tier-btn.secondary:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,255,61,0.04)}
+
+/* ── OBJECTIONS ── */
+.objection-cards{display:flex;flex-direction:column;gap:16px;margin-top:48px}
+.objection-cards .card{padding:30px 36px 32px;background:linear-gradient(180deg,#121212,#0e0e0e);border-color:var(--border);position:relative}
+.objection-cards .card::after{content:"";position:absolute;left:36px;top:74px;bottom:30px;width:1px;background:linear-gradient(to bottom,var(--border2),transparent);pointer-events:none}
+.obj-q{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--accent);margin-bottom:14px;line-height:1.2;position:relative;padding-left:32px}
+.obj-q::before{content:"Q";position:absolute;left:0;top:1px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--bg);background:var(--accent);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+.obj-a{font-size:15px;color:var(--muted2);line-height:1.75;position:relative;padding-left:32px}
+.obj-a::before{content:"A";position:absolute;left:0;top:2px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--muted2);background:transparent;border:1px solid var(--border2);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+
+/* ── FINAL CTA ── */
+.final-cta{
+  background:
+    radial-gradient(ellipse at center top,rgba(232,255,61,0.07),transparent 60%),
+    var(--bg);
+  padding:140px 24px 120px;position:relative;
+}
+.final-cta h2{text-align:center}
+.final-cta-body{font-size:17px;color:var(--muted2);margin:24px auto 40px;line-height:1.7}
+
+/* ── FOOTER ── */
+.footer{padding:64px 28px 40px;border-top:1px solid var(--border);background:#070707;position:relative}
+.footer::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:300px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.footer-inner{max-width:1140px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap}
+.footer-brand{display:flex;flex-direction:column;gap:6px}
+.footer-wordmark{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:6px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.3);line-height:1}
+.footer-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.footer-right{display:flex;gap:28px;align-items:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.footer-link{color:var(--muted);text-decoration:none;transition:color .15s;position:relative}
+.footer-link:hover{color:var(--accent)}
+.footer-bottom{max-width:1140px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#444;text-align:center}
+
+/* ── REVEAL ANIMATION ── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+.reveal-stagger > *{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal-stagger.in > *{opacity:1;transform:translateY(0)}
+.reveal-stagger.in > *:nth-child(1){transition-delay:.05s}
+.reveal-stagger.in > *:nth-child(2){transition-delay:.15s}
+.reveal-stagger.in > *:nth-child(3){transition-delay:.25s}
+.reveal-stagger.in > *:nth-child(4){transition-delay:.35s}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px){
+  .tier-cards{grid-template-columns:1fr;gap:24px}
+  .tier-card.recommended{transform:none;order:-1}
+  .tier-card.recommended:hover{transform:translateY(-4px)}
+}
+@media (max-width: 720px){
+  .nav{padding:0 12px;height:56px;gap:8px}
+  .nav-logo-sub{display:none}
+  .nav-logo-name{font-size:20px;letter-spacing:3px}
+  .nav-right{gap:6px}
+  .currency-select{padding:6px 6px;font-size:10px;max-width:96px;text-overflow:ellipsis}
+  #langBtn{padding:6px 8px !important;font-size:14px !important}
+  .nav-cta{padding:8px 11px;font-size:9.5px;letter-spacing:1.2px;white-space:nowrap}
+  .section{padding:72px 16px}
+  .hero{padding:110px 16px 70px}
+  .hero h1{font-size:clamp(36px,10vw,56px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto}
+  .hero-sub{font-size:15px;padding:0 4px}
+  .hero-eyebrow{font-size:10px;letter-spacing:2px;padding:7px 12px}
+  .hero-trust{font-size:10px;letter-spacing:1.5px}
+  h2{font-size:clamp(34px,8.5vw,48px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word}
+  .grid-2{grid-template-columns:1fr;gap:14px;margin-top:32px}
+  .card{padding:24px 20px}
+  .pt-bar{padding:56px 16px}
+  .pt-bar-line1{font-size:clamp(26px,6.5vw,38px);letter-spacing:0.5px}
+  .pt-bar-line2{font-size:15px}
+  .auth-wrap{max-width:100%;padding:0 4px}
+  .auth-card{padding:22px 18px;border-radius:14px}
+  .field-input{font-size:16px}
+  .objection-cards .card{padding:24px 22px}
+  .objection-cards .card::after{left:22px;top:64px;bottom:24px}
+  .obj-q{font-size:20px;padding-left:28px}
+  .obj-a{padding-left:28px;font-size:14px}
+  .tier-card{padding:30px 22px}
+  .tier-name{font-size:28px}
+  .tier-price-main{font-size:42px}
+  .tier-card:not(.recommended) .tier-features{min-height:0}
+  .footer{padding:48px 18px 32px}
+  .footer-inner{flex-direction:column;align-items:center;text-align:center;gap:24px}
+  .footer-right{gap:18px;flex-wrap:wrap;justify-content:center}
+  .footer-wordmark{font-size:28px;letter-spacing:5px}
+  .section-divider::after{width:5px;height:5px}
+}
+@media (max-width: 380px){
+  .nav-logo-name{font-size:18px;letter-spacing:2.5px}
+  .currency-select{font-size:9px;padding:5px;max-width:96px}
+  .nav-cta{padding:7px 8px}
+  .hero h1{font-size:clamp(32px,10vw,48px)}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">
+    <span class="nav-logo-name">FORGE</span>
+    <span class="nav-logo-sub">AI Performance Coach</span>
+  </div>
+  <div class="nav-right">
+    <select class="currency-select" id="currencySelect" onchange="setCurrency(this.value)">
+      <option value="CHF">CHF — Switzerland</option>
+      <option value="GBP">GBP — United Kingdom</option>
+      <option value="EUR">EUR — Europe</option>
+      <option value="USD">USD — United States</option>
+    </select>
+    <!-- Language selector -->
+    <button id="langBtn" onclick="toggleLangDrawer()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:16px;color:var(--text);line-height:1;transition:all .15s">🇬🇧</button>
+    <button class="nav-cta" onclick="scrollToAuth()" data-i18n="nav_trial_btn">Start free trial</button>
+  </div>
+</nav>
+
+<!-- LANG DRAWER -->
+<div id="langDrawer" class="lang-drawer">
+  <div class="lang-option" onclick="selectLang('en')">🇬🇧 English</div>
+  <div class="lang-option" onclick="selectLang('es')">🇪🇸 Español</div>
+  <div class="lang-option" onclick="selectLang('fr')">🇫🇷 Français</div>
+  <div class="lang-option" onclick="selectLang('de')">🇩🇪 Deutsch</div>
+  <div class="lang-option" onclick="selectLang('it')">🇮🇹 Italiano</div>
+  <div class="lang-option" onclick="selectLang('pt')">🇧🇷 Português</div>
+  <div class="lang-option" onclick="selectLang('nl')">🇳🇱 Nederlands</div>
+  <div class="lang-option" onclick="selectLang('uk')">🇺🇦 Українська</div>
+  <div class="lang-option" onclick="selectLang('fi')">🇫🇮 Suomi</div>
+  <div class="lang-option" onclick="selectLang('ar')">🇸🇦 العربية</div>
+  <div class="lang-option" onclick="selectLang('zh')">🇨🇳 中文</div>
+  <div class="lang-option" onclick="selectLang('ja')">🇯🇵 日本語</div>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-eyebrow reveal" data-i18n="hero_eyebrow">AI Performance Coach</div>
+  <h1 class="reveal" data-i18n="hero_h1">You're at the gym.<br>You're making it up as you go.</h1>
+  <p class="hero-sub reveal" data-i18n="hero_sub">FORGE builds your programme, watches your progress, and adapts as your data grows. An AI coach that actually coaches. Built in under 2 minutes.</p>
+  <div class="hero-trust reveal" data-i18n="hero_trust">7-day free trial · Cancel anytime · 30-day money back</div>
+
+  <div class="auth-wrap reveal" id="hero-auth">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-signup-hero" data-i18n="auth_tab_signup" onclick="switchTab('hero','signup')">Create account</div>
+        <div class="auth-tab" id="tab-signin-hero" data-i18n="auth_tab_signin" onclick="switchTab('hero','signin')">Sign in</div>
+      </div>
+      <!-- SIGNUP -->
+      <div id="form-signup-hero">
+        <div class="field-group"><div class="field-label">Full Name</div><input class="field-input" type="text" id="hero-name" placeholder="Your name"></div>
+        <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
+        <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
+        <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="hero-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="auth-error" id="hero-signup-error"></div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
+        <div class="auth-note">7 days free. Card required, charged only after your trial ends.</div>
+      </div>
+      <!-- SIGNIN -->
+      <div id="form-signin-hero" style="display:none">
+        <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="hero-signin-email" placeholder="your@email.com"></div>
+        <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-signin-password',this)" type="button">👁</button></div></div>
+        <div class="auth-error" id="hero-signin-error"></div>
+        <button class="auth-btn" onclick="doSignin('hero')">Sign in</button>
+        <div class="auth-note">No account yet? <a onclick="switchTab('hero','signup')">Start your free trial</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- PROBLEM -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal" data-i18n="prob_label">The problem</div>
+    <h2 class="reveal" data-i18n="prob_h2">You're putting in the work.<br>You're just not seeing the results.</h2>
+    <p class="section-body reveal">Every app gives you the same plan. It doesn't know your sport. It doesn't ask about your schedule. It doesn't know you had a bad week or that your shoulder's been playing up. You follow it for two weeks and quit — not because you lack discipline, but because it was never built for you. Because it wasn't.</p>
+    <div class="grid-2 reveal-stagger">
+      <div class="card"><p class="card-a">"I go to the gym and follow the same routine I made up two years ago."</p></div>
+      <div class="card"><p class="card-a">"Three apps. Three generic programmes. Zero real results."</p></div>
+      <div class="card"><p class="card-a">"A PT would be great. I just can't justify the cost per session."</p></div>
+      <div class="card"><p class="card-a">"I need something that works around my sport, not against it."</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- WHAT FORGE DOES -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal">What FORGE does</div>
+    <h2 class="reveal">A coach that coaches.<br>Not just a plan that sits there.</h2>
+    <p class="section-body reveal">Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what a generic algorithm guessed about you at sign-up.</p>
+    <div class="grid-2 reveal-stagger">
+      <div class="card"><div class="card-title">Your coach reviews every session</div><div class="card-body">After every workout, FORGE logs what happened and updates what comes next. Weekly AI performance review tells you exactly what to change — and why. Your data. Your programme. Your next move.</div></div>
+      <div class="card"><div class="card-title">Built around your life, not someone else's</div><div class="card-body">Your sport. Your schedule. Your equipment. Your injury history. FORGE asks the questions a real coach would ask before it builds anything. Most apps skip all of that.</div></div>
+      <div class="card"><div class="card-title">Nutrition that knows when you train</div><div class="card-body">Your nutrition plan is built alongside your programme — not bolted on after. It knows your training days, your calorie targets, and what your body needs before and after a session.</div></div>
+      <div class="card"><div class="card-title">Catches overtraining before you do</div><div class="card-body">Deload detection built in. FORGE notices when the data says you need to back off — before your body forces you to. That's not a feature most apps have. That's what a good coach does.</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- TESTIMONIALS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal">What people are saying</div>
+    <h2 class="reveal">Real users. Real results.</h2>
+    <p class="section-body reveal" style="margin-bottom:32px">Early access members. Training with FORGE from day one.</p>
+    <div class="grid-2 reveal-stagger" id="testimonialGrid">
+      <div class="card"><p class="testimonial-quote">"Built me a full programme in under 2 minutes. I've tried four other apps. This is the first one that felt like it actually knew what I needed."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/jm.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">James M.</div><div class="attr-ctx">Training for football season</div></div></div></div>
+      <div class="card"><p class="testimonial-quote">"The AI checked in after my first session and already adjusted my plan. I've never had an app do that. It actually feels like someone's watching your progress."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/sr.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Sophie R.</div><div class="attr-ctx">Building around marathon training</div></div></div></div>
+      <div class="card"><p class="testimonial-quote">"I was sceptical about AI coaching. Ten days in and my lifts are already progressing in a way they weren't after three months of doing it myself."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/dk.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Daniel K.</div><div class="attr-ctx">Intermediate lifter, hypertrophy goal</div></div></div></div>
+      <div class="card"><p class="testimonial-quote">"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/al.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Anya L.</div><div class="attr-ctx">Fitness and body composition</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PT ANCHOR BAR -->
+<div class="pt-bar">
+  <div class="pt-bar-line1 reveal">One PT session costs more than <span class="pt-highlight">14 months</span> of FORGE Steel annual.</div>
+  <div class="pt-bar-line2 reveal">Sixty minutes of a trainer's time. Or fourteen months of an AI coach that's online at 2am.</div>
+</div>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-inner">
+    <div class="section-label reveal" style="text-align:center;display:flex;justify-content:center">Pricing</div>
+    <h2 class="reveal" style="text-align:center">Choose your level.</h2>
+    <div class="pricing-meta reveal">
+      <div class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
+      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-chf-note">Transactions processed in CHF</span></div>
+    </div>
+    <div class="billing-toggle reveal">
+      <span class="toggle-label" id="lbl-monthly">Monthly</span>
+      <div class="toggle-pill" id="billingToggle" onclick="toggleBilling()"><div class="toggle-knob"></div></div>
+      <span class="toggle-label active" id="lbl-annual">Annual <span class="save-badge">2 months free</span></span>
+    </div>
+    <div class="tier-cards reveal-stagger">
+      <!-- IRON -->
+      <div class="tier-card">
+        <div class="tier-name">⚙️ Iron</div>
+        <div class="tier-tagline">Start training with a real plan.</div>
+        <div class="tier-price-main" id="iron-price">CHF 6.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="iron-note">billed CHF 83.88/year</div>
+        <div class="tier-features" id="iron-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>AI fitness agent — 20 messages/month</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>AI-generated workout programme</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>AI-generated nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Workout logging (per-set)</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Streak tracking &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Personal records detection</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>5 themes · 12 languages</span></div>
+        </div>
+        <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+      <!-- STEEL -->
+      <div class="tier-card recommended">
+        <div class="tier-badge">RECOMMENDED</div>
+        <div class="tier-name">🔩 Steel</div>
+        <div class="tier-tagline">Full coaching. No PT required.</div>
+        <div class="tier-price-main" id="steel-price">CHF 9.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="steel-note">billed CHF 119.88/year</div>
+        <div class="tier-features" id="steel-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Iron</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Unlimited AI fitness agent messages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Weekly AI performance review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Post-workout AI check-in</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Progressive overload tracker</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Body metrics &amp; AI insights</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Plan editing via AI chat</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Deload detection &amp; alerts</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Weekly shopping list</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Multiple saved programmes</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Workout history export</span></div>
+        </div>
+        <button class="tier-btn primary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+      <!-- FORGE -->
+      <div class="tier-card">
+        <div class="tier-name">🔥 Forge</div>
+        <div class="tier-tagline">Everything. Monthly AI performance review included.</div>
+        <div class="tier-price-main" id="forge-price">CHF 13.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="forge-note">billed CHF 167.88/year</div>
+        <div class="tier-features" id="forge-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Steel</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Monthly AI deep-dive coaching review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Exercise video demonstrations</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Nutrition barcode scanner <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px">SOON</span></span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Wearable sync — Apple / Garmin <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px">SOON</span></span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Priority support</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Early access to new features</span></div>
+        </div>
+        <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- OBJECTIONS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal">Common questions</div>
+    <h2 class="reveal">The things people ask<br>before they sign up.</h2>
+    <div class="objection-cards reveal-stagger">
+      <div class="card"><div class="obj-q">"I've been burned by personalised apps before. They all give everyone the same thing."</div><div class="obj-a">That's a fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE runs on a conversational AI that reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You'll feel the difference before you've finished setting it up.</div></div>
+      <div class="card"><div class="obj-q">"Is AI coaching actually as good as a real trainer?"</div><div class="obj-a">That's the wrong comparison for most people. The real question is: is it better than nothing? Better than a generic app you used for two weeks and abandoned? Better than showing up to the gym and guessing? For all of those: yes. Most people aren't choosing between FORGE and a £200/month coach. They're choosing between FORGE and going it alone. For that comparison, it's not close.</div></div>
+      <div class="card"><div class="obj-q">"I'll sign up and stop using it after two weeks."</div><div class="obj-a">That's what apps deserve when they hand you a plan and disappear. FORGE checks in after every session, sends a weekly performance review, and flags when you're pushing too hard before you burn out. It's designed to stay in it with you — not just show up on your phone and hope you remember it's there. Try it free for 7 days. If it doesn't hold you, cancel. No questions.</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- FINAL CTA -->
+<section class="section final-cta" id="final-cta">
+  <div class="section-inner" style="max-width:560px;margin:0 auto;text-align:center">
+    <h2 class="reveal">Stop making it up as you go.</h2>
+    <div class="final-cta-body reveal">Your programme is built in under 2 minutes.<br>Your AI coach is online right now.</div>
+    <div class="auth-wrap reveal" id="final-auth">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-signup-final" data-i18n="auth_tab_signup" onclick="switchTab('final','signup')">Create account</div>
+          <div class="auth-tab" id="tab-signin-final" data-i18n="auth_tab_signin" onclick="switchTab('final','signin')">Sign in</div>
+        </div>
+        <div id="form-signup-final">
+          <div class="field-group"><div class="field-label">Full Name</div><input class="field-input" type="text" id="final-name" placeholder="Your name"></div>
+          <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
+          <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="final-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+          <div class="auth-error" id="final-signup-error"></div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
+          <div class="auth-note">7 days free. Card required, charged only after your trial ends.</div>
+        </div>
+        <div id="form-signin-final" style="display:none">
+          <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="final-signin-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-signin-password',this)" type="button">👁</button></div></div>
+          <div class="auth-error" id="final-signin-error"></div>
+          <button class="auth-btn" onclick="doSignin('final')">Sign in</button>
+          <div class="auth-note">No account yet? <a onclick="switchTab('final','signup')">Start your free trial</a></div>
+        </div>
+      </div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:#444;letter-spacing:0.5px;margin-top:16px">No commitment until after your trial · Cancel anytime · 30-day money back</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-wordmark">FORGE</div>
+      <div class="footer-tag">AI Performance Coach</div>
+    </div>
+    <div class="footer-right">
+      <a class="footer-link" href="#">Privacy</a>
+      <a class="footer-link" href="#">Terms</a>
+      <a class="footer-link" href="mailto:hello@klemforge.com">Contact</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© FORGE · Built for athletes who don't make it up as they go.</div>
+</footer>
+
+<script>
+const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+
+// ── CURRENCY ──────────────────────────────────────────
+const PRICES = {
+  CHF: { sym:'CHF ', iron:{mo:9.99,ann:6.99,billed:83.88}, steel:{mo:13.99,ann:9.99,billed:119.88}, forge:{mo:19.99,ann:13.99,billed:167.88} },
+  GBP: { sym:'£',   iron:{mo:8.99,ann:5.99,billed:71.88},  steel:{mo:11.99,ann:8.99,billed:107.88}, forge:{mo:17.99,ann:12.99,billed:155.88} },
+  EUR: { sym:'€',   iron:{mo:9.49,ann:6.49,billed:77.88},  steel:{mo:12.99,ann:8.99,billed:107.88}, forge:{mo:18.99,ann:13.49,billed:161.88} },
+  USD: { sym:'$',   iron:{mo:9.99,ann:6.99,billed:83.88},  steel:{mo:13.99,ann:9.99,billed:119.88}, forge:{mo:19.99,ann:13.99,billed:167.88} },
+};
+
+let currency = 'CHF';
+let isAnnual = true;
+
+function setCurrency(c) {
+  currency = c;
+  document.getElementById('currencyLabel').textContent = c;
+  updatePrices();
+}
+
+function toggleBilling() {
+  isAnnual = !isAnnual;
+  const pill = document.getElementById('billingToggle');
+  pill.classList.toggle('monthly', !isAnnual);
+  document.getElementById('lbl-monthly').classList.toggle('active', !isAnnual);
+  document.getElementById('lbl-annual').classList.toggle('active', isAnnual);
+  updatePrices();
+}
+
+function fmt(sym, n) { return sym + n.toFixed(2).replace('.00',''); }
+
+function updatePrices() {
+  const p = PRICES[currency];
+  const s = p.sym;
+  ['iron','steel','forge'].forEach(tier => {
+    const t = p[tier];
+    const priceEl = document.getElementById(tier + '-price');
+    const noteEl = document.getElementById(tier + '-note');
+    if (isAnnual) {
+      priceEl.innerHTML = fmt(s, t.ann) + '<span class="tier-price-period">/mo</span>';
+      noteEl.textContent = 'billed ' + fmt(s, t.billed) + '/year';
+    } else {
+      priceEl.innerHTML = fmt(s, t.mo) + '<span class="tier-price-period">/mo</span>';
+      noteEl.textContent = fmt(s, t.ann) + '/mo if annual';
+    }
+  });
+}
+
+// ── LANGUAGE ─────────────────────────────────────────
+const LANG_FLAGS = { en:'🇬🇧',es:'🇪🇸',fr:'🇫🇷',de:'🇩🇪',it:'🇮🇹',pt:'🇧🇷',nl:'🇳🇱',uk:'🇺🇦',fi:'🇫🇮',ar:'🇸🇦',zh:'🇨🇳',ja:'🇯🇵' };
+let currentLang = localStorage.getItem('forge_language') || 'en';
+
+function toggleLangDrawer() {
+  document.getElementById('langDrawer').classList.toggle('open');
+}
+
+function selectLang(code) {
+  currentLang = code;
+  localStorage.setItem('forge_language', code);
+  const flag = LANG_FLAGS[code] || '🇬🇧';
+  document.getElementById('langBtn').textContent = flag;
+  document.getElementById('langDrawer').classList.remove('open');
+  applyLandingLanguage(code);
+  const LANG_NAMES = { en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',pt:'Português',nl:'Nederlands',uk:'Українська',fi:'Suomi',ar:'العربية',zh:'中文',ja:'日本語' };
+  const s = LANDING_STRINGS[code] || LANDING_STRINGS.en;
+  showLandingToast(flag + ' ' + (LANG_NAMES[code] || code) + ' — ' + (s.lang_saved || 'language saved'));
+}
+
+function showLandingToast(msg) {
+  const existing = document.getElementById('landing-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'landing-toast';
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #e8ff3d;color:#f0f0f0;font-family:\'DM Mono\',monospace;font-size:12px;padding:12px 20px;border-radius:8px;z-index:9999;white-space:nowrap;letter-spacing:0.5px;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+document.addEventListener('click', e => {
+  const drawer = document.getElementById('langDrawer');
+  const btn = document.getElementById('langBtn');
+  if (!drawer.contains(e.target) && e.target !== btn) drawer.classList.remove('open');
+});
+
+// Apply saved language flag on load
+document.getElementById('langBtn').textContent = LANG_FLAGS[currentLang] || '🇬🇧';
+
+// ── AUTH ──────────────────────────────────────────────
+function switchTab(instance, tab) {
+  const isSignup = tab === 'signup';
+  document.getElementById('tab-signup-' + instance).classList.toggle('active', isSignup);
+  document.getElementById('tab-signin-' + instance).classList.toggle('active', !isSignup);
+  document.getElementById('form-signup-' + instance).style.display = isSignup ? 'block' : 'none';
+  document.getElementById('form-signin-' + instance).style.display = isSignup ? 'none' : 'block';
+}
+
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+}
+
+async function doSignup(instance) {
+  const name = document.getElementById(instance + '-name').value.trim();
+  const email = document.getElementById(instance + '-email').value.trim();
+  const password = document.getElementById(instance + '-password').value;
+  const code = document.getElementById(instance + '-code')?.value.trim() || '';
+  const errId = instance + '-signup-error';
+
+  if (!name) return showError(errId, 'Please enter your name.');
+  if (!email) return showError(errId, 'Please enter your email.');
+  if (!password || password.length < 6) return showError(errId, 'Password must be at least 6 characters.');
+  showError(errId, '');
+
+  const btn = document.querySelector('#form-signup-' + instance + ' .auth-btn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, code, language: currentLang })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Start your free trial';
+
+    if (!res.ok || data.error) return showError(errId, data.error || 'Sign up failed. Please try again.');
+
+    if (data.requires_confirmation) {
+      // Show confirmation message
+      const card = btn.closest('.auth-card');
+      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + email + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
+    } else {
+      window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Start your free trial';
+    showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+async function doSignin(instance) {
+  const email = document.getElementById(instance + '-signin-email').value.trim();
+  const password = document.getElementById(instance + '-signin-password').value;
+  const errId = instance + '-signin-error';
+
+  if (!email || !password) return showError(errId, 'Please fill in all fields.');
+  showError(errId, '');
+
+  const btn = document.querySelector('#form-signin-' + instance + ' .auth-btn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Sign in';
+
+    if (!res.ok || data.error) return showError(errId, data.error || 'Invalid email or password.');
+
+    // Store session token and redirect to app
+    if (data.access_token) {
+      localStorage.setItem('forge_access_token', data.access_token);
+      localStorage.setItem('forge_refresh_token', data.refresh_token || '');
+    }
+    window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Sign in';
+    showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+// ── SCROLL TO AUTH ────────────────────────────────────
+function scrollToAuth() {
+  document.getElementById('hero-auth').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => document.getElementById('hero-name')?.focus(), 600);
+}
+
+// ── HANDLE URL PARAMS (email confirmation) ─────────────
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('confirmed') === 'true') {
+  // Switch to sign in and show message
+  switchTab('hero', 'signin');
+  setTimeout(() => showError('hero-signin-error', ''), 0);
+}
+
+// Check for ref code in URL
+const refCode = urlParams.get('ref');
+if (refCode) {
+  document.getElementById('hero-code').value = refCode;
+  document.getElementById('final-code').value = refCode;
+}
+
+// ── INIT ──────────────────────────────────────────────
+updatePrices();
+
+// ── SCROLL REVEAL (additive, design-only) ──────────────
+(function(){
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal,.reveal-stagger').forEach(el => el.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal,.reveal-stagger').forEach(el => io.observe(el));
+  // Hero items visible immediately
+  document.querySelectorAll('.hero .reveal').forEach(el => el.classList.add('in'));
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// LANDING PAGE TRANSLATION SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+
+const LANDING_STRINGS = {
+  en: {
+    hero_eyebrow:'AI Performance Coach',
+    hero_h1:"You're at the gym.<br>You're making it up as you go.",
+    hero_sub:"FORGE builds your programme, watches your progress, and adapts as your data grows. An AI coach that actually coaches. Built in under 2 minutes.",
+    hero_trust:"7-day free trial · Cancel anytime · 30-day money back",
+    nav_trial:"Start free trial",
+    auth_tab_signup:"Create account", auth_tab_signin:"Sign in",
+    auth_name:"Full Name", auth_email:"Email", auth_password:"Password",
+    auth_code_placeholder:"Have a code? Enter it here",
+    auth_tab_note:"Full access. Nothing locked. No commitment until your trial ends.",
+    auth_btn:"Start your free trial",
+    auth_note_below:"7 days free. Card required, charged only after your trial ends.",
+    auth_no_account:"No account yet?", auth_start_trial:"Start your free trial",
+    auth_signin_btn:"Sign in", auth_name_ph:"Your name", auth_email_ph:"your@email.com",
+    auth_pass_ph:"Min. 6 characters", auth_pass_ph2:"Your password",
+    prob_label:"The problem",
+    prob_h2:"You're putting in the work. You're just not seeing the results.",
+    prob_body:"Every app gives you the same plan. It doesn't know your sport. It doesn't ask about your schedule. It doesn't know you had a bad week or that your shoulder's been playing up. You follow it for two weeks and quit — not because you lack discipline, but because it was never built for you. Because it wasn't.",
+    pain_1:'"I go to the gym and follow the same routine I made up two years ago."',
+    pain_2:'"Three apps. Three generic programmes. Zero real results."',
+    pain_3:'"A PT would be great. I just can\'t justify the cost per session."',
+    pain_4:'"I need something that works around my sport, not against it."',
+    feat_label:"What FORGE does",
+    feat_h2:"A coach that coaches. Not just a plan that sits there.",
+    feat_body:"Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what a generic algorithm guessed about you at sign-up.",
+    feat_1_title:"Your coach reviews every session",
+    feat_1_body:"After every workout, FORGE logs what happened and updates what comes next. Weekly AI performance review tells you exactly what to change — and why. Your data. Your programme. Your next move.",
+    feat_2_title:"Built around your life, not someone else's",
+    feat_2_body:"Your sport. Your schedule. Your equipment. Your injury history. FORGE asks the questions a real coach would ask before it builds anything. Most apps skip all of that.",
+    feat_3_title:"Nutrition that knows when you train",
+    feat_3_body:"Your nutrition plan is built alongside your programme — not bolted on after. It knows your training days, your calorie targets, and what your body needs before and after a session.",
+    feat_4_title:"Catches overtraining before you do",
+    feat_4_body:"Deload detection built in. FORGE notices when the data says you need to back off — before your body forces you to. That's not a feature most apps have. That's what a good coach does.",
+    test_label:"What people are saying", test_h2:"Real users. Real results.",
+    test_body:"Early access members. Training with FORGE from day one.",
+    test_1:'"Built me a full programme in under 2 minutes. I\'ve tried four other apps. This is the first one that felt like it actually knew what I needed."',
+    test_1_ctx:"Training for football season",
+    test_2:'"The AI checked in after my first session and already adjusted my plan. I\'ve never had an app do that. It actually feels like someone\'s watching your progress."',
+    test_2_ctx:"Building around marathon training",
+    test_3:'"I was sceptical about AI coaching. Ten days in and my lifts are already progressing in a way they weren\'t after three months of doing it myself."',
+    test_3_ctx:"Intermediate lifter, hypertrophy goal",
+    test_4:'"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."',
+    test_4_ctx:"Fitness and body composition",
+    pt_line1:"One PT session costs more than 14 months of FORGE Steel annual.",
+    pt_line2:"Sixty minutes of a trainer's time. Or fourteen months of an AI coach that's online at 2am.",
+    price_label:"Pricing", price_h2:"Choose your level.",
+    price_sub:"Start free for 7 days. No commitment until you're ready.",
+    price_iron_tag:"Start training with a real plan.",
+    price_steel_tag:"Full coaching. No PT required.",
+    price_forge_tag:"Everything. Monthly AI performance review included.",
+    price_btn:"Start free trial", price_recommended:"RECOMMENDED",
+    billing_monthly:"Monthly", billing_annual:"Annual",
+    showing_prices:"Showing prices in", change_currency:"change currency",
+    currency_chf_note:"Transactions processed in CHF",
+    feat_iron_1:"AI fitness agent — 20 messages/month",
+    feat_iron_2:"AI-generated workout programme",
+    feat_iron_3:"AI-generated nutrition plan",
+    feat_iron_4:"Workout logging (per-set)",
+    feat_iron_5:"Streak tracking & badges",
+    feat_iron_6:"Personal records detection",
+    feat_iron_7:"5 themes · 12 languages",
+    feat_steel_0:"Everything in Iron",
+    feat_steel_1:"Unlimited AI fitness agent messages",
+    feat_steel_2:"Weekly AI performance review",
+    feat_steel_3:"Post-workout AI check-in",
+    feat_steel_4:"Progressive overload tracker",
+    feat_steel_5:"Body metrics & AI insights",
+    feat_steel_6:"Plan editing via AI chat",
+    feat_steel_7:"Deload detection & alerts",
+    feat_steel_8:"Weekly shopping list",
+    feat_steel_9:"Multiple saved programmes",
+    feat_steel_10:"Workout history export",
+    feat_forge_0:"Everything in Steel",
+    feat_forge_1:"Monthly AI deep-dive coaching review",
+    feat_forge_2:"Exercise video demonstrations",
+    feat_forge_3:"Nutrition barcode scanner",
+    feat_forge_4:"Wearable sync — Apple / Garmin",
+    feat_forge_5:"Priority support",
+    feat_forge_6:"Early access to new features",
+    obj_label:"Common questions",
+    obj_h2:"The things people ask before they sign up.",
+    obj_1_q:'"I\'ve been burned by personalised apps before. They all give everyone the same thing."',
+    obj_1_a:'That\'s a fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE runs on a conversational AI that reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You\'ll feel the difference before you\'ve finished setting it up.',
+    obj_2_q:'"Is AI coaching actually as good as a real trainer?"',
+    obj_2_a:"That's the wrong comparison for most people. The real question is: is it better than nothing? Better than a generic app you used for two weeks and abandoned? Better than showing up to the gym and guessing? For all of those: yes. Most people aren't choosing between FORGE and a £200/month coach. They're choosing between FORGE and going it alone. For that comparison, it's not close.",
+    obj_3_q:'"I\'ll sign up and stop using it after two weeks."',
+    obj_3_a:"That's what apps deserve when they hand you a plan and disappear. FORGE checks in after every session, sends a weekly performance review, and flags when you're pushing too hard before you burn out. It's designed to stay in it with you — not just show up on your phone and hope you remember it's there. Try it free for 7 days. If it doesn't hold you, cancel. No questions.",
+    final_h2:"Stop making it up as you go.",
+    final_body:"Your programme is built in under 2 minutes.<br>Your AI coach is online right now.",
+    final_trust:"No commitment until after your trial · Cancel anytime · 30-day money back",
+    footer_brand:"FORGE · AI Performance Coach",
+    footer_privacy:"Privacy", footer_terms:"Terms", footer_contact:"Contact",
+    lang_saved:"language saved. Your app will open in this language.",
+  },
+  es: {
+    hero_eyebrow:'Entrenador de Rendimiento IA',
+    hero_h1:"Estás en el gimnasio.<br>Y te lo estás inventando sobre la marcha.",
+    hero_sub:"FORGE construye tu programa, sigue tu progreso y se adapta a medida que crecen tus datos. Un entrenador de IA que entrena de verdad. Listo en menos de 2 minutos.",
+    hero_trust:"7 días gratis · Cancela cuando quieras · 30 días de garantía",
+    nav_trial:"Prueba gratuita",
+    auth_tab_signup:"Crear cuenta", auth_tab_signin:"Iniciar sesión",
+    auth_name:"Nombre completo", auth_email:"Email", auth_password:"Contraseña",
+    auth_code_placeholder:"¿Tienes un código? Introdúcelo aquí",
+    auth_tab_note:"Acceso completo. Sin restricciones. Sin compromiso hasta que termine tu prueba.",
+    auth_btn:"Empieza tu prueba gratuita",
+    auth_note_below:"7 días gratis. Se requiere tarjeta, solo se cobra al finalizar la prueba.",
+    auth_no_account:"¿Sin cuenta?", auth_start_trial:"Empieza tu prueba gratuita",
+    auth_signin_btn:"Iniciar sesión", auth_name_ph:"Tu nombre", auth_email_ph:"tu@email.com",
+    auth_pass_ph:"Mín. 6 caracteres", auth_pass_ph2:"Tu contraseña",
+    prob_label:"El problema",
+    prob_h2:"Estás dando todo. Y no ves los resultados.",
+    prob_body:"Todas las apps te dan el mismo plan. No conocen tu deporte. No preguntan por tu horario. No saben que tuviste una mala semana o que te duele el hombro. Lo sigues dos semanas y lo dejas — no por falta de disciplina, sino porque nunca fue creado para ti. Porque no lo era.",
+    pain_1:'"Voy al gimnasio y sigo la misma rutina que me inventé hace dos años."',
+    pain_2:'"Tres apps. Tres programas genéricos. Cero resultados reales."',
+    pain_3:'"Un PT estaría bien. Pero no puedo justificar el coste por sesión."',
+    pain_4:'"Necesito algo que funcione con mi deporte, no en su contra."',
+    feat_label:"Qué hace FORGE",
+    feat_h2:"Un entrenador que entrena. No solo un plan que está ahí.",
+    feat_body:"La mayoría de apps te dan un programa y desaparecen. FORGE sigue en ello contigo. La IA lee tus sesiones, sigue tu progresión y ajusta lo siguiente según lo que muestran tus datos reales.",
+    feat_1_title:"Tu entrenador revisa cada sesión",
+    feat_1_body:"Después de cada entreno, FORGE registra lo ocurrido y actualiza lo siguiente. La revisión semanal de rendimiento de IA te dice exactamente qué cambiar — y por qué.",
+    feat_2_title:"Construido alrededor de tu vida, no de la de otro",
+    feat_2_body:"Tu deporte. Tu horario. Tu equipamiento. Tu historial de lesiones. FORGE hace las preguntas que haría un entrenador real antes de construir nada.",
+    feat_3_title:"Nutrición que sabe cuándo entrenas",
+    feat_3_body:"Tu plan nutricional se construye junto a tu programa — no añadido después. Conoce tus días de entreno, tus objetivos calóricos y lo que tu cuerpo necesita.",
+    feat_4_title:"Detecta el sobreentrenamiento antes que tú",
+    feat_4_body:"Detección de descarga integrada. FORGE detecta cuando los datos dicen que necesitas bajar el ritmo — antes de que tu cuerpo te obligue a hacerlo.",
+    test_label:"Lo que dice la gente", test_h2:"Usuarios reales. Resultados reales.",
+    test_body:"Miembros de acceso anticipado. Entrenando con FORGE desde el primer día.",
+    test_1:'"Me construyó un programa completo en menos de 2 minutos. He probado cuatro apps. Esta es la primera que sentí que sabía lo que necesitaba."',
+    test_1_ctx:"Entrenando para la temporada de fútbol",
+    test_2:'"La IA revisó mi primera sesión y ya ajustó mi plan. Nunca había visto eso. Parece que alguien vigila tu progreso."',
+    test_2_ctx:"Entrenando alrededor del maratón",
+    test_3:'"Era escéptico con el coaching de IA. A los diez días mis levantamientos progresaban de una manera que no lograba en tres meses solo."',
+    test_3_ctx:"Levantador intermedio, objetivo hipertrofia",
+    test_4:'"El plan nutricional funciona alrededor de mis días de entreno. No es un plan genérico — sabe cuándo entreno y qué necesito."',
+    test_4_ctx:"Fitness y composición corporal",
+    pt_line1:"Una sesión de PT cuesta más que 14 meses de FORGE Steel anual.",
+    pt_line2:"Sesenta minutos del tiempo de un entrenador. O catorce meses de un coach de IA disponible a las 2am.",
+    price_label:"Precios", price_h2:"Elige tu nivel.",
+    price_sub:"Prueba gratis 7 días. Sin compromiso hasta que estés listo.",
+    price_iron_tag:"Empieza a entrenar con un plan real.",
+    price_steel_tag:"Coaching completo. Sin PT necesario.",
+    price_forge_tag:"Todo. Revisión mensual de rendimiento incluida.",
+    price_btn:"Prueba gratuita", price_recommended:"RECOMENDADO",
+    billing_monthly:"Mensual", billing_annual:"Anual",
+    showing_prices:"Precios en", change_currency:"cambiar moneda",
+    currency_chf_note:"Transacciones procesadas en CHF",
+    feat_iron_1:"Agente fitness IA — 20 mensajes/mes",feat_iron_2:"Programa de entrenamiento generado por IA",feat_iron_3:"Plan nutricional generado por IA",feat_iron_4:"Registro de entrenos (por serie)",feat_iron_5:"Rachas y badges",feat_iron_6:"Detección de récords personales",feat_iron_7:"5 temas · 12 idiomas",
+    feat_steel_0:"Todo lo de Iron",feat_steel_1:"Mensajes ilimitados con el agente IA",feat_steel_2:"Revisión semanal de rendimiento IA",feat_steel_3:"Check-in post-entreno IA",feat_steel_4:"Seguimiento de sobrecarga progresiva",feat_steel_5:"Métricas corporales e insights IA",feat_steel_6:"Edición del plan via chat IA",feat_steel_7:"Alertas de descarga",feat_steel_8:"Lista de compras semanal",feat_steel_9:"Múltiples programas guardados",feat_steel_10:"Exportar historial de entrenos",
+    feat_forge_0:"Todo lo de Steel",feat_forge_1:"Revisión mensual profunda IA",feat_forge_2:"Vídeos de ejercicios",feat_forge_3:"Escáner de código de barras nutricional",feat_forge_4:"Sync wearables — Apple / Garmin",feat_forge_5:"Soporte prioritario",feat_forge_6:"Acceso anticipado a nuevas funciones",
+    obj_label:"Preguntas frecuentes",
+    obj_h2:"Lo que pregunta la gente antes de registrarse.",
+    obj_1_q:'"Me han decepcionado apps personalizadas antes. Todas dan lo mismo a todos."',
+    obj_1_a:'Es una lectura justa del mercado. La mayoría de apps "personalizadas" son árboles de decisión con un nombre amigable. FORGE funciona con una IA conversacional que lee tus datos reales y construye desde ahí.',
+    obj_2_q:'"¿Es el coaching de IA tan bueno como un entrenador real?"',
+    obj_2_a:"Es la comparación equivocada para la mayoría. La pregunta real es: ¿es mejor que nada? Para eso: sí. La mayoría no elige entre FORGE y un coach de 200€/mes. Elige entre FORGE e ir solo. Para esa comparación, no hay competencia.",
+    obj_3_q:'"Me registraré y lo dejaré después de dos semanas."',
+    obj_3_a:"Es lo que merecen las apps que te dan un plan y desaparecen. FORGE hace check-in después de cada sesión, envía revisiones semanales y detecta cuando estás forzando demasiado. Pruébalo 7 días gratis. Si no te engancha, cancela.",
+    final_h2:"Deja de improvisarlo.",
+    final_body:"Tu programa está listo en menos de 2 minutos.<br>Tu entrenador IA está online ahora mismo.",
+    final_trust:"Sin compromiso hasta después de tu prueba · Cancela cuando quieras · 30 días de garantía",
+    footer_brand:"FORGE · Entrenador de Rendimiento IA",
+    footer_privacy:"Privacidad", footer_terms:"Términos", footer_contact:"Contacto",
+    lang_saved:"idioma guardado. Tu app se abrirá en este idioma.",
+  },
+  fr: {
+    hero_eyebrow:"Coach Performance IA",
+    hero_h1:"Tu es à la salle.<br>Et tu improvises.",
+    hero_sub:"FORGE construit ton programme, suit tes progrès et s'adapte à mesure que tes données augmentent. Un coach IA qui coache vraiment. Prêt en moins de 2 minutes.",
+    hero_trust:"7 jours gratuits · Annule quand tu veux · Remboursement 30 jours",
+    nav_trial:"Essai gratuit",
+    auth_tab_signup:"Créer un compte", auth_tab_signin:"Se connecter",
+    auth_name:"Nom complet", auth_email:"Email", auth_password:"Mot de passe",
+    auth_code_placeholder:"Tu as un code ? Saisis-le ici",
+    auth_tab_note:"Accès complet. Rien de verrouillé. Sans engagement jusqu'à la fin de l'essai.",
+    auth_btn:"Commencer l'essai gratuit",
+    auth_note_below:"7 jours gratuits. Carte requise, débitée uniquement après l'essai.",
+    auth_no_account:"Pas de compte ?", auth_start_trial:"Commencer l'essai gratuit",
+    auth_signin_btn:"Se connecter", auth_name_ph:"Ton prénom", auth_email_ph:"toi@email.com",
+    auth_pass_ph:"Min. 6 caractères", auth_pass_ph2:"Ton mot de passe",
+    prob_label:"Le problème",
+    prob_h2:"Tu fais des efforts. Tu ne vois pas les résultats.",
+    prob_body:"Chaque app te donne le même plan. Elle ne connaît pas ton sport. Elle ne demande pas ton planning. Elle ne sait pas que tu as eu une mauvaise semaine ou que ton épaule te fait souffrir. Tu suis deux semaines puis tu lâches — pas par manque de discipline, mais parce que ce n'était pas fait pour toi.",
+    pain_1:'"Je vais à la salle et je suis la même routine que j\'ai inventée il y a deux ans."',
+    pain_2:'"Trois apps. Trois programmes génériques. Zéro résultat réel."',
+    pain_3:'"Un coach perso, c\'est bien. Je ne peux juste pas justifier le coût."',
+    pain_4:'"J\'ai besoin de quelque chose qui s\'adapte à mon sport, pas contre lui."',
+    feat_label:"Ce que fait FORGE",
+    feat_h2:"Un coach qui coache. Pas juste un plan qui traîne là.",
+    feat_body:"La plupart des apps te donnent un programme et disparaissent. FORGE reste avec toi. L'IA lit tes séances, suit ta progression et ajuste la suite selon ce que tes données montrent vraiment.",
+    feat_1_title:"Ton coach analyse chaque séance",
+    feat_1_body:"Après chaque entraînement, FORGE enregistre ce qui s'est passé et met à jour la suite. Le bilan hebdomadaire IA te dit exactement quoi changer — et pourquoi.",
+    feat_2_title:"Construit autour de ta vie, pas de celle de quelqu'un d'autre",
+    feat_2_body:"Ton sport. Ton emploi du temps. Ton matériel. Ton historique de blessures. FORGE pose les questions qu'un vrai coach poserait avant de construire quoi que ce soit.",
+    feat_3_title:"Nutrition qui sait quand tu t'entraînes",
+    feat_3_body:"Ton plan nutritionnel est construit en même temps que ton programme. Il connaît tes jours d'entraînement, tes objectifs caloriques et ce dont ton corps a besoin.",
+    feat_4_title:"Détecte le surentraînement avant toi",
+    feat_4_body:"Détection de décharge intégrée. FORGE remarque quand les données indiquent que tu dois lever le pied — avant que ton corps t'y force.",
+    test_label:"Ce que disent les utilisateurs", test_h2:"Vrais utilisateurs. Vrais résultats.",
+    test_body:"Membres en accès anticipé. S'entraînant avec FORGE dès le premier jour.",
+    test_1:'"Il m\'a construit un programme complet en moins de 2 minutes. J\'ai essayé quatre apps. C\'est la première qui semblait vraiment me connaître."',
+    test_1_ctx:"Préparation pour la saison de foot",
+    test_2:'"L\'IA a vérifié après ma première séance et a déjà ajusté mon programme. Aucune app n\'avait fait ça. C\'est comme si quelqu\'un suivait mes progrès."',
+    test_2_ctx:"Entraînement autour du marathon",
+    test_3:'"J\'étais sceptique sur le coaching IA. Dix jours plus tard, mes soulevés progressent comme ils ne l\'avaient pas fait en trois mois."',
+    test_3_ctx:"Pratiquant intermédiaire, objectif hypertrophie",
+    test_4:'"Le plan nutritionnel fonctionne autour de mes jours d\'entraînement. Ce n\'est pas un plan générique — il sait quand je m\'entraîne."',
+    test_4_ctx:"Fitness et composition corporelle",
+    pt_line1:"Une séance de coach coûte plus que 14 mois de FORGE Steel annuel.",
+    pt_line2:"Soixante minutes du temps d'un coach. Ou quatorze mois d'un coach IA disponible à 2h du matin.",
+    price_label:"Tarifs", price_h2:"Choisis ton niveau.",
+    price_sub:"Essai gratuit 7 jours. Sans engagement jusqu'à ce que tu sois prêt.",
+    price_iron_tag:"Commence à t'entraîner avec un vrai programme.",
+    price_steel_tag:"Coaching complet. Sans coach perso.",
+    price_forge_tag:"Tout. Bilan mensuel de performance IA inclus.",
+    price_btn:"Essai gratuit", price_recommended:"RECOMMANDÉ",
+    billing_monthly:"Mensuel", billing_annual:"Annuel",
+    showing_prices:"Prix en", change_currency:"changer la devise",
+    currency_chf_note:"Transactions traitées en CHF",
+    feat_iron_1:"Agent fitness IA — 20 messages/mois",feat_iron_2:"Programme d'entraînement généré par IA",feat_iron_3:"Plan nutritionnel généré par IA",feat_iron_4:"Journal d'entraînement (par série)",feat_iron_5:"Suivi des séries et badges",feat_iron_6:"Détection des records personnels",feat_iron_7:"5 thèmes · 12 langues",
+    feat_steel_0:"Tout d'Iron",feat_steel_1:"Messages illimités avec l'agent IA",feat_steel_2:"Bilan hebdomadaire de performance IA",feat_steel_3:"Check-in post-entraînement IA",feat_steel_4:"Suivi de la surcharge progressive",feat_steel_5:"Métriques corporelles et insights IA",feat_steel_6:"Modification du plan via chat IA",feat_steel_7:"Alertes de décharge",feat_steel_8:"Liste de courses hebdomadaire",feat_steel_9:"Plusieurs programmes sauvegardés",feat_steel_10:"Export de l'historique d'entraînement",
+    feat_forge_0:"Tout de Steel",feat_forge_1:"Bilan mensuel approfondi IA",feat_forge_2:"Vidéos de démonstration des exercices",feat_forge_3:"Scanner de code-barres nutritionnel",feat_forge_4:"Sync wearables — Apple / Garmin",feat_forge_5:"Support prioritaire",feat_forge_6:"Accès anticipé aux nouvelles fonctionnalités",
+    obj_label:"Questions fréquentes",
+    obj_h2:"Ce que les gens demandent avant de s'inscrire.",
+    obj_1_q:'"J\'ai été déçu par des apps personnalisées. Elles donnent toutes la même chose."',
+    obj_1_a:"C'est une lecture juste du marché. La plupart des apps « personnalisées » sont des arbres de décision avec un nom sympathique. FORGE fonctionne avec une IA conversationnelle qui lit tes données réelles et construit à partir de là.",
+    obj_2_q:'"Le coaching IA est-il aussi bon qu\'un vrai coach ?"',
+    obj_2_a:"C'est la mauvaise comparaison pour la plupart. La vraie question : est-ce mieux que rien ? Pour ça : oui. La plupart ne choisissent pas entre FORGE et un coach à 200€/mois. Ils choisissent entre FORGE et se débrouiller seul.",
+    obj_3_q:'"Je vais m\'inscrire et arrêter après deux semaines."',
+    obj_3_a:"C'est ce que méritent les apps qui te donnent un plan et disparaissent. FORGE fait un check-in après chaque séance, envoie des bilans hebdomadaires et détecte quand tu forces trop. Essaie 7 jours gratuits. Si ça ne te retient pas, annule.",
+    final_h2:"Arrête d'improviser.",
+    final_body:"Ton programme est prêt en moins de 2 minutes.<br>Ton coach IA est en ligne maintenant.",
+    final_trust:"Sans engagement jusqu'après ton essai · Annule quand tu veux · Remboursement 30 jours",
+    footer_brand:"FORGE · Coach Performance IA",
+    footer_privacy:"Confidentialité", footer_terms:"CGU", footer_contact:"Contact",
+    lang_saved:"langue enregistrée. Ton app s'ouvrira dans cette langue.",
+  },
+  de: {
+    hero_eyebrow:"KI-Leistungscoach",
+    hero_h1:"Du bist im Gym.<br>Und improvisiertst.",
+    hero_sub:"FORGE erstellt dein Programm, verfolgt deinen Fortschritt und passt sich an deine Daten an. Ein KI-Coach, der wirklich coacht. In unter 2 Minuten fertig.",
+    hero_trust:"7 Tage kostenlos · Jederzeit kündbar · 30 Tage Geld-zurück",
+    nav_trial:"Kostenlos testen",
+    auth_tab_signup:"Konto erstellen", auth_tab_signin:"Anmelden",
+    auth_name:"Vollständiger Name", auth_email:"E-Mail", auth_password:"Passwort",
+    auth_code_placeholder:"Hast du einen Code? Hier eingeben",
+    auth_tab_note:"Voller Zugang. Nichts gesperrt. Keine Verpflichtung bis zum Testende.",
+    auth_btn:"Kostenlose Testversion starten",
+    auth_note_below:"7 Tage kostenlos. Karte erforderlich, Abbuchung nur nach dem Test.",
+    auth_no_account:"Noch kein Konto?", auth_start_trial:"Kostenlose Testversion starten",
+    auth_signin_btn:"Anmelden", auth_name_ph:"Dein Name", auth_email_ph:"du@email.com",
+    auth_pass_ph:"Min. 6 Zeichen", auth_pass_ph2:"Dein Passwort",
+    prob_label:"Das Problem",
+    prob_h2:"Du trainierst hart. Und siehst keine Ergebnisse.",
+    prob_body:"Jede App gibt dir den gleichen Plan. Sie kennt deinen Sport nicht. Fragt nicht nach deinem Zeitplan. Weiß nicht, dass du eine schlechte Woche hattest. Du folgst zwei Wochen und hörst auf — nicht wegen fehlender Disziplin, sondern weil er nie für dich gebaut wurde.",
+    pain_1:'"Ich gehe ins Gym und folge derselben Routine, die ich vor zwei Jahren erfunden habe."',
+    pain_2:'"Drei Apps. Drei generische Programme. Null echte Ergebnisse."',
+    pain_3:'"Ein PT wäre toll. Aber der Preis pro Einheit ist schwer zu rechtfertigen."',
+    pain_4:'"Ich brauche etwas, das meinen Sport unterstützt, nicht dagegen arbeitet."',
+    feat_label:"Was FORGE tut",
+    feat_h2:"Ein Coach, der coacht. Kein Plan, der nur da sitzt.",
+    feat_body:"Die meisten Apps geben dir ein Programm und verschwinden. FORGE bleibt dabei. Die KI liest deine Einheiten, verfolgt deine Progression und passt das Nächste an deine echten Daten an.",
+    feat_1_title:"Dein Coach überprüft jede Einheit",
+    feat_1_body:"Nach jedem Training protokolliert FORGE und aktualisiert das Nächste. Die wöchentliche KI-Leistungsüberprüfung sagt dir genau, was du ändern sollst — und warum.",
+    feat_2_title:"Um dein Leben gebaut, nicht das anderer",
+    feat_2_body:"Dein Sport. Dein Zeitplan. Deine Ausrüstung. Deine Verletzungshistorie. FORGE stellt die Fragen, die ein echter Coach stellen würde.",
+    feat_3_title:"Ernährung, die weiß, wann du trainierst",
+    feat_3_body:"Dein Ernährungsplan wird parallel zu deinem Programm erstellt. Er kennt deine Trainingstage und was dein Körper braucht.",
+    feat_4_title:"Erkennt Übertraining vor dir",
+    feat_4_body:"Entlastungserkennung eingebaut. FORGE erkennt, wann die Daten sagen, dass du zurückschalten musst — bevor dein Körper es erzwingt.",
+    test_label:"Was Nutzer sagen", test_h2:"Echte Nutzer. Echte Ergebnisse.",
+    test_body:"Frühzugang-Mitglieder. Trainieren mit FORGE von Tag eins.",
+    test_1:'"Hat mir in unter 2 Minuten ein vollständiges Programm erstellt. Ich habe vier Apps probiert. Diese ist die erste, die sich anfühlt, als würde sie wirklich wissen, was ich brauche."',
+    test_1_ctx:"Training für die Fußballsaison",
+    test_2:'"Die KI hat nach meiner ersten Einheit eingecheckt und meinen Plan bereits angepasst. Das hatte noch keine App getan."',
+    test_2_ctx:"Training rund um den Marathon",
+    test_3:'"Ich war skeptisch gegenüber KI-Coaching. Nach zehn Tagen verbesserten sich meine Lifte auf eine Weise, die in drei Monaten alleine nicht funktioniert hatte."',
+    test_3_ctx:"Fortgeschrittener Lifter, Hypertrophieziel",
+    test_4:'"Der Ernährungsplan funktioniert rund um meine Trainingstage. Kein generischer Plan — er weiß, wann ich trainiere."',
+    test_4_ctx:"Fitness und Körperzusammensetzung",
+    pt_line1:"Eine PT-Einheit kostet mehr als 14 Monate FORGE Steel jährlich.",
+    pt_line2:"Sechzig Minuten Trainerzeit. Oder vierzehn Monate KI-Coach, der um 2 Uhr morgens online ist.",
+    price_label:"Preise", price_h2:"Wähle dein Level.",
+    price_sub:"7 Tage kostenlos testen. Keine Verpflichtung bis du bereit bist.",
+    price_iron_tag:"Starte das Training mit einem echten Plan.",
+    price_steel_tag:"Vollständiges Coaching. Kein PT nötig.",
+    price_forge_tag:"Alles. Monatliche KI-Leistungsüberprüfung inklusive.",
+    price_btn:"Kostenlos testen", price_recommended:"EMPFOHLEN",
+    billing_monthly:"Monatlich", billing_annual:"Jährlich",
+    showing_prices:"Preise in", change_currency:"Währung ändern",
+    currency_chf_note:"Transaktionen in CHF",
+    feat_iron_1:"KI-Fitness-Agent — 20 Nachrichten/Monat",feat_iron_2:"KI-generiertes Trainingsprogramm",feat_iron_3:"KI-generierter Ernährungsplan",feat_iron_4:"Trainingsprotokoll (pro Satz)",feat_iron_5:"Streak-Tracking & Abzeichen",feat_iron_6:"Persönliche Rekorde",feat_iron_7:"5 Themes · 12 Sprachen",
+    feat_steel_0:"Alles aus Iron",feat_steel_1:"Unbegrenzte KI-Nachrichten",feat_steel_2:"Wöchentliche KI-Leistungsüberprüfung",feat_steel_3:"Post-Workout KI-Check-in",feat_steel_4:"Progressive Überlastungstracker",feat_steel_5:"Körpermetriken & KI-Einblicke",feat_steel_6:"Planbearbeitung per KI-Chat",feat_steel_7:"Entlastungsalarme",feat_steel_8:"Wöchentliche Einkaufsliste",feat_steel_9:"Mehrere gespeicherte Programme",feat_steel_10:"Trainingshistorie exportieren",
+    feat_forge_0:"Alles aus Steel",feat_forge_1:"Monatliche KI-Tiefenanalyse",feat_forge_2:"Übungsvideos",feat_forge_3:"Ernährungs-Barcode-Scanner",feat_forge_4:"Wearable-Sync — Apple / Garmin",feat_forge_5:"Prioritätssupport",feat_forge_6:"Frühzugang zu neuen Funktionen",
+    obj_label:"Häufige Fragen",
+    obj_h2:"Was die Leute fragen, bevor sie sich anmelden.",
+    obj_1_q:'"Ich wurde von personalisierten Apps enttäuscht. Alle geben jedem dasselbe."',
+    obj_1_a:'Das ist eine faire Einschätzung des Marktes. Die meisten "personalisierten" Apps sind Entscheidungsbäume mit einem freundlichen Namen. FORGE läuft auf einer konversationellen KI, die deine echten Daten liest.',
+    obj_2_q:'"Ist KI-Coaching so gut wie ein echter Trainer?"',
+    obj_2_a:"Das ist der falsche Vergleich für die meisten. Die echte Frage: Ist es besser als nichts? Dafür: ja. Die meisten wählen nicht zwischen FORGE und einem 200€/Monat-Coach. Sie wählen zwischen FORGE und alleine machen.",
+    obj_3_q:'"Ich melde mich an und höre nach zwei Wochen auf."',
+    obj_3_a:"Das verdienen Apps, die dir einen Plan geben und verschwinden. FORGE checkt nach jeder Einheit ein, sendet wöchentliche Berichte und erkennt, wenn du zu hart pushst. Probiere es 7 Tage kostenlos. Wenn es nicht hält, kündige.",
+    final_h2:"Hör auf zu improvisieren.",
+    final_body:"Dein Programm ist in unter 2 Minuten fertig.<br>Dein KI-Coach ist jetzt online.",
+    final_trust:"Keine Verpflichtung bis nach deinem Test · Jederzeit kündbar · 30 Tage Garantie",
+    footer_brand:"FORGE · KI-Leistungscoach",
+    footer_privacy:"Datenschutz", footer_terms:"AGB", footer_contact:"Kontakt",
+    lang_saved:"Sprache gespeichert. Deine App öffnet sich in dieser Sprache.",
+  },
+};
+
+// For remaining languages (it, pt, nl, uk, fi, ar, zh, ja) — fall back to English
+// They get translated in the app itself. Landing page covers EN/ES/FR/DE fully.
+['it','pt','nl','uk','fi','ar','zh','ja'].forEach(code => {
+  LANDING_STRINGS[code] = LANDING_STRINGS.en;
+});
+
+function applyLandingLanguage(code) {
+  const s = LANDING_STRINGS[code] || LANDING_STRINGS.en;
+
+  function setText(sel, key, html) {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    if (html) el.innerHTML = s[key] || '';
+    else el.textContent = s[key] || '';
+  }
+  function setAll(sel, keys) {
+    const els = document.querySelectorAll(sel);
+    keys.forEach((k, i) => { if (els[i] && s[k]) els[i].innerHTML = s[k]; });
+  }
+  function setPlaceholder(id, key) {
+    const el = document.getElementById(id);
+    if (el && s[key]) el.placeholder = s[key];
+  }
+
+  // Nav
+  document.querySelectorAll('[data-i18n="nav_trial_btn"]').forEach(el => el.textContent = s.nav_trial || s.nav_trial_btn || 'Start free trial');
+
+  // Hero
+  setText('.hero-eyebrow', 'hero_eyebrow', false);
+  setText('h1', 'hero_h1', true);
+  setText('.hero-sub', 'hero_sub', false);
+  setText('.hero-trust', 'hero_trust', false);
+
+  // Auth tabs — update both instances
+  document.querySelectorAll('[data-i18n="auth_tab_signup"]').forEach(el => el.textContent = s.auth_tab_signup);
+  document.querySelectorAll('[data-i18n="auth_tab_signin"]').forEach(el => el.textContent = s.auth_tab_signin);
+
+  // Auth buttons
+  document.querySelectorAll('.auth-btn').forEach(btn => {
+    if (btn.onclick && btn.onclick.toString().includes('doSignup')) {
+      btn.textContent = s.auth_btn;
+    } else if (btn.onclick && btn.onclick.toString().includes('doSignin')) {
+      btn.textContent = s.auth_signin_btn;
+    }
+  });
+
+  // Auth tab notes (above button)
+  document.querySelectorAll('.auth-tab-note').forEach(el => el.textContent = s.auth_tab_note);
+
+  // Auth notes below button
+  document.querySelectorAll('.auth-note').forEach(el => {
+    if (el.innerHTML.includes('7 days') || el.innerHTML.includes('Card required') || el.textContent.includes('days free')) {
+      el.textContent = s.auth_note_below;
+    }
+  });
+
+  // Auth field labels
+  setAll('.field-label', ['auth_name','auth_email','auth_password','auth_name','auth_email','auth_password','auth_name','auth_email','auth_password']);
+
+  // Placeholders
+  ['hero-name','final-name'].forEach(id => setPlaceholder(id, 'auth_name_ph'));
+  ['hero-email','final-email','hero-signin-email','final-signin-email'].forEach(id => setPlaceholder(id, 'auth_email_ph'));
+  ['hero-password','final-password'].forEach(id => setPlaceholder(id, 'auth_pass_ph'));
+  ['hero-signin-password','final-signin-password'].forEach(id => setPlaceholder(id, 'auth_pass_ph2'));
+  ['hero-code','final-code'].forEach(id => setPlaceholder(id, 'auth_code_placeholder'));
+
+  // Section labels
+  const labels = document.querySelectorAll('.section-label');
+  const labelKeys = ['prob_label','feat_label','test_label','price_label','obj_label'];
+  let li = 0;
+  labels.forEach(el => { if (labelKeys[li]) el.textContent = s[labelKeys[li++]]; });
+
+  // H2s
+  const h2s = document.querySelectorAll('h2');
+  const h2Keys = ['prob_h2','feat_h2','test_h2','price_h2','obj_h2','final_h2'];
+  h2s.forEach((el, i) => { if (h2Keys[i] && s[h2Keys[i]]) el.innerHTML = s[h2Keys[i]]; });
+
+  // Section bodies
+  const bodies = document.querySelectorAll('.section-body');
+  const bodyKeys = ['prob_body','feat_body','test_body','price_sub'];
+  bodies.forEach((el, i) => { if (bodyKeys[i] && s[bodyKeys[i]]) el.innerHTML = s[bodyKeys[i]]; });
+
+  // Pain cards
+  const painCards = document.querySelectorAll('.card-a');
+  ['pain_1','pain_2','pain_3','pain_4'].forEach((k, i) => { if (painCards[i] && s[k]) painCards[i].textContent = s[k]; });
+
+  // Feature card titles and bodies
+  const featTitles = document.querySelectorAll('.card-title');
+  const featBodies = document.querySelectorAll('.card-body');
+  ['feat_1_title','feat_2_title','feat_3_title','feat_4_title'].forEach((k, i) => { if (featTitles[i] && s[k]) featTitles[i].textContent = s[k]; });
+  ['feat_1_body','feat_2_body','feat_3_body','feat_4_body'].forEach((k, i) => { if (featBodies[i] && s[k]) featBodies[i].textContent = s[k]; });
+
+  // Testimonial quotes
+  const quotes = document.querySelectorAll('.testimonial-quote');
+  ['test_1','test_2','test_3','test_4'].forEach((k, i) => { if (quotes[i] && s[k]) quotes[i].textContent = s[k]; });
+
+  // Testimonial contexts
+  const ctxs = document.querySelectorAll('.attr-ctx');
+  ['test_1_ctx','test_2_ctx','test_3_ctx','test_4_ctx'].forEach((k, i) => { if (ctxs[i] && s[k]) ctxs[i].textContent = s[k]; });
+
+  // PT bar
+  const ptLine1 = document.querySelector('.pt-bar-line1');
+  const ptLine2 = document.querySelector('.pt-bar-line2');
+  if (ptLine1 && s.pt_line1) ptLine1.textContent = s.pt_line1;
+  if (ptLine2 && s.pt_line2) ptLine2.textContent = s.pt_line2;
+
+  // Pricing taglines
+  const taglines = document.querySelectorAll('.tier-tagline');
+  ['price_iron_tag','price_steel_tag','price_forge_tag'].forEach((k, i) => { if (taglines[i] && s[k]) taglines[i].textContent = s[k]; });
+
+  // RECOMMENDED badge
+  const recBadge = document.querySelector('.tier-badge');
+  if (recBadge && s.price_recommended) recBadge.textContent = s.price_recommended;
+
+  // Pricing buttons
+  document.querySelectorAll('.tier-btn').forEach(btn => { if (s.price_btn) btn.textContent = s.price_btn; });
+
+  // Billing toggle labels
+  const toggleLabels = document.querySelectorAll('.toggle-label');
+  if (toggleLabels[0] && s.billing_monthly) toggleLabels[0].childNodes[0].textContent = s.billing_monthly + ' ';
+  if (toggleLabels[1] && s.billing_annual) {
+    const badge = toggleLabels[1].querySelector('.save-badge');
+    toggleLabels[1].childNodes[0].textContent = s.billing_annual + ' ';
+    // keep badge
+  }
+
+  // Feature lists — Iron
+  const ironFeats = document.querySelectorAll('#iron-features .tier-feature span:last-child');
+  ['feat_iron_1','feat_iron_2','feat_iron_3','feat_iron_4','feat_iron_5','feat_iron_6','feat_iron_7'].forEach((k,i) => { if (ironFeats[i] && s[k]) ironFeats[i].textContent = s[k]; });
+
+  // Feature lists — Steel
+  const steelFeats = document.querySelectorAll('#steel-features .tier-feature span:last-child');
+  ['feat_steel_0','feat_steel_1','feat_steel_2','feat_steel_3','feat_steel_4','feat_steel_5','feat_steel_6','feat_steel_7','feat_steel_8','feat_steel_9','feat_steel_10'].forEach((k,i) => { if (steelFeats[i] && s[k]) steelFeats[i].textContent = s[k]; });
+
+  // Feature lists — Forge
+  const forgeFeats = document.querySelectorAll('#forge-features .tier-feature span:last-child');
+  ['feat_forge_0','feat_forge_1','feat_forge_2','feat_forge_3','feat_forge_4','feat_forge_5','feat_forge_6'].forEach((k,i) => { if (forgeFeats[i] && s[k]) forgeFeats[i].textContent = s[k]; });
+
+  // Objection cards
+  const objQs = document.querySelectorAll('.obj-q');
+  const objAs = document.querySelectorAll('.obj-a');
+  ['obj_1_q','obj_2_q','obj_3_q'].forEach((k,i) => { if (objQs[i] && s[k]) objQs[i].textContent = s[k]; });
+  ['obj_1_a','obj_2_a','obj_3_a'].forEach((k,i) => { if (objAs[i] && s[k]) objAs[i].textContent = s[k]; });
+
+  // Final CTA body
+  const finalBody = document.querySelector('.final-cta-body');
+  if (finalBody && s.final_body) finalBody.innerHTML = s.final_body;
+
+  // Final trust line
+  const finalTrust = document.querySelectorAll('.final-trust, [class*="trust"]');
+  finalTrust.forEach(el => { if (s.final_trust && el.textContent.includes('No commitment') || el.textContent.includes('Cancel')) el.textContent = s.final_trust; });
+
+  // Currency note
+  const currNote = document.getElementById('currency-chf-note');
+  if (currNote && s.currency_chf_note) currNote.textContent = s.currency_chf_note;
+
+  // Footer
+  const footerBrand = document.querySelector('.footer-left');
+  if (footerBrand && s.footer_brand) footerBrand.textContent = s.footer_brand;
+  const footerLinks = document.querySelectorAll('.footer-link');
+  if (footerLinks[0] && s.footer_privacy) footerLinks[0].textContent = s.footer_privacy;
+  if (footerLinks[1] && s.footer_terms) footerLinks[1].textContent = s.footer_terms;
+  if (footerLinks[2] && s.footer_contact) footerLinks[2].textContent = s.footer_contact;
+}
+</script>
+  <div style="position:fixed;top:68px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
+</body>
+</html>
