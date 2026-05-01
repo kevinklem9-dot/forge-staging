@@ -353,11 +353,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="auth-wrap reveal" id="hero-auth">
     <div class="auth-card">
       <div class="auth-tabs">
-        <div class="auth-tab active" id="tab-signup-hero" data-i18n="auth_tab_signup" onclick="switchTab('hero','signup')">Create account</div>
-        <div class="auth-tab" id="tab-signin-hero" data-i18n="auth_tab_signin" onclick="switchTab('hero','signin')">Sign in</div>
+        <div class="auth-tab" id="tab-signup-hero" data-i18n="auth_tab_signup" onclick="switchTab('hero','signup')">Create account</div>
+        <div class="auth-tab active" id="tab-signin-hero" data-i18n="auth_tab_signin" onclick="switchTab('hero','signin')">Sign in</div>
       </div>
       <!-- SIGNUP -->
-      <div id="form-signup-hero">
+      <div id="form-signup-hero" style="display:none">
         <div class="field-group"><div class="field-label">Full Name</div><input class="field-input" type="text" id="hero-name" placeholder="Your name"></div>
         <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
         <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
@@ -367,7 +367,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
         <div class="auth-note">7 days free. Card required, charged only after your trial ends.</div>
       </div>
       <!-- SIGNIN -->
-      <div id="form-signin-hero" style="display:none">
+      <div id="form-signin-hero">
         <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="hero-signin-email" placeholder="your@email.com"></div>
         <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-signin-password',this)" type="button">👁</button></div></div>
         <div class="auth-error" id="hero-signin-error"></div>
@@ -535,10 +535,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <div class="auth-wrap reveal" id="final-auth">
       <div class="auth-card">
         <div class="auth-tabs">
-          <div class="auth-tab active" id="tab-signup-final" data-i18n="auth_tab_signup" onclick="switchTab('final','signup')">Create account</div>
-          <div class="auth-tab" id="tab-signin-final" data-i18n="auth_tab_signin" onclick="switchTab('final','signin')">Sign in</div>
+          <div class="auth-tab" id="tab-signup-final" data-i18n="auth_tab_signup" onclick="switchTab('final','signup')">Create account</div>
+          <div class="auth-tab active" id="tab-signin-final" data-i18n="auth_tab_signin" onclick="switchTab('final','signin')">Sign in</div>
         </div>
-        <div id="form-signup-final">
+        <div id="form-signup-final" style="display:none">
           <div class="field-group"><div class="field-label">Full Name</div><input class="field-input" type="text" id="final-name" placeholder="Your name"></div>
           <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
           <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
@@ -547,7 +547,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
           <div class="auth-note">7 days free. Card required, charged only after your trial ends.</div>
         </div>
-        <div id="form-signin-final" style="display:none">
+        <div id="form-signin-final">
           <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="final-signin-email" placeholder="your@email.com"></div>
           <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-signin-password',this)" type="button">👁</button></div></div>
           <div class="auth-error" id="final-signin-error"></div>
