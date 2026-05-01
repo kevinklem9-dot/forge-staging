@@ -1391,7 +1391,9 @@ async function signOut() {
   localStorage.removeItem('forge-cached-plan');
   sessionStorage.removeItem('forge-session-temp');
   currentUser = null; userProfile = null; userPlan = null;
-  showScreen('auth');
+  // Redirect to landing page (index.html is one level up from app.html)
+  const landingUrl = window.location.href.replace(/\/app\.html.*$/, '/').replace(/\/app$/, '/');
+  window.location.href = landingUrl;
 }
 
 async function handleSession(session) {
