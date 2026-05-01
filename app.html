@@ -2632,7 +2632,8 @@ async function renderReferralSection(container) {
   const res = await api('/api/referral');
   if (!res?.code) return;
   const { code, stats } = res;
-  const referralUrl = `${window.location.origin}${window.location.pathname}?ref=${code}`;
+  const referralBase = `${window.location.origin}${window.location.pathname}`.replace(/\/app\.html.*$/, '/');
+  const referralUrl = `${referralBase}?ref=${code}`;
   container.innerHTML = `
     <div style="margin-top:24px;">
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">SHARE FORGE</div>
