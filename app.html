@@ -2446,15 +2446,17 @@ function handlePaymentRedirect() {
 
   if (portalReturn) {
     window.history.replaceState({}, '', window.location.pathname);
-    // Refresh subscription from server — plan may have changed in portal
+    // Sync subscription from server — tier may have changed in portal
     api('/api/subscription').then(sub => {
       if (sub) {
         userSubscription = sub;
         renderTrialBanner();
         renderCoachCounter();
+        renderWorkoutPanel();
+        renderNutritionPanel();
+        if (document.getElementById('accountPanel')?.innerHTML) renderAccount();
       }
     });
-    // Open account panel so they can see their updated plan
     setTimeout(() => {
       showPanel('account');
       showToast('Subscription updated — your plan is shown below.', 'success');
