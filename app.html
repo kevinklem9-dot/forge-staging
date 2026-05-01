@@ -1014,9 +1014,11 @@ let userSubscription = null; // { tier, accessTier, status, isExempt, trialDaysL
 
 // Frontend feature access check — uses accessTier from server (single source of truth)
 function canAccess(feature) {
-  if (!userSubscription) return false; // default locked while loading, not open
-  const { accessTier, isExempt } = userSubscription;
+  if (!userSubscription) return false;
+  const { accessTier, isExempt, status } = userSubscription;
   if (isExempt) return true;
+  // Expired trial — block everything until paid
+  if (status === 'expired') return false;
   const steelFeatures = ['unlimited_coach','weekly_review','checkin','overload_tracker','body_metrics','plan_editing','deload','shopping_list','multiple_programmes','export_history'];
   const forgeFeatures = ['video_demos','barcode_scanner','wearable_sync','monthly_review','priority_support','early_access'];
   if (steelFeatures.includes(feature)) return accessTier === 'steel' || accessTier === 'forge';
@@ -2249,6 +2251,10 @@ async function loadPlanAndLaunch() {
       if (document.getElementById('panel-account')?.classList.contains('active')) renderAccount();
       // Check day 4 founding member notification
       checkDay4FoundingNotification();
+      // Force paywall if trial expired — no access until paid
+      if (subRes.status === 'expired') {
+        setTimeout(() => openExpiredPaywall(), 600);
+      }
     }
     if (updated) {
       renderWorkoutPanel();
@@ -2297,6 +2303,11 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 const ALL_PANELS = ['coach', 'workout', 'log', 'nutrition', 'progress', 'admin', 'programmes', 'account'];
 
 function showPanel(name) {
+  // If expired, force paywall on any panel navigation except account
+  if (userSubscription?.status === 'expired' && name !== 'account') {
+    openExpiredPaywall();
+    return;
+  }
   // Hide ALL panels completely first
   ALL_PANELS.forEach(p => {
     const el = document.getElementById('panel-' + p);
@@ -2335,7 +2346,98 @@ function showPanel(name) {
 }
 
 // ═══════════════════════════════════════════════════════
-// STRIPE PAYMENT FUNCTIONS
+// EXPIRED PAYWALL — non-dismissible, shown when trial ends
+// ═══════════════════════════════════════════════════════
+function openExpiredPaywall() {
+  // Don't show if already paid or lifetime
+  const status = userSubscription?.status;
+  if (!status || status === 'active' || status === 'lifetime' || status === 'trial') return;
+  // Don't stack multiple
+  if (document.getElementById('expiredPaywall')) return;
+
+  const sheet = document.createElement('div');
+  sheet.id = 'expiredPaywall';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;justify-content:flex-end;';
+  // NOT dismissible — no click outside handler
+
+  sheet.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:28px 20px 48px;max-height:92vh;overflow-y:auto;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--accent);margin-bottom:8px;">Your free trial has ended</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.6;max-width:320px;margin:0 auto;">Your plan and progress are saved. Pick a plan to continue training.</div>
+      </div>
+
+      <!-- Tier cards -->
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+
+        <!-- Iron -->
+        <div style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <div style="font-size:17px;font-weight:700;">⚙️ Iron</div>
+              <div style="font-size:12px;color:var(--muted);">Start training with a real plan.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:20px;font-weight:700;color:var(--accent);">CHF 6.99<span style="font-size:11px;color:var(--muted);">/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">billed CHF 83.88/year</div>
+            </div>
+          </div>
+          <button onclick="startCheckoutFromExpired('iron')" style="width:100%;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Choose Iron</button>
+        </div>
+
+        <!-- Steel — highlighted -->
+        <div style="background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.4);border-radius:14px;padding:18px;position:relative;">
+          <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;white-space:nowrap;">RECOMMENDED</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <div style="font-size:17px;font-weight:700;">🔩 Steel</div>
+              <div style="font-size:12px;color:var(--muted);">Full coaching. No PT required.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:20px;font-weight:700;color:#FFD700;">CHF 9.99<span style="font-size:11px;color:var(--muted);">/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">billed CHF 119.88/year</div>
+            </div>
+          </div>
+          <button onclick="startCheckoutFromExpired('steel')" style="width:100%;padding:12px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Choose Steel</button>
+        </div>
+
+        <!-- Forge -->
+        <div style="background:rgba(232,255,61,0.03);border:2px solid rgba(232,255,61,0.25);border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <div style="font-size:17px;font-weight:700;">🔥 Forge</div>
+              <div style="font-size:12px;color:var(--muted);">Everything. Monthly AI review included.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:20px;font-weight:700;color:var(--accent);">CHF 13.99<span style="font-size:11px;color:var(--muted);">/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">billed CHF 167.88/year</div>
+            </div>
+          </div>
+          <button onclick="startCheckoutFromExpired('forge')" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Choose Forge</button>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:#444;letter-spacing:0.5px;">
+        7-day money back guarantee · Cancel anytime
+      </div>
+    </div>
+  `;
+  document.body.appendChild(sheet);
+}
+
+async function startCheckoutFromExpired(tier) {
+  // Load promo status first
+  await loadLaunchPricingStatus();
+  const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
+                  (tier === 'forge' && _launchPromo.forge_active);
+  // Annual default
+  startCheckout(tier, 'annual', isPromo);
+}
+
+// Remove expired paywall once payment confirmed
+function dismissExpiredPaywall() {
+  document.getElementById('expiredPaywall')?.remove();
+}
 // ═══════════════════════════════════════════════════════
 
 async function startCheckout(tier, billing, isPromo) {
@@ -2409,6 +2511,7 @@ function handlePaymentRedirect() {
     });
     document.getElementById('upgradeSheet')?.remove();
     document.getElementById('foundingMemberSheet')?.remove();
+    dismissExpiredPaywall();
   } else if (payment === 'cancelled') {
     window.history.replaceState({}, '', window.location.pathname);
     showToast('Payment cancelled — no charge made.', 'error');
