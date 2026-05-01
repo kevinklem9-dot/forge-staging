@@ -578,6 +578,21 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 
 <script>
 const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
+
+async function supabaseAuth(endpoint, body) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify(body)
+  });
+  return await res.json();
+}
 
 // ── CURRENCY ──────────────────────────────────────────
 const PRICES = {
@@ -736,21 +751,24 @@ async function doSignin(instance) {
   btn.disabled = true; btn.textContent = 'Signing in...';
 
   try {
-    const res = await fetch(BACKEND_URL + '/api/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
+    // Sign in directly via Supabase — same as the app does
+    const data = await supabaseAuth('token?grant_type=password', { email, password });
     btn.disabled = false; btn.textContent = 'Sign in';
 
-    if (!res.ok || data.error) return showError(errId, data.error || 'Invalid email or password.');
-
-    // Store session token and redirect to app
-    if (data.access_token) {
-      localStorage.setItem('forge_access_token', data.access_token);
-      localStorage.setItem('forge_refresh_token', data.refresh_token || '');
+    if (data.error || data.error_description) {
+      return showError(errId, data.error_description || data.error || 'Invalid email or password.');
     }
+
+    // Store session in the same format the app expects
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      user: { ...data.user, email: data.user?.email || email },
+      rememberMe: true
+    };
+    localStorage.setItem('forge-session', JSON.stringify(session));
+
+    // Redirect to app
     window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Sign in';
