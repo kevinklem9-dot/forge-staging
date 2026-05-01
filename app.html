@@ -2579,6 +2579,7 @@ async function openFoundingMemberPage() {
   const ironLeft = (slots?.iron_total || 500) - (slots?.iron_sold || 0);
   const steelLeft = (slots?.steel_total || 250) - (slots?.steel_sold || 0);
   const totalLeft = ironLeft + steelLeft;
+  const totalSlots = (slots?.iron_total || 500) + (slots?.steel_total || 250);
   const sheet = document.createElement('div');
   sheet.id = 'foundingMemberSheet';
   sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;';
@@ -2590,7 +2591,7 @@ async function openFoundingMemberPage() {
       <div style="text-align:center;margin-bottom:28px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--accent);">FOUNDING MEMBER</div>
         <div style="font-size:14px;color:var(--text);margin-top:6px;">Pay once. Train forever. Limited to the first 500 members.</div>
-        ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${totalLeft} of 500 slots remaining</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">Founding Member access is now closed.</div>`}
+        ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${totalLeft} of ${totalSlots} slots remaining</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">Founding Member access is now closed.</div>`}
       </div>
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
