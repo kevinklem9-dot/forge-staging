@@ -2365,8 +2365,8 @@ function openExpiredPaywall() {
   const header = document.createElement('div');
   header.style.cssText = 'text-align:center;padding:20px 20px 0;flex-shrink:0;';
   header.innerHTML = `
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--accent);margin-bottom:6px;">Your free trial has ended</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Your plan and progress are saved. Pick a plan to continue.</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--accent);margin-bottom:6px;">${t('expired_title')}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">${t('expired_sub')}</div>
   `;
   overlay.appendChild(header);
 
@@ -4623,12 +4623,14 @@ function toggleUpgradeBilling() {
 
 function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended, isPromo, fullMonthlyPrice, launchBadgeText) {
   const currentTier = userSubscription?.tier || 'iron';
-  const isCurrent = currentTier === tier;
+  const status = userSubscription?.status || 'trial';
+  const isExpired = status === 'expired';
+  // When expired, no tier is "current" — user must pick and pay
+  const isCurrent = !isExpired && (currentTier === tier) && (status === 'active' || status === 'lifetime');
   const _trialEndsAt = userSubscription?.trialEndsAt;
   const trialDays = _trialEndsAt
     ? Math.max(0, Math.ceil((new Date(_trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))
     : (userSubscription?.trialDaysLeft || 0);
-  const status = userSubscription?.status || 'trial';
   const onTrial = status === 'trial';
 
   // Card class
@@ -6060,6 +6062,9 @@ const STRINGS = {
     pr_no_records: 'No records yet.<br>Log your first session.',
     pr_badge: 'PR',
     overload_last_sessions: 'LAST {n} SESSIONS — VOLUME',
+
+    expired_title: 'Your free trial has ended',
+    expired_sub: 'Your plan and progress are saved. Pick a plan to continue.',
 },
   es: {
     nav_coach: 'Coach',
@@ -6430,6 +6435,9 @@ const STRINGS = {
     pr_no_records: 'Sin registros aún.<br>Registra tu primera sesión.',
     pr_badge: 'RP',
     overload_last_sessions: 'ÚLTIMAS {n} SESIONES — VOLUMEN',
+
+    expired_title: 'Tu prueba gratuita ha terminado',
+    expired_sub: 'Tu plan y progreso están guardados. Elige un plan para continuar.',
 },
   fr: {
     nav_coach: 'Coach',
@@ -6800,6 +6808,9 @@ const STRINGS = {
     pr_no_records: 'Aucun record encore.<br>Enregistrez votre première séance.',
     pr_badge: 'RP',
     overload_last_sessions: '{n} DERNIÈRES SÉANCES — VOLUME',
+
+    expired_title: 'Ton essai gratuit est terminé',
+    expired_sub: 'Ton programme et tes progrès sont sauvegardés. Choisis un plan pour continuer.',
 },
   de: {
     nav_coach: 'Coach',
@@ -7170,6 +7181,9 @@ const STRINGS = {
     pr_no_records: 'Noch keine Rekorde.<br>Protokolliere deine erste Einheit.',
     pr_badge: 'PR',
     overload_last_sessions: 'LETZTE {n} EINHEITEN — VOLUMEN',
+
+    expired_title: 'Deine kostenlose Testversion ist abgelaufen',
+    expired_sub: 'Dein Plan und dein Fortschritt sind gespeichert. Wähle einen Plan, um weiterzumachen.',
 },
   it: {
     nav_coach: 'Coach',
@@ -7540,6 +7554,9 @@ const STRINGS = {
     pr_no_records: 'Nessun record ancora.<br>Registra la tua prima sessione.',
     pr_badge: 'PR',
     overload_last_sessions: 'ULTIME {n} SESSIONI — VOLUME',
+
+    expired_title: 'La tua prova gratuita è terminata',
+    expired_sub: 'Il tuo piano e i progressi sono salvati. Scegli un piano per continuare.',
 },
   pt: {
     nav_coach: 'Coach',
@@ -7910,6 +7927,9 @@ const STRINGS = {
     pr_no_records: 'Sem recordes ainda.<br>Registe a sua primeira sessão.',
     pr_badge: 'RP',
     overload_last_sessions: 'ÚLTIMAS {n} SESSÕES — VOLUME',
+
+    expired_title: 'O seu período de teste terminou',
+    expired_sub: 'O seu plano e progresso estão guardados. Escolha um plano para continuar.',
 },
   nl: {
     nav_coach: 'Coach',
@@ -8280,6 +8300,9 @@ const STRINGS = {
     pr_no_records: 'Nog geen records.<br>Log je eerste sessie.',
     pr_badge: 'PR',
     overload_last_sessions: 'LAATSTE {n} SESSIES — VOLUME',
+
+    expired_title: 'Je gratis proefperiode is afgelopen',
+    expired_sub: 'Je plan en voortgang zijn opgeslagen. Kies een abonnement om verder te gaan.',
 },
   uk: {
     nav_coach: 'Тренер',
@@ -8650,6 +8673,9 @@ const STRINGS = {
     pr_no_records: 'Записів ще немає.<br>Запишіть першу сесію.',
     pr_badge: 'ОР',
     overload_last_sessions: 'ОСТАННІ {n} СЕСІЇ — ОБ\'ЄМ',
+
+    expired_title: 'Ваш безкоштовний пробний період закінчився',
+    expired_sub: 'Ваш план і прогрес збережені. Оберіть план для продовження.',
 },
   fi: {
     nav_coach: 'Valmentaja',
@@ -9020,6 +9046,9 @@ const STRINGS = {
     pr_no_records: 'Ei ennätyksiä vielä.<br>Kirjaa ensimmäinen harjoituksesi.',
     pr_badge: 'PR',
     overload_last_sessions: 'VIIMEISET {n} HARJOITUSTA — VOLYYMI',
+
+    expired_title: 'Ilmainen kokeilujaksosi on päättynyt',
+    expired_sub: 'Suunnitelmasi ja edistymisesi on tallennettu. Valitse suunnitelma jatkaaksesi.',
 },
   ar: {
     nav_coach: 'المدرب',
@@ -9390,6 +9419,9 @@ const STRINGS = {
     pr_no_records: 'لا توجد سجلات بعد.<br>سجل جلستك الأولى.',
     pr_badge: 'رقم قياسي',
     overload_last_sessions: 'آخر {n} جلسات — الحجم',
+
+    expired_title: 'انتهت فترة التجربة المجانية',
+    expired_sub: 'تم حفظ خطتك وتقدمك. اختر خطة للمتابعة.',
 },
   zh: {
     nav_coach: '教练',
@@ -9760,6 +9792,9 @@ const STRINGS = {
     pr_no_records: '暂无记录。<br>记录你的第一次训练。',
     pr_badge: 'PR',
     overload_last_sessions: '最近{n}次训练 — 训练量',
+
+    expired_title: '您的免费试用已结束',
+    expired_sub: '您的计划和进度已保存。请选择一个方案继续。',
 },
   ja: {
     nav_coach: 'コーチ',
@@ -10130,6 +10165,9 @@ const STRINGS = {
     pr_no_records: 'まだ記録なし。<br>最初のセッションを記録してください。',
     pr_badge: 'PR',
     overload_last_sessions: '直近{n}セッション — ボリューム',
+
+    expired_title: '無料トライアルが終了しました',
+    expired_sub: 'プランと進捗は保存されています。プランを選んで続けましょう。',
 },
 };
 
