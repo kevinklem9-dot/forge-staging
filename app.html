@@ -978,15 +978,12 @@ const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TRVSaCP6MFAx438rHQRzgOhIr68s1Bd8KqXZBK
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ── INSTANT SESSION CHECK — runs synchronously before anything else ──
-// If a remembered session + cached data exists, hide the auth screen immediately
-// so the user never sees it. The async boot block below then launches the app.
+// If a session token exists, hide the auth screen immediately — no flash.
 (function() {
   try {
-    const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
-    const cachedProfile = localStorage.getItem('forge-cached-profile');
-    const cachedPlan = localStorage.getItem('forge-cached-plan');
-    if (session?.access_token && session?.rememberMe && cachedProfile && cachedPlan) {
-      // Hide auth screen immediately — no flash
+    const session = JSON.parse(localStorage.getItem('forge-session') || sessionStorage.getItem('forge-session-temp') || 'null');
+    if (session?.access_token) {
+      // Valid session — hide auth screen before it ever renders
       const authScreen = document.getElementById('screen-auth');
       if (authScreen) {
         authScreen.classList.remove('active');
