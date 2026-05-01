@@ -4319,11 +4319,9 @@ async function renderTrialBanner() {
   if (!userSubscription) return;
 
   const { status, isExempt, trialEndsAt, tier } = userSubscription;
-  // Show banner if: on trial, OR trial expired but no paid plan yet
-  // Hide only when: exempt, or subscription is genuinely active and paid
-  const isPaidActive = status === 'active' && (tier === 'steel' || tier === 'forge');
-  if (isExempt || isPaidActive) return;
-  // Also hide if status is cancelled or expired AND they have a plan
+  // Hide banner when paid, exempt, or lifetime — show only during/after trial
+  if (isExempt || status === 'active' || status === 'lifetime') return;
+  // Also hide if cancelled/expired and already on a paid tier
   if ((status === 'cancelled' || status === 'expired') && tier !== 'iron') return;
 
   // Recalculate days left from trialEndsAt for accuracy
@@ -4683,7 +4681,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
   // Button
   let btnText, btnDisabled, btnClass;
   if (isCurrent) {
-    btnText = onTrial ? t('upgrade_btn_current') + ' · ' + trialDays + ' days left' : t('upgrade_btn_current');
+    btnText = onTrial ? t('upgrade_btn_current') + ' · ' + trialDays + ' days left' : t('upgrade_btn_current_paid');
     btnDisabled = true;
     btnClass = 'us-btn us-btn-current';
   } else if (recommended && !isCurrent) {
