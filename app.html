@@ -2433,7 +2433,29 @@ async function openBillingPortal() {
   if (res?.url) {
     window.location.href = res.url;
   } else {
-    showToast('Could not open billing portal', 'error');
+    const msg = res?.error || 'Could not open billing portal';
+    if (msg.includes('not configured')) {
+      showToast('Billing portal not set up yet — contact support', 'error');
+    } else {
+      showToast(msg, 'error');
+    }
+  }
+}
+
+async function syncSubscriptionNow() {
+  showToast('Syncing...', '');
+  const res = await api('/api/stripe/sync-subscription', 'POST');
+  if (res?.ok) {
+    const sub = await api('/api/subscription');
+    if (sub) {
+      userSubscription = sub;
+      renderTrialBanner();
+      renderCoachCounter();
+      renderAccount();
+      showToast(`✓ Synced — ${res.tier || sub.tier} plan active`, 'success');
+    }
+  } else {
+    showToast(res?.error || 'Sync failed', 'error');
   }
 }
 
@@ -2446,16 +2468,18 @@ function handlePaymentRedirect() {
 
   if (portalReturn) {
     window.history.replaceState({}, '', window.location.pathname);
-    // Sync subscription from server — tier may have changed in portal
-    api('/api/subscription').then(sub => {
-      if (sub) {
-        userSubscription = sub;
-        renderTrialBanner();
-        renderCoachCounter();
-        renderWorkoutPanel();
-        renderNutritionPanel();
-        if (document.getElementById('accountPanel')?.innerHTML) renderAccount();
-      }
+    // Force sync tier from Stripe — webhook may not have fired yet
+    api('/api/stripe/sync-subscription', 'POST').then(sync => {
+      api('/api/subscription').then(sub => {
+        if (sub) {
+          userSubscription = sub;
+          renderTrialBanner();
+          renderCoachCounter();
+          renderWorkoutPanel();
+          renderNutritionPanel();
+          if (document.getElementById('accountPanel')?.innerHTML) renderAccount();
+        }
+      });
     });
     setTimeout(() => {
       showPanel('account');
@@ -5074,6 +5098,9 @@ function renderAccount() {
         <button onclick="openBillingPortal()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;">
           <span>Manage billing & cancel</span>
           <span style="font-size:11px;color:var(--muted);">→</span>
+        </button>
+        <button onclick="syncSubscriptionNow()" style="width:100%;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;margin-top:8px;letter-spacing:0.5px;">
+          ↻ Sync subscription
         </button>
       </div>` : ''}
 
