@@ -605,6 +605,31 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 </footer>
 
 <script>
+// ── INSTANT SESSION CHECK ─────────────────────────────
+// If already logged in with Remember Me, skip landing page and go straight to app
+(function() {
+  try {
+    const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
+    if (session?.access_token && session?.rememberMe) {
+      // Verify token not expired
+      const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+      const isExpired = payload.exp && (payload.exp * 1000) < Date.now();
+      if (!isExpired) {
+        // Valid remembered session — go straight to app
+        const loc = window.location;
+        const appUrl = loc.pathname.endsWith('/')
+          ? loc.origin + loc.pathname + 'app.html'
+          : loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/') + 'app.html';
+        window.location.replace(appUrl);
+      } else {
+        // Expired — clear so login form shows cleanly
+        localStorage.removeItem('forge-session');
+      }
+    }
+  } catch(e) {}
+})();
+
+
 const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
 const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
