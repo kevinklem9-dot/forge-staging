@@ -759,11 +759,26 @@ async function doSignup(instance) {
       const card = btn.closest('.auth-card');
       card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + email + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
     } else {
-      window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
+      window.location.href = _getAppUrl();
     }
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Start your free trial';
     showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+
+function _getAppUrl() {
+  const loc = window.location;
+  // Get the directory containing the current page
+  let path = loc.pathname;
+  // Remove trailing slash or filename
+  if (path.endsWith('/')) {
+    // Already a directory URL like /forge-staging/
+    return loc.origin + path + 'app.html';
+  } else {
+    // Has a filename like /forge-staging/index.html — strip it
+    return loc.origin + path.replace(/\/[^\/]*$/, '/') + 'app.html';
   }
 }
 
@@ -801,7 +816,7 @@ async function doSignin(instance) {
       localStorage.removeItem('forge-session');
     }
 
-    window.location.href = window.location.origin + '/app.html';
+    window.location.href = _getAppUrl();
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Sign in';
     showError(errId, 'Connection error. Please try again.');
