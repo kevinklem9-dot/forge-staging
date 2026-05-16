@@ -610,6 +610,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 (function() {
   try {
     const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
+    console.log('Session check:', session ? 'found' : 'none', session?.rememberMe ? 'rememberMe=true' : 'rememberMe=false', session?.access_token ? 'has token' : 'no token');
     if (session?.access_token && session?.rememberMe) {
       // Verify token not expired
       const payload = JSON.parse(atob(session.access_token.split('.')[1]));
@@ -834,8 +835,10 @@ async function doSignin(instance) {
       rememberMe
     };
 
+    console.log('Storing session, rememberMe:', rememberMe);
     if (rememberMe) {
       localStorage.setItem('forge-session', JSON.stringify(session));
+      console.log('Stored to localStorage');
     } else {
       sessionStorage.setItem('forge-session-temp', JSON.stringify(session));
       localStorage.removeItem('forge-session');
