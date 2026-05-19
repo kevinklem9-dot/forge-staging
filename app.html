@@ -981,16 +981,28 @@ const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 // If a session token exists, hide the auth screen immediately — no flash.
 (function() {
   try {
-    const session = JSON.parse(localStorage.getItem('forge-session') || sessionStorage.getItem('forge-session-temp') || 'null');
-    if (session?.access_token) {
-      // Valid session — hide auth screen before it ever renders
-      const authScreen = document.getElementById('screen-auth');
-      if (authScreen) {
-        authScreen.classList.remove('active');
-        authScreen.style.display = 'none';
+    const hash = window.location.hash;
+    if (hash) {
+      const hp = new URLSearchParams(hash.replace('#',''));
+      if (hp.get('access_token') && hp.get('type') === 'recovery') {
+        const landingUrl = window.location.href.replace(/\/app\.html.*$/, '/') + '?reset_token=' + encodeURIComponent(hp.get('access_token'));
+        window.location.replace(landingUrl);
+        return;
       }
     }
-  } catch(e) {}
+    const raw = localStorage.getItem('forge-session') || sessionStorage.getItem('forge-session-temp');
+    if (!raw) { window.location.replace(window.location.href.replace(/\/app\.html.*$/, '/')); return; }
+    const session = JSON.parse(raw);
+    if (!session?.access_token || !session?.user) {
+      localStorage.removeItem('forge-session');
+      sessionStorage.removeItem('forge-session-temp');
+      window.location.replace(window.location.href.replace(/\/app\.html.*$/, '/'));
+    }
+  } catch(e) {
+    localStorage.removeItem('forge-session');
+    sessionStorage.removeItem('forge-session-temp');
+    window.location.replace(window.location.href.replace(/\/app\.html.*$/, '/'));
+  }
 })();
 
 // ═══════════════════════════════════════════════════════
@@ -1415,7 +1427,7 @@ async function handleSession(session) {
       sessionStorage.removeItem('forge-session-temp');
       currentUser = null;
       showAuthError('Session expired. Please sign in again.');
-      const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+      window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
       return;
     }
     if (res?._status === 403) {
@@ -1427,7 +1439,7 @@ async function handleSession(session) {
         sessionStorage.removeItem('forge-session-temp');
         currentUser = null;
         showAuthError('Your account has been suspended. Contact support to resolve this.');
-        const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+        window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
         return;
       }
       localStorage.removeItem('forge-session');
@@ -1436,7 +1448,7 @@ async function handleSession(session) {
       sessionStorage.removeItem('forge-session-temp');
       currentUser = null;
       showAuthError('Access denied. Please sign in again.');
-      const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+      window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
       return;
     }
     if (res?.profile) { profileData = res.profile; break; }
@@ -1454,7 +1466,7 @@ async function handleSession(session) {
       return;
     }
     showAuthError('Could not connect to server — check your connection.');
-    const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+    window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
     return;
   }
 
@@ -1537,7 +1549,7 @@ async function api(path, method = 'GET', body = null, timeoutMs = 30000) {
       userProfile = null;
       userPlan = null;
       userSubscription = null;
-      const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+      window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
       showAuthError('Your account has been suspended. Contact support to resolve this.');
     }
 
@@ -4034,7 +4046,7 @@ async function sendMessage() {
   const res = await api('/api/chat', 'POST', {
     messages: currentConvMessages.map(m => ({ role: m.role, content: m.content })),
     language: appLanguage
-  }, 90000);
+  });
   removeTyping(loadId);
 
   if (res?.error === 'message_limit_reached') {
@@ -10511,10 +10523,12 @@ function urlBase64ToUint8Array(base64String) {
 
 // ── BOOT — Auto-login ──────────────────────────
 (async () => {
-  const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
-  if (!session?.access_token || !session?.user || !session?.rememberMe) {
+  const session = JSON.parse(localStorage.getItem('forge-session') || sessionStorage.getItem('forge-session-temp') || 'null');
+  if (!session?.access_token || !session?.user) {
     localStorage.removeItem('forge-session');
-    const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl; return;
+    sessionStorage.removeItem('forge-session-temp');
+    window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
+    return;
   }
 
   currentUser = session.user;
@@ -10537,7 +10551,7 @@ function urlBase64ToUint8Array(base64String) {
           localStorage.removeItem('forge-cached-profile');
           localStorage.removeItem('forge-cached-plan');
           currentUser = null;
-          const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+          window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
           showAuthError('Your account has been suspended. Contact support to resolve this.');
           return;
         }
@@ -10546,7 +10560,7 @@ function urlBase64ToUint8Array(base64String) {
         localStorage.removeItem('forge-cached-profile');
         localStorage.removeItem('forge-cached-plan');
         currentUser = null;
-        const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+        window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
         showAuthError('Session expired. Please sign in again.');
         return;
       }
@@ -10575,7 +10589,7 @@ function urlBase64ToUint8Array(base64String) {
         localStorage.removeItem('forge-cached-profile');
         localStorage.removeItem('forge-cached-plan');
         currentUser = null; userProfile = null; userPlan = null;
-        const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+        window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
         return;
       }
 
@@ -10627,11 +10641,11 @@ function urlBase64ToUint8Array(base64String) {
       await handleSession(newSession);
     } else {
       localStorage.removeItem('forge-session');
-      const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+      window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
     }
   } catch(e) {
     localStorage.removeItem('forge-session');
-    const _landingUrl = window.location.href.replace(/\/app\.html.*$/, '/'); console.log('Redirecting to:', _landingUrl); window.location.href = _landingUrl;
+    window.location.href = window.location.href.replace(/\/app\.html.*$/, '/');
   }
 })();
 
