@@ -784,7 +784,8 @@ async function doSignin(instance) {
 
     if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
 
-    if (data.error || data.error_description) {
+    // Supabase returns error in various formats depending on version
+    if (data.error || data.error_description || data.error_code || !data.access_token) {
       showError(errId, 'Incorrect email or password. Please check and try again.');
       return;
     }
