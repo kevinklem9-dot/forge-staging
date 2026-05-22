@@ -10948,10 +10948,25 @@ async function renderClientProgrammeTab(body) {
       <button onclick="if(confirm('Reset to AI programme? The custom programme will be removed.')) deleteAssignedProgramme('${assigned.id}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Reset to AI programme</button>
     `;
   } else {
+    // Fetch the client's AI-generated plan to show in read-only view
+    const planRes = await api('/api/coach/clients/' + cid + '/plan');
+    const clientPlan = planRes?.plan;
+    const planDays = clientPlan?.workout?.days || clientPlan?.days || [];
+    const planHtml = planDays.length > 0
+      ? planDays.map(day => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">${escHtml(day.day_name || day.label || 'Day')}</div>
+          ${(day.exercises || []).map(e => `
+            <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;margin-bottom:3px;">
+              • ${escHtml(e.name)} — ${escHtml(e.sets||'')}×${escHtml(e.reps||'')}${e.rest?' · '+escHtml(e.rest):''}
+            </div>`).join('')}
+        </div>`).join('')
+      : '<div style="font-size:13px;color:var(--muted);padding:12px 0;">No plan data available.</div>';
+
     body.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">CURRENT — AI GENERATED</div>
-        <div style="font-size:13px;color:var(--text);line-height:1.5;">This client is following the AI-generated plan. You can assign a custom programme to override it.</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">CURRENT — AI GENERATED (READ ONLY)</div>
+        ${planHtml}
       </div>
       <button onclick="openProgrammeBuilder()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Assign custom programme</button>
       ${templates.length ? `
