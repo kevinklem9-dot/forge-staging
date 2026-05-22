@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE for Coaches — Manage every client in one place</title>
+<meta name="description" content="Give your clients 24/7 AI coaching. Manage their programmes and progress in one place. Earn commission on every client subscription.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111111;--surface2:#1a1a1a;--surface3:#161616;--border:#222222;--border2:#2a2a2a;
+  --accent:#e8ff3d;--accent-dim:#b8cc2e;--accent2:#ff6b35;--text:#f0f0f0;--muted:#666666;--muted2:#8a8a8a;
+  --red:#ff4444;--green:#39d98a;--accent-pressed:#d4eb1e;
+  --shadow-card:0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.6);
+  --grid-color:rgba(255,255,255,0.025);
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;min-height:100vh;width:100%;max-width:100vw}
+img,svg{max-width:100%}
+
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:
+    linear-gradient(var(--grid-color) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+}
+nav,section,footer,.section-divider{position:relative;z-index:2}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.72);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(232,255,61,0.35),transparent)}
+.nav-logo{display:flex;align-items:baseline;gap:10px}
+.nav-logo-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:5px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.35)}
+.nav-logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-link{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:8px 12px;border-radius:8px;transition:color .15s}
+.nav-link:hover{color:var(--text)}
+.currency-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:8px;cursor:pointer;outline:none;transition:all .15s}
+.currency-select:hover{border-color:var(--border2);background:var(--surface2)}
+.currency-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,61,0.1)}
+.nav-cta{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block;line-height:1}
+.nav-cta:hover{background:var(--accent-pressed);box-shadow:0 8px 30px rgba(232,255,61,0.35);transform:translateY(-1px)}
+
+/* SECTIONS */
+.section{width:100%;padding:120px 24px;position:relative}
+.section-inner{max-width:1140px;margin:0 auto}
+.section-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border2) 30%,var(--border2) 70%,transparent);position:relative}
+.section-divider::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 16px var(--accent)}
+.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;color:var(--accent);margin-bottom:20px;display:inline-flex;align-items:center;gap:10px}
+.section-label::before{content:"";width:24px;height:1px;background:var(--accent)}
+h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-height:0.98;letter-spacing:1px;color:var(--text);margin-bottom:24px;font-weight:400}
+.section-body{font-size:17px;color:var(--muted2);max-width:700px;line-height:1.7;margin-bottom:48px}
+
+/* HERO */
+.hero{padding:160px 24px 100px;position:relative;text-align:center;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;top:-10%;left:50%;transform:translateX(-50%);width:1300px;height:1000px;
+  background:
+    radial-gradient(ellipse 600px 400px at center 45%,rgba(232,255,61,0.22),transparent 65%),
+    radial-gradient(ellipse at center,rgba(232,255,61,0.10),transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.hero::after{content:"";position:absolute;bottom:0;left:0;right:0;height:200px;background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none;z-index:0}
+.hero > *{position:relative;z-index:2}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(232,255,61,0.06);border:1px solid rgba(232,255,61,0.25);padding:8px 16px;border-radius:100px;margin-bottom:32px}
+.hero-eyebrow::before{content:"";width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent)}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7.6vw,98px);line-height:0.96;letter-spacing:1.5px;font-weight:400;max-width:980px;margin:0 auto 28px;color:var(--text);text-shadow:0 0 60px rgba(232,255,61,0.12)}
+.hero-sub{font-size:19px;color:var(--muted2);max-width:680px;margin:0 auto 28px;line-height:1.6}
+.hero-cta{display:inline-block;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:16px 30px;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:all .2s;margin-bottom:18px}
+.hero-cta:hover{background:var(--accent-pressed);transform:translateY(-2px);box-shadow:0 14px 40px rgba(232,255,61,0.35)}
+.hero-trust{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:16px}
+
+/* HOW IT WORKS */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+.step{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:14px;padding:32px;position:relative;transition:all .25s ease}
+.step:hover{transform:translateY(-3px);border-color:var(--border2)}
+.step-num{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:2px;color:var(--accent);line-height:1;margin-bottom:14px;text-shadow:0 0 20px rgba(232,255,61,0.3)}
+.step-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--text);margin-bottom:10px;line-height:1.2}
+.step-body{font-size:15px;color:var(--muted2);line-height:1.7}
+
+/* FEATURE CARDS */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+.card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:14px;padding:32px;position:relative;transition:all .25s ease;overflow:hidden}
+.card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 20px 50px -20px rgba(0,0,0,0.6)}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:14px;line-height:1.1;display:flex;align-items:center;gap:12px}
+.card-title::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.card-body{font-size:15px;color:var(--muted2);line-height:1.7}
+
+/* PRICING */
+.pricing-meta{text-align:center;margin-bottom:32px}
+.pricing-sub{color:var(--muted2);font-size:15px;margin-bottom:8px}
+.pricing-currency-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.pricing-currency-note a{color:var(--accent);cursor:pointer;text-decoration:none}
+.pricing-currency-note a:hover{text-decoration:underline}
+
+.billing-toggle{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:56px;flex-wrap:wrap}
+.toggle-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color .15s;display:inline-flex;align-items:center;gap:10px}
+.toggle-label.active{color:var(--text)}
+.toggle-pill{width:52px;height:28px;background:var(--surface2);border:1px solid var(--border2);border-radius:100px;position:relative;cursor:pointer;transition:background .2s}
+.toggle-knob{position:absolute;top:2px;right:2px;width:22px;height:22px;background:var(--accent);border-radius:50%;transition:right .2s ease;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.toggle-pill.monthly .toggle-knob{right:calc(100% - 24px)}
+.save-badge{background:rgba(232,255,61,0.12);color:var(--accent);font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,61,0.25)}
+
+.tier-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.tier-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:all .25s ease;display:flex;flex-direction:column}
+.tier-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 30px 60px -25px rgba(0,0,0,0.7)}
+.tier-card.recommended{
+  border:1px solid rgba(232,255,61,0.5);
+  background:linear-gradient(180deg,#161611,var(--surface3));
+  box-shadow:0 0 0 1px rgba(232,255,61,0.2),0 30px 80px -20px rgba(232,255,61,0.18);
+  transform:translateY(-12px) scale(1.02);
+  z-index:2;
+}
+.tier-card.recommended:hover{transform:translateY(-16px) scale(1.02)}
+.tier-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2.5px;padding:5px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(232,255,61,0.4)}
+.tier-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--text);margin-bottom:6px}
+.tier-tagline{font-size:13px;color:var(--muted2);margin-bottom:24px;line-height:1.5;min-height:38px}
+.tier-price-main{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:1.5px;color:var(--text);line-height:1;margin-bottom:6px}
+.tier-card.recommended .tier-price-main{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.3)}
+.tier-price-period{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);letter-spacing:1px;margin-left:6px;font-weight:400}
+.tier-price-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.tier-features{display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
+.tier-feature{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--text);line-height:1.5}
+.tier-check{color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px;font-size:13px}
+.tier-btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:auto;text-decoration:none;text-align:center;display:block;box-sizing:border-box}
+.tier-btn.primary{background:var(--accent);color:var(--bg);box-shadow:0 6px 24px rgba(232,255,61,0.25)}
+.tier-btn.primary:hover{background:var(--accent-pressed);transform:translateY(-2px);box-shadow:0 12px 36px rgba(232,255,61,0.4)}
+.tier-btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.tier-btn.secondary:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,255,61,0.04)}
+
+/* OBJECTIONS */
+.objection-cards{display:flex;flex-direction:column;gap:16px;margin-top:48px}
+.objection-cards .card{padding:30px 36px 32px;background:linear-gradient(180deg,#121212,#0e0e0e);border-color:var(--border);position:relative}
+.obj-q{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--accent);margin-bottom:14px;line-height:1.2;position:relative;padding-left:32px}
+.obj-q::before{content:"Q";position:absolute;left:0;top:1px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--bg);background:var(--accent);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+.obj-a{font-size:15px;color:var(--muted2);line-height:1.75;position:relative;padding-left:32px}
+.obj-a::before{content:"A";position:absolute;left:0;top:2px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--muted2);background:transparent;border:1px solid var(--border2);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+
+/* FINAL CTA */
+.final-cta{background:radial-gradient(ellipse at center top,rgba(232,255,61,0.07),transparent 60%),var(--bg);padding:140px 24px 120px;text-align:center}
+.final-cta h2{text-align:center}
+.final-cta-body{font-size:17px;color:var(--muted2);margin:24px auto 40px;line-height:1.7;max-width:560px}
+
+/* FOOTER */
+.footer{padding:64px 28px 40px;border-top:1px solid var(--border);background:#070707;position:relative}
+.footer::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:300px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.footer-inner{max-width:1140px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap}
+.footer-brand{display:flex;flex-direction:column;gap:6px}
+.footer-wordmark{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:6px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.3);line-height:1}
+.footer-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.footer-right{display:flex;gap:28px;align-items:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.footer-link{color:var(--muted);text-decoration:none;transition:color .15s}
+.footer-link:hover{color:var(--accent)}
+.footer-bottom{max-width:1140px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#444;text-align:center}
+
+@media (max-width:880px){
+  .steps,.features,.tier-cards{grid-template-columns:1fr}
+  .tier-card.recommended{transform:none}
+  .tier-card.recommended:hover{transform:translateY(-3px)}
+  .section{padding:80px 24px}
+  .nav{padding:0 16px}
+  .nav-link{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <span class="nav-logo-name">FORGE</span>
+    <span class="nav-logo-sub">For Coaches</span>
+  </div>
+  <div class="nav-right">
+    <a class="nav-link" href="/">For athletes</a>
+    <select class="currency-select" id="currencySelect" onchange="setCurrency(this.value)">
+      <option value="CHF">CHF — Switzerland</option>
+      <option value="GBP">GBP — United Kingdom</option>
+      <option value="EUR">EUR — Europe</option>
+      <option value="USD">USD — United States</option>
+    </select>
+    <a class="nav-cta" href="/app.html?coach_signup=true" data-i18n="nav_trial_btn">Start free trial</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow" data-i18n="hero_eyebrow">FOR COACHES</div>
+  <h1 data-i18n="hero_h1">Your clients train harder when they know you're watching.</h1>
+  <div class="hero-sub" data-i18n="hero_sub">FORGE gives every client on your roster a 24/7 AI coach — post-workout check-ins, weekly reviews, and instant answers. You stay in control. The AI does the work between sessions.</div>
+  <a class="hero-cta" href="/app.html?coach_signup=true" data-i18n="hero_cta">Start your 14-day free trial</a>
+  <div class="hero-trust" data-i18n="hero_trust">No card required · 14-day free trial · Cancel anytime</div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label" data-i18n="how_label">How it works</div>
+    <h2 data-i18n="how_h2">Three steps. That's the whole setup.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title" data-i18n="step1_title">Sign up as a coach.</div>
+        <div class="step-body" data-i18n="step1_body">Set up your profile in 2 minutes.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title" data-i18n="step2_title">Invite your clients.</div>
+        <div class="step-body" data-i18n="step2_body">They join FORGE with your referral link.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title" data-i18n="step3_title">Manage everything in one dashboard.</div>
+        <div class="step-body" data-i18n="step3_body">The AI coaches them daily.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- FEATURES -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label" data-i18n="features_label">What you get</div>
+    <h2 data-i18n="features_h2">Everything you need to run a coaching practice from your phone.</h2>
+    <div class="features">
+      <div class="card">
+        <div class="card-title" data-i18n="f1_title">Client dashboard</div>
+        <div class="card-body" data-i18n="f1_body">See every client's training logs, progress, and AI activity in one place.</div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="f2_title">Programme builder</div>
+        <div class="card-body" data-i18n="f2_body">Build and assign custom programmes. The AI adapts them as clients progress.</div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="f3_title">Earn commission</div>
+        <div class="card-body" data-i18n="f3_body">Get 10–20% of every client subscription, every month, automatically.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-inner">
+    <div class="section-label" style="display:flex;justify-content:center" data-i18n="pricing_label">Coach plans</div>
+    <h2 style="text-align:center" data-i18n="pricing_h2">Coach plans</h2>
+    <div class="pricing-meta">
+      <div class="pricing-sub" data-i18n="pricing_sub">Start free for 14 days. No card required.</div>
+      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a></div>
+    </div>
+    <div class="billing-toggle">
+      <span class="toggle-label" id="lbl-monthly">Monthly</span>
+      <div class="toggle-pill" id="billingToggle" onclick="toggleBilling()"><div class="toggle-knob"></div></div>
+      <span class="toggle-label active" id="lbl-annual">Annual <span class="save-badge">2 months free</span></span>
+    </div>
+    <div class="tier-cards">
+      <!-- STARTER -->
+      <div class="tier-card">
+        <div class="tier-name">Starter</div>
+        <div class="tier-tagline" data-i18n="starter_tagline">For coaches building their roster.</div>
+        <div class="tier-price-main" id="starter-price">CHF 32.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="starter-note">14-day free trial</div>
+        <div class="tier-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Up to 10 clients</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Client dashboard</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Programme builder</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>AI review controls</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>10% commission on client subscriptions</span></div>
+        </div>
+        <a class="tier-btn secondary" href="/app.html?coach_signup=true">Start free trial</a>
+      </div>
+      <!-- PRO -->
+      <div class="tier-card recommended">
+        <div class="tier-badge">MOST POPULAR</div>
+        <div class="tier-name">Pro</div>
+        <div class="tier-tagline" data-i18n="pro_tagline">For coaches running a full practice.</div>
+        <div class="tier-price-main" id="pro-price">CHF 59.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="pro-note">14-day free trial</div>
+        <div class="tier-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Up to 30 clients</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Starter</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Priority client notifications</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Template library</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>15% commission on client subscriptions</span></div>
+        </div>
+        <a class="tier-btn primary" href="/app.html?coach_signup=true">Start free trial</a>
+      </div>
+      <!-- ELITE -->
+      <div class="tier-card">
+        <div class="tier-name">Elite</div>
+        <div class="tier-tagline" data-i18n="elite_tagline">For coaches with a large client base.</div>
+        <div class="tier-price-main" id="elite-price">CHF 99.99<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="elite-note">14-day free trial</div>
+        <div class="tier-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Unlimited clients</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Pro</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>20% commission on client subscriptions</span></div>
+        </div>
+        <a class="tier-btn secondary" href="/app.html?coach_signup=true">Start free trial</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- OBJECTIONS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label" data-i18n="obj_label">Common questions</div>
+    <h2 data-i18n="obj_h2">The things coaches ask<br>before they sign up.</h2>
+    <div class="objection-cards">
+      <div class="card">
+        <div class="obj-q" data-i18n="obj1_q">Does this replace my coaching?</div>
+        <div class="obj-a" data-i18n="obj1_a">No. You set the programme. You do the real coaching. FORGE handles the 24/7 questions and daily check-ins your clients expect but you can't always deliver.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj2_q">Will my clients need their own subscription?</div>
+        <div class="obj-a" data-i18n="obj2_a">Yes. Each client has their own individual FORGE subscription. You earn 10–20% of their payments every month — meaning the more clients you bring, the lower your net cost.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj3_q">What if I already use another app?</div>
+        <div class="obj-a" data-i18n="obj3_a">FORGE doesn't need to replace anything. Clients use it for AI coaching and progress tracking. You see their data here. Your existing tools stay the same.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- FINAL CTA -->
+<section class="section final-cta">
+  <div class="section-inner" style="max-width:680px;margin:0 auto">
+    <h2 data-i18n="cta_h2">Start managing your clients inside FORGE.</h2>
+    <div class="final-cta-body" data-i18n="cta_body">14-day free trial. No card required.</div>
+    <a class="hero-cta" href="/app.html?coach_signup=true" data-i18n="cta_btn">Get started free</a>
+    <div class="hero-trust" style="margin-top:18px" data-i18n="cta_trust">Cancel anytime · Billed in CHF · Commission paid monthly</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-wordmark">FORGE</div>
+      <div class="footer-tag">AI Performance Coach</div>
+    </div>
+    <div class="footer-right">
+      <a class="footer-link" href="/">For athletes</a>
+      <a class="footer-link" href="#">Privacy</a>
+      <a class="footer-link" href="#">Terms</a>
+      <a class="footer-link" href="mailto:hello@klemforge.com">Contact</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© FORGE · Built for coaches who take their clients seriously.</div>
+</footer>
+
+<script>
+// ── COACH LANDING STRINGS — translation-ready ──
+// Other language keys go here later. Same pattern as LANDING_STRINGS in index.html.
+const COACH_STRINGS = {
+  en: {
+    // All visible copy lives here so future translations can plug in.
+    nav_trial_btn: 'Start free trial',
+    hero_eyebrow: 'FOR COACHES',
+    hero_h1: "Your clients train harder when they know you're watching.",
+    hero_sub: "FORGE gives every client on your roster a 24/7 AI coach — post-workout check-ins, weekly reviews, and instant answers. You stay in control. The AI does the work between sessions.",
+    hero_cta: 'Start your 14-day free trial',
+    hero_trust: 'No card required · 14-day free trial · Cancel anytime',
+    how_label: 'How it works',
+    how_h2: "Three steps. That's the whole setup.",
+    step1_title: 'Sign up as a coach.',
+    step1_body: 'Set up your profile in 2 minutes.',
+    step2_title: 'Invite your clients.',
+    step2_body: 'They join FORGE with your referral link.',
+    step3_title: 'Manage everything in one dashboard.',
+    step3_body: 'The AI coaches them daily.',
+    features_label: 'What you get',
+    features_h2: 'Everything you need to run a coaching practice from your phone.',
+    f1_title: 'Client dashboard',
+    f1_body: "See every client's training logs, progress, and AI activity in one place.",
+    f2_title: 'Programme builder',
+    f2_body: 'Build and assign custom programmes. The AI adapts them as clients progress.',
+    f3_title: 'Earn commission',
+    f3_body: 'Get 10–20% of every client subscription, every month, automatically.',
+    pricing_label: 'Coach plans',
+    pricing_h2: 'Coach plans',
+    pricing_sub: 'Start free for 14 days. No card required.',
+    starter_tagline: 'For coaches building their roster.',
+    pro_tagline: 'For coaches running a full practice.',
+    elite_tagline: 'For coaches with a large client base.',
+    obj_label: 'Common questions',
+    obj_h2: 'The things coaches ask before they sign up.',
+    obj1_q: 'Does this replace my coaching?',
+    obj1_a: "No. You set the programme. You do the real coaching. FORGE handles the 24/7 questions and daily check-ins your clients expect but you can't always deliver.",
+    obj2_q: 'Will my clients need their own subscription?',
+    obj2_a: 'Yes. Each client has their own individual FORGE subscription. You earn 10–20% of their payments every month — meaning the more clients you bring, the lower your net cost.',
+    obj3_q: 'What if I already use another app?',
+    obj3_a: "FORGE doesn't need to replace anything. Clients use it for AI coaching and progress tracking. You see their data here. Your existing tools stay the same.",
+    cta_h2: 'Start managing your clients inside FORGE.',
+    cta_body: '14-day free trial. No card required.',
+    cta_btn: 'Get started free',
+    cta_trust: 'Cancel anytime · Billed in CHF · Commission paid monthly',
+  },
+};
+
+// ── PRICING ────────────────────────────────────────────
+const COACH_PRICES = {
+  CHF: { starter: { monthly: 49,  annual: 32.99 }, pro: { monthly: 89,  annual: 59.99 }, elite: { monthly: 149, annual: 99.99 } },
+  GBP: { starter: { monthly: 42,  annual: 27.99 }, pro: { monthly: 75,  annual: 49.99 }, elite: { monthly: 125, annual: 84.99 } },
+  EUR: { starter: { monthly: 45,  annual: 29.99 }, pro: { monthly: 79,  annual: 52.99 }, elite: { monthly: 135, annual: 89.99 } },
+  USD: { starter: { monthly: 49,  annual: 32.99 }, pro: { monthly: 89,  annual: 59.99 }, elite: { monthly: 149, annual: 99.99 } },
+};
+
+let currency = 'CHF';
+let billing = 'annual'; // default
+
+function setCurrency(c) {
+  currency = c;
+  document.getElementById('currencyLabel').textContent = c;
+  renderPrices();
+  try { localStorage.setItem('forge-coach-currency', c); } catch(e) {}
+}
+
+function toggleBilling() {
+  billing = billing === 'annual' ? 'monthly' : 'annual';
+  const pill = document.getElementById('billingToggle');
+  pill.classList.toggle('monthly', billing === 'monthly');
+  document.getElementById('lbl-monthly').classList.toggle('active', billing === 'monthly');
+  document.getElementById('lbl-annual').classList.toggle('active', billing === 'annual');
+  renderPrices();
+}
+
+function renderPrices() {
+  const p = COACH_PRICES[currency];
+  ['starter','pro','elite'].forEach(t => {
+    const v = p[t][billing];
+    const el = document.getElementById(t + '-price');
+    if (el) el.innerHTML = `${currency} ${v}<span class="tier-price-period">/mo</span>`;
+    const note = document.getElementById(t + '-note');
+    if (note) {
+      if (billing === 'annual') {
+        const yearly = (p[t].annual * 12).toFixed(2);
+        note.textContent = `Billed ${currency} ${yearly}/year · 14-day free trial`;
+      } else {
+        note.textContent = '14-day free trial';
+      }
+    }
+  });
+}
+
+// ── LIGHT i18n PLUMBING ────────────────────────────────
+// Currently English only. Drop a new key into COACH_STRINGS to add a language.
+function applyCoachStrings(code) {
+  const s = COACH_STRINGS[code] || COACH_STRINGS.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (s[key]) el.textContent = s[key];
+  });
+}
+
+// ── INIT ───────────────────────────────────────────────
+(function init() {
+  try {
+    const saved = localStorage.getItem('forge-coach-currency');
+    if (saved && COACH_PRICES[saved]) {
+      currency = saved;
+      document.getElementById('currencySelect').value = saved;
+      document.getElementById('currencyLabel').textContent = saved;
+    }
+  } catch(e) {}
+  renderPrices();
+  applyCoachStrings('en');
+})();
+</script>
+</body>
+</html>
