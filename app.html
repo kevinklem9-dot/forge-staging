@@ -10587,12 +10587,14 @@ function setCoachFilter(f) {
 function filterCoachClients() {
   const active = _coachClientsCache.filter(c => c.status === 'active');
   if (_coachFilter === 'all') return active;
-  const now = Date.now();
+  const today = new Date().toISOString().split('T')[0];
   return active.filter(c => {
     if (!c.last_active) return _coachFilter === 'needs_attention';
-    const hours = (now - new Date(c.last_active).getTime()) / 3600000;
-    if (_coachFilter === 'active') return hours < 48;
-    if (_coachFilter === 'needs_attention') return hours >= 24 * 5;
+    // last_active is YYYY-MM-DD date string
+    const lastDate = c.last_active.split('T')[0]; // handle if full timestamp returned
+    const diffDays = Math.floor((new Date(today) - new Date(lastDate)) / 86400000);
+    if (_coachFilter === 'active') return diffDays < 2; // active within 48h = today or yesterday
+    if (_coachFilter === 'needs_attention') return diffDays >= 5;
     return true;
   });
 }
@@ -10859,7 +10861,7 @@ function renderClientOverviewTab(body) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
       ${statCard('Sessions this week', ov.sessions_this_week ?? 0)}
       ${statCard('Current streak', (ov.current_streak ?? 0) + 'd')}
-      ${statCard('Last session', ov.last_session ? relTime(ov.last_session) : 'Never')}
+      ${statCard('Last session', ov.last_session ? formatDateSession(ov.last_session) : 'Never')}
       ${statCard('PRs this month', ov.prs_this_month ?? 0)}
     </div>
     ${chart ? `
