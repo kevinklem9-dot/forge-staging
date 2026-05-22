@@ -10590,10 +10590,9 @@ function filterCoachClients() {
   const today = new Date().toISOString().split('T')[0];
   return active.filter(c => {
     if (!c.last_active) return _coachFilter === 'needs_attention';
-    // last_active is YYYY-MM-DD date string
-    const lastDate = c.last_active.split('T')[0]; // handle if full timestamp returned
+    const lastDate = (c.last_active + '').split('T')[0];
     const diffDays = Math.floor((new Date(today) - new Date(lastDate)) / 86400000);
-    if (_coachFilter === 'active') return diffDays < 2; // active within 48h = today or yesterday
+    if (_coachFilter === 'active') return diffDays < 2;
     if (_coachFilter === 'needs_attention') return diffDays >= 5;
     return true;
   });
@@ -10853,7 +10852,7 @@ function formatDateSession(dateStr) {
   if (!dateStr) return 'Never';
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const d = dateStr.split('T')[0]; // handle full timestamps too
+  const d = (dateStr + '').split('T')[0];
   if (d === today) return 'Today';
   if (d === yesterday) return 'Yesterday';
   const diff = Math.floor((new Date(today) - new Date(d)) / 86400000);
@@ -10963,25 +10962,10 @@ async function renderClientProgrammeTab(body) {
       <button onclick="if(confirm('Reset to AI programme? The custom programme will be removed.')) deleteAssignedProgramme('${assigned.id}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Reset to AI programme</button>
     `;
   } else {
-    // Fetch the client's AI-generated plan to show in read-only view
-    const planRes = await api('/api/coach/clients/' + cid + '/plan');
-    const clientPlan = planRes?.plan;
-    const planDays = clientPlan?.workout?.days || clientPlan?.days || [];
-    const planHtml = planDays.length > 0
-      ? planDays.map(day => `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">${escHtml(day.day_name || day.label || 'Day')}</div>
-          ${(day.exercises || []).map(e => `
-            <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;margin-bottom:3px;">
-              • ${escHtml(e.name)} — ${escHtml(e.sets||'')}×${escHtml(e.reps||'')}${e.rest?' · '+escHtml(e.rest):''}
-            </div>`).join('')}
-        </div>`).join('')
-      : '<div style="font-size:13px;color:var(--muted);padding:12px 0;">No plan data available.</div>';
-
     body.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">CURRENT — AI GENERATED (READ ONLY)</div>
-        ${planHtml}
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">CURRENT — AI GENERATED</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;">This client is following the AI-generated plan. You can assign a custom programme to override it.</div>
       </div>
       <button onclick="openProgrammeBuilder()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Assign custom programme</button>
       ${templates.length ? `
@@ -11160,11 +11144,23 @@ async function renderClientAITab(body) {
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">CONVERSATIONS (READ-ONLY)</div>
     <div style="margin-bottom:18px;">
-      ${convs.length ? convs.slice(0, 15).map(c => `
-        <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
-          <div style="font-size:13px;color:var(--text);">${escHtml(c.title || 'Conversation')}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${c.created_at ? relTime(c.created_at) : ''}</div>
-        </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No conversations yet.</div>'}
+      ${convs.length ? convs.slice(0, 15).map((cv, ci) => `
+        <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+          <summary style="padding:10px 12px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:13px;color:var(--text);">${escHtml(cv.title || 'Conversation')}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${cv.created_at ? relTime(cv.created_at) : ''}</div>
+            </div>
+            <span style="color:var(--muted);font-size:12px;">▶</span>
+          </summary>
+          <div style="padding:10px 12px;border-top:1px solid var(--border);">
+            ${(cv.messages || []).map(m => `
+              <div style="margin-bottom:10px;">
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">${m.role === 'user' ? 'CLIENT' : 'AI COACH'}</div>
+                <div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml(m.content || '')}</div>
+              </div>`).join('') || '<div style="font-size:12px;color:var(--muted);">No messages.</div>'}
+          </div>
+        </details>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No conversations yet.</div>'}
     </div>
     <details style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
       <summary style="cursor:pointer;font-size:13px;color:var(--text);">AI review history (${reviews.length})</summary>
