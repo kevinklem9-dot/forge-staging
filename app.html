@@ -10848,6 +10848,19 @@ function renderClientTab() {
   else renderClientAITab(body);
 }
 
+
+function formatDateSession(dateStr) {
+  if (!dateStr) return 'Never';
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const d = dateStr.split('T')[0]; // handle full timestamps too
+  if (d === today) return 'Today';
+  if (d === yesterday) return 'Yesterday';
+  const diff = Math.floor((new Date(today) - new Date(d)) / 86400000);
+  if (diff > 0 && diff < 60) return diff + ' days ago';
+  return d;
+}
+
 function renderClientOverviewTab(body) {
   const ov = _currentClientDetail.overview;
   if (!ov || ov._error || ov.error) {
