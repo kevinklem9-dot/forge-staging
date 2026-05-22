@@ -936,6 +936,15 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
         <div id="programmesPanel" style="padding-bottom:100px;"></div>
       </div>
 
+      <!-- Clients Panel (coach accounts only) -->
+      <div class="panel" id="panel-clients" style="overflow-y:auto;">
+        <div class="panel-header">
+          <div class="panel-title">My Clients</div>
+          <div class="panel-sub">Roster, programmes, and AI activity</div>
+        </div>
+        <div id="clientsPanel" style="padding-bottom:100px;"></div>
+      </div>
+
       <!-- Account Panel -->
       <div class="panel" id="panel-account" style="overflow-y:auto;">
         <div class="panel-header">
@@ -952,6 +961,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
       <button class="nav-btn" onclick="showPanel('log')" id="nav-log"><div class="nav-icon">📊</div><div class="nav-label" data-i18n="nav_log">Log</div></button>
       <button class="nav-btn" onclick="showPanel('nutrition')" id="nav-nutrition"><div class="nav-icon">🥩</div><div class="nav-label" data-i18n="nav_food">Food</div></button>
       <button class="nav-btn" onclick="showPanel('progress')" id="nav-progress"><div class="nav-icon">📈</div><div class="nav-label" data-i18n="nav_progress">Progress</div></button>
+      <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" style="display:none"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
       <button class="nav-btn" onclick="showPanel('admin')" id="nav-admin" style="display:none"><div class="nav-icon">⚙️</div><div class="nav-label" data-i18n="nav_admin">Admin</div></button>
       <button class="nav-btn" onclick="showPanel('account')" id="nav-account"><div class="nav-icon">👤</div><div class="nav-label">Account</div></button>
     </nav>
@@ -2312,9 +2322,11 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ═══════════════════════════════════════════════════════
 // NAV — Bulletproof panel switching
 // ═══════════════════════════════════════════════════════
-const ALL_PANELS = ['coach', 'workout', 'log', 'nutrition', 'progress', 'admin', 'programmes', 'account'];
+const ALL_PANELS = ['coach', 'workout', 'log', 'nutrition', 'progress', 'admin', 'programmes', 'account', 'clients'];
 
 function showPanel(name) {
+  // Refresh coach nav visibility on every panel switch
+  if (typeof updateCoachNav === 'function') updateCoachNav();
   // If expired, force paywall on any panel navigation except account
   if (userSubscription?.status === 'expired' && name !== 'account') {
     openExpiredPaywall();
@@ -2355,6 +2367,7 @@ function showPanel(name) {
     renderCoachCounter();
     checkDay7Prompt();
   }
+  if (name === 'clients') renderClientsPanel();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2477,6 +2490,44 @@ function handlePaymentRedirect() {
   const payment = params.get('payment');
   const tier = params.get('tier');
   const portalReturn = params.get('portal_return');
+  const coachSetup = params.get('coach_setup');
+  const coachRequest = params.get('coach_request');
+  const coachSignup = params.get('coach_signup');
+
+  // Coach setup return from Stripe
+  if (coachSetup === 'success') {
+    window.history.replaceState({}, '', window.location.pathname);
+    // Force-refresh profile so account_type updates locally
+    setTimeout(() => {
+      api('/api/profile').then(res => {
+        if (res?.profile) {
+          userProfile = res.profile;
+          localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile));
+        }
+        if (typeof updateCoachNav === 'function') updateCoachNav();
+        if (typeof showCoachSetupConfirmation === 'function') showCoachSetupConfirmation();
+      });
+    }, 600);
+    return;
+  }
+  if (coachSetup === 'cancelled') {
+    window.history.replaceState({}, '', window.location.pathname);
+    showToast('Coach setup cancelled', 'error');
+  }
+  // Inbound coach connection request via push deeplink
+  if (coachRequest) {
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(() => {
+      if (typeof openCoachRequestScreen === 'function') openCoachRequestScreen(coachRequest);
+    }, 500);
+  }
+  // Direct deeplink to coach sign-up from coaches.html
+  if (coachSignup === 'true') {
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(() => {
+      if (typeof openCoachSetup === 'function') openCoachSetup();
+    }, 500);
+  }
 
   if (portalReturn) {
     window.history.replaceState({}, '', window.location.pathname);
@@ -5148,6 +5199,9 @@ function renderAccount() {
         </button>
       </div>
 
+      <!-- Coach sections (My Coach, Become a Coach, Coach Plan, Pending Request) -->
+      <div id="coachAccountSections"></div>
+
       <!-- Referral Programme -->
       <div id="referralSection"></div>
 
@@ -5155,6 +5209,8 @@ function renderAccount() {
   `;
   // Load referral section async
   renderReferralSection(document.getElementById('referralSection'));
+  // Load coach sections async
+  if (typeof renderAccountCoachSections === 'function') renderAccountCoachSections();
 }
 
 async function saveAccountProfile() {
@@ -10410,6 +10466,1041 @@ function toggleLangDrawer() {
 function closeLangDrawer() {
   document.getElementById('langDrawer')?.classList.remove('open');
   document.getElementById('langOverlay')?.classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// COACH FEATURE
+// ═══════════════════════════════════════════════════════
+
+const COACH_PLAN_LIMITS = { starter: 10, pro: 30, elite: Infinity };
+const COACH_PLAN_COMMISSION = { starter: 10, pro: 15, elite: 20 };
+const COACH_PLAN_LABEL = { starter: 'Starter', pro: 'Pro', elite: 'Elite' };
+
+let _coachClientsCache = [];
+let _coachFilter = 'all';
+let _currentClientDetail = null;
+let _currentClientTab = 'overview';
+
+function isCoachAccount() {
+  return userProfile?.account_type === 'coach'
+    && ['active', 'trial'].includes(userProfile?.coach_plan_status);
+}
+
+function updateCoachNav() {
+  const btn = document.getElementById('nav-clients');
+  if (!btn) return;
+  btn.style.display = isCoachAccount() ? '' : 'none';
+}
+
+function relTime(iso) {
+  if (!iso) return 'Never';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+  const d = Math.floor(h / 24);
+  if (d < 30) return d + (d === 1 ? ' day ago' : ' days ago');
+  return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+}
+
+function clientStatusDot(lastActiveIso) {
+  if (!lastActiveIso) return { color:'var(--red, #ff4444)', label:'No activity' };
+  const days = (Date.now() - new Date(lastActiveIso).getTime()) / 86400000;
+  if (days < 2) return { color:'#39d98a', label:'Active' };
+  if (days < 7) return { color:'#ffa726', label:'Slow' };
+  return { color:'var(--red, #ff4444)', label:'Inactive' };
+}
+
+function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
+}
+
+// ── CLIENTS PANEL ─────────────────────────────────────
+async function renderClientsPanel() {
+  const el = document.getElementById('clientsPanel');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="padding:16px 18px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+        <div id="coachSeatIndicator" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;">&nbsp;</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="openAddClientSheet('invite')" style="padding:9px 14px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:9px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Invite</button>
+          <button onclick="openAddClientSheet('add')" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:9px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Add Client</button>
+        </div>
+      </div>
+      <div id="coachFilterChips" style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;"></div>
+      <div id="coachClientList"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
+      <div id="coachPendingList" style="margin-top:24px;"></div>
+    </div>
+  `;
+  await loadCoachClients();
+  renderCoachFilterChips();
+  renderCoachClientList();
+  loadCoachSeatCount();
+}
+
+async function loadCoachClients() {
+  const res = await api('/api/coach/clients');
+  _coachClientsCache = res?.clients || [];
+}
+
+async function loadCoachSeatCount() {
+  const indicator = document.getElementById('coachSeatIndicator');
+  if (!indicator) return;
+  const res = await api('/api/coach/seat-count');
+  if (!res || res._error) return;
+  const planLabel = COACH_PLAN_LABEL[res.plan] || (res.plan || '');
+  const limit = res.limit == null ? '∞' : res.limit;
+  const used = res.active;
+  let color = 'var(--muted)';
+  if (typeof res.limit === 'number') {
+    if (used >= res.limit) color = 'var(--red, #ff4444)';
+    else if (res.limit - used <= 2) color = '#ffa726';
+  }
+  indicator.style.color = color;
+  indicator.textContent = `COACH ${planLabel.toUpperCase()} · ${used} of ${limit} clients`;
+}
+
+function renderCoachFilterChips() {
+  const el = document.getElementById('coachFilterChips');
+  if (!el) return;
+  const chips = [
+    { id: 'all', label: 'All' },
+    { id: 'active', label: 'Active' },
+    { id: 'needs_attention', label: 'Needs attention' },
+  ];
+  el.innerHTML = chips.map(c => `
+    <button onclick="setCoachFilter('${c.id}')" style="padding:7px 13px;background:${_coachFilter === c.id ? 'var(--accent)' : 'transparent'};color:${_coachFilter === c.id ? '#000' : 'var(--muted)'};border:1px solid ${_coachFilter === c.id ? 'var(--accent)' : 'var(--border)'};border-radius:20px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;">${c.label}</button>
+  `).join('');
+}
+
+function setCoachFilter(f) {
+  _coachFilter = f;
+  renderCoachFilterChips();
+  renderCoachClientList();
+}
+
+function filterCoachClients() {
+  const active = _coachClientsCache.filter(c => c.status === 'active');
+  if (_coachFilter === 'all') return active;
+  const now = Date.now();
+  return active.filter(c => {
+    if (!c.last_active) return _coachFilter === 'needs_attention';
+    const hours = (now - new Date(c.last_active).getTime()) / 3600000;
+    if (_coachFilter === 'active') return hours < 48;
+    if (_coachFilter === 'needs_attention') return hours >= 24 * 5;
+    return true;
+  });
+}
+
+function renderCoachClientList() {
+  const el = document.getElementById('coachClientList');
+  if (!el) return;
+  const clients = filterCoachClients();
+  if (!clients.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;">
+        <div style="font-size:42px;margin-bottom:14px;opacity:0.4;">👥</div>
+        <div style="font-size:15px;color:var(--text);margin-bottom:6px;">No clients yet.</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Add your first client to get started.</div>
+        <button onclick="openAddClientSheet('add')" style="padding:11px 22px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Add your first client</button>
+      </div>`;
+  } else {
+    el.innerHTML = clients.map(c => {
+      const name = c.profile?.name || 'Unknown';
+      const goal = Array.isArray(c.profile?.goal) ? c.profile.goal.join(' + ') : (c.profile?.goal || 'No goal set');
+      const tier = c.profile?.subscription_tier || 'iron';
+      const tierLabel = { iron:'IRON', steel:'STEEL', forge:'FORGE' }[tier] || 'IRON';
+      const dot = clientStatusDot(c.last_active);
+      return `
+      <div onclick="openClientDetail('${c.client_id}')" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
+        <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:var(--text);">${escHtml(name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(goal)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;">${c.last_active ? 'Active ' + relTime(c.last_active) : 'No sessions logged'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+          <span style="font-size:9px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--muted);padding:3px 7px;border-radius:10px;letter-spacing:0.5px;">${tierLabel}</span>
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  // Pending invitations
+  const pending = _coachClientsCache.filter(c => c.status === 'pending');
+  const pendEl = document.getElementById('coachPendingList');
+  if (pendEl) {
+    if (!pending.length) { pendEl.innerHTML = ''; return; }
+    pendEl.innerHTML = `
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PENDING INVITATIONS</div>
+      ${pending.map(p => {
+        const label = p.profile?.name || p.invited_email || 'Unknown';
+        const days = Math.max(1, Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000));
+        return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(label)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">Invited ${days} day${days === 1 ? '' : 's'} ago</div>
+          </div>
+          <button onclick="cancelCoachInvite('${p.connection_id}')" style="background:transparent;border:none;color:var(--red, #ff4444);font-size:12px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:0.5px;">Cancel</button>
+        </div>`;
+      }).join('')}
+    `;
+  }
+}
+
+async function cancelCoachInvite(connectionId) {
+  if (!confirm('Cancel this invitation?')) return;
+  const res = await api('/api/coach/clients/' + connectionId, 'DELETE');
+  if (res?.ok) {
+    showToast('Invitation cancelled', 'success');
+    await loadCoachClients();
+    renderCoachClientList();
+    loadCoachSeatCount();
+  } else {
+    showToast('Failed to cancel', 'error');
+  }
+}
+
+// ── ADD CLIENT SHEET ──────────────────────────────────
+function openAddClientSheet() {
+  document.getElementById('addClientSheet')?.remove();
+  const sheet = document.createElement('div');
+  sheet.id = 'addClientSheet';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;flex-direction:column;justify-content:flex-end;';
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
+  sheet.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 32px;max-height:80vh;overflow-y:auto;">
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 22px;"></div>
+      <div id="addClientStep1">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">ADD A CLIENT</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5;">Enter their email. If they have a FORGE account, we'll send them a connection request. If not, we'll send an invite.</div>
+        <input id="addClientEmail" type="email" placeholder="client@example.com" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;" oninput="document.getElementById('addClientContinue').disabled = !/.+@.+\\..+/.test(this.value);">
+        <button id="addClientContinue" onclick="submitAddClient()" disabled style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;opacity:1;">Continue</button>
+        <button onclick="document.getElementById('addClientSheet').remove()" style="width:100%;padding:12px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  setTimeout(() => document.getElementById('addClientEmail')?.focus(), 50);
+}
+
+async function submitAddClient() {
+  const email = document.getElementById('addClientEmail')?.value?.trim();
+  if (!email) return;
+  const btn = document.getElementById('addClientContinue');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  const res = await api('/api/coach/clients/invite', 'POST', { email });
+  if (res?._status === 403 && res?.error === 'seat_limit') {
+    document.getElementById('addClientSheet')?.remove();
+    showCoachSeatLimitAlert(res.plan, res.limit);
+    return;
+  }
+  if (res?.error === 'already_invited') {
+    showToast('You already invited that person.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+    return;
+  }
+  if (!res?.type) {
+    showToast(res?.error || 'Failed to send invite', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+    return;
+  }
+  // Replace sheet content with confirmation
+  const inner = document.querySelector('#addClientSheet > div');
+  if (inner) {
+    inner.innerHTML = `
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 22px;"></div>
+      <div style="text-align:center;padding:14px 0 8px;">
+        <div style="font-size:40px;margin-bottom:14px;">✓</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">${res.type === 'existing' ? 'CONNECTION REQUEST SENT' : 'INVITATION SENT'}</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:22px;">${escHtml(res.message || '')}</div>
+        <button onclick="document.getElementById('addClientSheet').remove()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Done</button>
+      </div>`;
+  }
+  await loadCoachClients();
+  renderCoachClientList();
+  loadCoachSeatCount();
+}
+
+function showCoachSeatLimitAlert(plan, limit) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:340px;width:100%;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">SEAT LIMIT REACHED</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:18px;line-height:1.5;">Your ${COACH_PLAN_LABEL[plan] || plan} plan supports ${limit} clients. Upgrade to add more.</div>
+      <button onclick="this.parentElement.parentElement.remove(); openCoachPlanUpgrade();" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Upgrade coach plan</button>
+      <button onclick="this.parentElement.parentElement.remove()" style="width:100%;padding:11px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Maybe later</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function openCoachPlanUpgrade() {
+  // Reuse coach sign-up overlay starting at plan step for upgrades.
+  // For now route through full sign-up — Stripe handles the upgrade as a subscription change.
+  openCoachSetup('plan');
+}
+
+// ── CLIENT DETAIL OVERLAY ─────────────────────────────
+async function openClientDetail(clientId) {
+  _currentClientDetail = { clientId, overview: null, notes: null, aiActivity: null, programmes: [] };
+  _currentClientTab = 'overview';
+  document.getElementById('clientDetailOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'clientDetailOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:1;">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px 10px;">
+        <button onclick="closeClientDetail()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">←</button>
+        <div id="clientDetailTitle" style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">Client</div>
+        <button onclick="openClientMenu()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">⋮</button>
+      </div>
+      <div style="display:flex;gap:0;padding:0 18px;">
+        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">OVERVIEW</button>
+        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">PROGRAMME</button>
+        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">AI ACTIVITY</button>
+      </div>
+    </div>
+    <div id="clientDetailBody" style="padding:18px;flex:1;"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
+  `;
+  document.body.appendChild(overlay);
+  await loadClientOverview(clientId);
+  renderClientTab();
+}
+
+function closeClientDetail() {
+  document.getElementById('clientDetailOverlay')?.remove();
+  _currentClientDetail = null;
+}
+
+function openClientMenu() {
+  if (!_currentClientDetail) return;
+  const cid = _currentClientDetail.clientId;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;justify-content:flex-end;';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:18px 20px 24px;">
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;"></div>
+      <button onclick="switchClientTab('overview'); document.querySelector('#clientDetailBody [data-focus=notes]')?.focus(); this.parentElement.parentElement.remove();" style="width:100%;text-align:left;padding:14px;background:transparent;border:none;color:var(--text);font-size:14px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Sans',sans-serif;">Edit notes</button>
+      <button onclick="switchClientTab('programme'); this.parentElement.parentElement.remove();" style="width:100%;text-align:left;padding:14px;background:transparent;border:none;color:var(--text);font-size:14px;cursor:pointer;border-bottom:1px solid var(--border);font-family:'DM Sans',sans-serif;">View programme</button>
+      <button onclick="if(confirm('Remove this client? They keep their data.')) { removeClient('${cid}'); this.parentElement.parentElement.remove(); }" style="width:100%;text-align:left;padding:14px;background:transparent;border:none;color:var(--red, #ff4444);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Remove client</button>
+      <button onclick="this.parentElement.parentElement.remove()" style="width:100%;padding:12px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:10px;">Cancel</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function removeClient(clientId) {
+  const res = await api('/api/coach/clients/' + clientId, 'DELETE');
+  if (res?.ok) {
+    showToast('Client removed', 'success');
+    closeClientDetail();
+    await loadCoachClients();
+    renderCoachClientList();
+    loadCoachSeatCount();
+  } else {
+    showToast('Failed to remove', 'error');
+  }
+}
+
+async function loadClientOverview(clientId) {
+  const [overview, notes] = await Promise.all([
+    api('/api/coach/clients/' + clientId + '/overview'),
+    api('/api/coach/clients/' + clientId + '/notes'),
+  ]);
+  if (!_currentClientDetail || _currentClientDetail.clientId !== clientId) return;
+  _currentClientDetail.overview = overview;
+  _currentClientDetail.notes = notes;
+  const titleEl = document.getElementById('clientDetailTitle');
+  if (titleEl) titleEl.textContent = (overview?.profile?.name || 'Client').toUpperCase();
+}
+
+function switchClientTab(tab) {
+  _currentClientTab = tab;
+  ['overview','programme','ai'].forEach(t => {
+    const el = document.getElementById('clTab-' + t);
+    if (!el) return;
+    if (t === tab) {
+      el.style.color = 'var(--text)';
+      el.style.borderBottomColor = 'var(--accent)';
+    } else {
+      el.style.color = 'var(--muted)';
+      el.style.borderBottomColor = 'transparent';
+    }
+  });
+  renderClientTab();
+}
+
+function renderClientTab() {
+  const body = document.getElementById('clientDetailBody');
+  if (!body || !_currentClientDetail) return;
+  if (_currentClientTab === 'overview') renderClientOverviewTab(body);
+  else if (_currentClientTab === 'programme') renderClientProgrammeTab(body);
+  else renderClientAITab(body);
+}
+
+function renderClientOverviewTab(body) {
+  const ov = _currentClientDetail.overview;
+  if (!ov || ov._error || ov.error) {
+    body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Could not load client data.</div>`;
+    return;
+  }
+  const notes = _currentClientDetail.notes?.notes;
+  const metrics = ov.body_metrics || [];
+  const chart = renderWeightChart(metrics);
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+      ${statCard('Sessions this week', ov.sessions_this_week ?? 0)}
+      ${statCard('Current streak', (ov.current_streak ?? 0) + 'd')}
+      ${statCard('Last session', ov.last_session ? relTime(ov.last_session) : 'Never')}
+      ${statCard('PRs this month', ov.prs_this_month ?? 0)}
+    </div>
+    ${chart ? `
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">WEIGHT — LAST 30 DAYS</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">${chart}</div>
+    ` : ''}
+    ${ov.upcoming_sessions?.length ? `
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">UPCOMING SESSIONS</div>
+    <div style="margin-bottom:18px;">
+      ${ov.upcoming_sessions.slice(0,3).map((s, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:13px;color:var(--text);">${escHtml(s.name || s.day_label || ('Day ' + (i + 1)))}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${escHtml((s.muscle_groups || s.focus || '').toString().toUpperCase())}</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${escHtml(s.day || ('Day ' + (i + 1)))}</div>
+        </div>`).join('')}
+    </div>` : ''}
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">COACH NOTES</div>
+    <textarea id="coachNotesField" data-focus="notes" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" style="width:100%;min-height:120px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;">${escHtml(notes?.content || '')}</textarea>
+    <div id="coachNotesStatus" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace;">${notes?.updated_at ? 'Last saved ' + relTime(notes.updated_at) : ''}</div>
+  `;
+}
+
+function statCard(label, value) {
+  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-bottom:6px;">${label.toUpperCase()}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--accent);">${value}</div>
+  </div>`;
+}
+
+function renderWeightChart(metrics) {
+  const pts = (metrics || []).filter(m => m.weight_kg).map(m => ({ x: new Date(m.recorded_at).getTime(), y: parseFloat(m.weight_kg) }));
+  if (pts.length < 2) return '';
+  const minX = pts[0].x, maxX = pts[pts.length - 1].x;
+  const ys = pts.map(p => p.y);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = 300, h = 100, pad = 8;
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(0.5, maxY - minY);
+  const path = pts.map((p, i) => {
+    const x = pad + ((p.x - minX) / spanX) * (w - 2 * pad);
+    const y = h - pad - ((p.y - minY) / spanY) * (h - 2 * pad);
+    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;"><polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts.map((p, i) => { const x = pad + ((p.x - minX) / spanX) * (w - 2 * pad); const y = h - pad - ((p.y - minY) / spanY) * (h - 2 * pad); return x.toFixed(1) + ',' + y.toFixed(1); }).join(' ')}"/></svg><div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;"><span>${ys[0].toFixed(1)}kg</span><span>${ys[ys.length-1].toFixed(1)}kg</span></div>`;
+}
+
+let _coachNotesSaveTimer = null;
+async function saveCoachNotes(content) {
+  if (!_currentClientDetail) return;
+  const cid = _currentClientDetail.clientId;
+  const statusEl = document.getElementById('coachNotesStatus');
+  if (statusEl) statusEl.textContent = 'Saving…';
+  const res = await api('/api/coach/clients/' + cid + '/notes', 'POST', { content });
+  if (res?.ok) {
+    if (statusEl) statusEl.textContent = 'Saved';
+    setTimeout(() => { if (statusEl) statusEl.textContent = 'Last saved just now'; }, 2000);
+    if (_currentClientDetail) _currentClientDetail.notes = { notes: res.notes };
+  } else {
+    if (statusEl) statusEl.textContent = 'Save failed';
+  }
+}
+
+// ── PROGRAMME TAB ─────────────────────────────────────
+async function renderClientProgrammeTab(body) {
+  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading programmes…</div>`;
+  const res = await api('/api/coach/programmes');
+  const all = res?.programmes || [];
+  const cid = _currentClientDetail.clientId;
+  const assigned = all.find(p => p.client_id === cid && !p.is_template);
+  const templates = all.filter(p => p.is_template);
+  _currentClientDetail.programmes = all;
+  if (assigned) {
+    const data = assigned.programme_data || {};
+    const sessions = data.sessions || [];
+    body.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--accent);">${escHtml(assigned.name)}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">ASSIGNED ${assigned.assigned_at ? relTime(assigned.assigned_at).toUpperCase() : ''}</div>
+        </div>
+        <button onclick="openProgrammeBuilder('${assigned.id}')" style="padding:8px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Edit</button>
+      </div>
+      ${sessions.map(s => programmeSessionPreview(s)).join('')}
+      <button onclick="if(confirm('Reset to AI programme? The custom programme will be removed.')) deleteAssignedProgramme('${assigned.id}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Reset to AI programme</button>
+    `;
+  } else {
+    body.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">CURRENT — AI GENERATED</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;">This client is following the AI-generated plan. You can assign a custom programme to override it.</div>
+      </div>
+      <button onclick="openProgrammeBuilder()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Assign custom programme</button>
+      ${templates.length ? `
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:18px 0 8px;">TEMPLATE LIBRARY</div>
+      ${templates.map(t => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+          <div><div style="font-size:13px;color:var(--text);">${escHtml(t.name)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${(t.programme_data?.sessions || []).length} SESSIONS</div></div>
+          <button onclick="assignFromTemplate('${t.id}')" style="padding:7px 12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Assign</button>
+        </div>`).join('')}
+      ` : ''}
+    `;
+  }
+}
+
+function programmeSessionPreview(s) {
+  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${escHtml(s.name || 'Session')}</div>
+    ${s.note ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${escHtml(s.note)}</div>` : ''}
+    ${(s.exercises || []).map(e => `<div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;">• ${escHtml(e.name)} — ${escHtml(e.sets || '')}×${escHtml(e.reps || '')}${e.rpe ? ' @ ' + escHtml(e.rpe) : ''}</div>`).join('')}
+  </div>`;
+}
+
+async function assignFromTemplate(templateId) {
+  const tpl = _currentClientDetail.programmes.find(p => p.id === templateId);
+  if (!tpl) return;
+  const res = await api('/api/coach/programmes', 'POST', {
+    client_id: _currentClientDetail.clientId,
+    name: tpl.name,
+    programme_data: tpl.programme_data,
+    is_template: false,
+  });
+  if (res?.ok) { showToast('Programme assigned', 'success'); renderClientTab(); }
+  else showToast('Failed to assign', 'error');
+}
+
+async function deleteAssignedProgramme(programmeId) {
+  const res = await api('/api/coach/programmes/' + programmeId, 'DELETE');
+  if (res?.ok) { showToast('Reset to AI programme', 'success'); renderClientTab(); }
+  else showToast('Failed', 'error');
+}
+
+// ── PROGRAMME BUILDER ─────────────────────────────────
+let _builderState = null;
+function openProgrammeBuilder(programmeId) {
+  const existing = programmeId ? _currentClientDetail.programmes.find(p => p.id === programmeId) : null;
+  _builderState = {
+    id: existing?.id || null,
+    name: existing?.name || 'Custom programme',
+    is_template: !!existing?.is_template,
+    sessions: existing?.programme_data?.sessions ? JSON.parse(JSON.stringify(existing.programme_data.sessions)) : [{ name:'Day 1', note:'', exercises:[{ name:'', sets:3, reps:'8-10', rpe:'' }] }],
+  };
+  renderProgrammeBuilder();
+}
+
+function renderProgrammeBuilder() {
+  document.getElementById('programmeBuilderOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'programmeBuilderOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px;z-index:1;">
+      <button onclick="if(confirm('Discard changes?')) closeProgrammeBuilder()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
+      <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">PROGRAMME BUILDER</div>
+    </div>
+    <div style="padding:18px;flex:1;">
+      <input id="builderName" value="${escHtml(_builderState.name)}" placeholder="Programme name" oninput="_builderState.name = this.value" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:18px;">
+        <input type="checkbox" ${_builderState.is_template ? 'checked' : ''} onchange="_builderState.is_template = this.checked"> Save as template (reusable, not assigned)
+      </label>
+      <div id="builderSessions"></div>
+      <button onclick="addBuilderSession()" style="width:100%;padding:12px;background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">+ Add session</button>
+    </div>
+    <div style="position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:14px 18px;display:flex;gap:8px;">
+      <button onclick="closeProgrammeBuilder()" style="padding:12px 16px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+      <button onclick="saveBuilderProgramme(true)" style="flex:1;padding:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save as draft</button>
+      <button onclick="saveBuilderProgramme(false)" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Save & assign</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderBuilderSessions();
+}
+
+function renderBuilderSessions() {
+  const el = document.getElementById('builderSessions');
+  if (!el) return;
+  el.innerHTML = _builderState.sessions.map((s, sIdx) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input value="${escHtml(s.name || '')}" placeholder="Session name" oninput="_builderState.sessions[${sIdx}].name = this.value" style="flex:1;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+        <button onclick="moveBuilderSession(${sIdx}, -1)" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;">↑</button>
+        <button onclick="moveBuilderSession(${sIdx}, 1)" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;">↓</button>
+        <button onclick="if(confirm('Delete session?')) deleteBuilderSession(${sIdx})" style="padding:6px 10px;background:transparent;border:1px solid var(--border);color:var(--red, #ff4444);border-radius:8px;cursor:pointer;">✕</button>
+      </div>
+      <input value="${escHtml(s.note || '')}" placeholder="Coach note (client sees this)" oninput="_builderState.sessions[${sIdx}].note = this.value" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:10px;">
+      ${(s.exercises || []).map((e, eIdx) => `
+        <div style="display:grid;grid-template-columns:1fr 60px 80px 80px auto;gap:6px;margin-bottom:6px;align-items:center;">
+          <input value="${escHtml(e.name || '')}" placeholder="Exercise name" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].name = this.value" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+          <input type="number" value="${escHtml(e.sets || '')}" placeholder="Sets" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].sets = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+          <input value="${escHtml(e.reps || '')}" placeholder="Reps" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].reps = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+          <input value="${escHtml(e.rpe || '')}" placeholder="RPE/wt" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].rpe = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+          <div style="display:flex;gap:2px;">
+            <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, -1)" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↑</button>
+            <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, 1)" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↓</button>
+            <button onclick="deleteBuilderExercise(${sIdx}, ${eIdx})" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--red, #ff4444);border-radius:6px;cursor:pointer;font-size:11px;">✕</button>
+          </div>
+        </div>
+      `).join('')}
+      <button onclick="addBuilderExercise(${sIdx})" style="width:100%;padding:8px;background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:6px;">+ Add exercise</button>
+    </div>
+  `).join('');
+}
+
+function addBuilderSession() { _builderState.sessions.push({ name:'Day ' + (_builderState.sessions.length + 1), note:'', exercises:[{ name:'', sets:3, reps:'8-10', rpe:'' }] }); renderBuilderSessions(); }
+function deleteBuilderSession(i) { _builderState.sessions.splice(i, 1); renderBuilderSessions(); }
+function moveBuilderSession(i, dir) {
+  const j = i + dir; if (j < 0 || j >= _builderState.sessions.length) return;
+  const arr = _builderState.sessions; [arr[i], arr[j]] = [arr[j], arr[i]]; renderBuilderSessions();
+}
+function addBuilderExercise(sIdx) { _builderState.sessions[sIdx].exercises.push({ name:'', sets:3, reps:'8-10', rpe:'' }); renderBuilderSessions(); }
+function deleteBuilderExercise(sIdx, eIdx) { _builderState.sessions[sIdx].exercises.splice(eIdx, 1); renderBuilderSessions(); }
+function moveBuilderExercise(sIdx, eIdx, dir) {
+  const arr = _builderState.sessions[sIdx].exercises; const j = eIdx + dir;
+  if (j < 0 || j >= arr.length) return; [arr[eIdx], arr[j]] = [arr[j], arr[eIdx]]; renderBuilderSessions();
+}
+
+function closeProgrammeBuilder() {
+  document.getElementById('programmeBuilderOverlay')?.remove();
+  _builderState = null;
+}
+
+async function saveBuilderProgramme(asDraft) {
+  if (!_builderState.name?.trim()) { showToast('Name your programme', 'error'); return; }
+  const isTemplate = !!_builderState.is_template;
+  const payload = {
+    name: _builderState.name.trim(),
+    programme_data: { sessions: _builderState.sessions },
+    is_template: isTemplate,
+    client_id: (isTemplate || asDraft) ? null : (_currentClientDetail?.clientId || null),
+  };
+  let res;
+  if (_builderState.id) {
+    res = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data });
+  } else {
+    res = await api('/api/coach/programmes', 'POST', payload);
+  }
+  if (res?.ok) {
+    showToast(isTemplate ? 'Template saved' : (asDraft ? 'Draft saved' : 'Programme assigned'), 'success');
+    closeProgrammeBuilder();
+    if (_currentClientDetail) renderClientTab();
+  } else {
+    showToast('Save failed', 'error');
+  }
+}
+
+// ── AI ACTIVITY TAB ───────────────────────────────────
+async function renderClientAITab(body) {
+  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
+  const cid = _currentClientDetail.clientId;
+  const res = await api('/api/coach/clients/' + cid + '/ai-activity');
+  if (!res || res.error) { body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Could not load AI activity.</div>`; return; }
+  _currentClientDetail.aiActivity = res;
+  const tier = _currentClientDetail.overview?.profile?.subscription_tier || 'iron';
+  const ironNotice = tier === 'iron' ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);">${escHtml(_currentClientDetail.overview?.profile?.name || 'This client')} is on Iron — 20 AI messages/month.</div>` : '';
+  const banner = renderConsentBanner(cid);
+  const settings = res.review_settings || {};
+  const convs = res.conversations || [];
+  const reviews = [...(res.weekly_reviews || []).map(r => ({ ...r, type:'weekly' })), ...(res.monthly_reviews || []).map(r => ({ ...r, type:'monthly' }))]
+    .sort((a, b) => new Date(b.created_at || b.generated_at) - new Date(a.created_at || a.generated_at));
+  body.innerHTML = `
+    ${ironNotice}
+    ${banner}
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">REVIEW SETTINGS</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px 14px;margin-bottom:18px;">
+      ${reviewToggle('Post-workout check-in', 'post_workout_checkin_enabled', settings.post_workout_checkin_enabled !== false)}
+      ${reviewToggle('Weekly review', 'weekly_review_enabled', settings.weekly_review_enabled !== false)}
+      ${reviewToggle('Monthly review', 'monthly_review_enabled', settings.monthly_review_enabled !== false)}
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">CONVERSATIONS (READ-ONLY)</div>
+    <div style="margin-bottom:18px;">
+      ${convs.length ? convs.slice(0, 15).map(c => `
+        <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+          <div style="font-size:13px;color:var(--text);">${escHtml(c.title || 'Conversation')}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${c.created_at ? relTime(c.created_at) : ''}</div>
+        </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No conversations yet.</div>'}
+    </div>
+    <details style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+      <summary style="cursor:pointer;font-size:13px;color:var(--text);">AI review history (${reviews.length})</summary>
+      <div style="margin-top:10px;">
+        ${reviews.length ? reviews.map(r => `
+          <div style="padding:10px 0;border-top:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${r.type.toUpperCase()} · ${new Date(r.created_at || r.generated_at).toLocaleDateString('en-GB')}</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml((r.summary || r.ai_insights || r.review_content || '').slice(0, 400))}</div>
+          </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No reviews yet.</div>'}
+      </div>
+    </details>
+  `;
+}
+
+function reviewToggle(label, key, checked) {
+  return `<label style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);cursor:pointer;">
+    <span>${label}</span>
+    <input type="checkbox" ${checked ? 'checked' : ''} onchange="saveReviewSetting('${key}', this.checked)">
+  </label>`;
+}
+
+async function saveReviewSetting(key, value) {
+  const cid = _currentClientDetail?.clientId;
+  if (!cid) return;
+  const body = {}; body[key] = value;
+  const res = await api('/api/coach/clients/' + cid + '/review-settings', 'PATCH', body);
+  if (res?.ok) showToast('Saved', 'success');
+}
+
+function renderConsentBanner(clientId) {
+  const key = 'forge-coach-banner-dismissed-' + clientId;
+  if (localStorage.getItem(key)) return '';
+  return `
+    <div id="coachConsentBanner" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
+      <div style="flex:1;font-size:12px;color:var(--muted);line-height:1.5;">Your client has consented to share their AI activity with you. Conversations are read-only.</div>
+      <button onclick="localStorage.setItem('${key}', '1'); document.getElementById('coachConsentBanner').remove();" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
+    </div>`;
+}
+
+// ── COACH SIGN-UP OVERLAY ─────────────────────────────
+let _coachSetupState = null;
+function openCoachSetup(startStep) {
+  _coachSetupState = {
+    step: startStep || 'profile',
+    name: userProfile?.name || '',
+    title: '',
+    bio: '',
+    plan: 'pro',
+    billing: 'annual',
+  };
+  renderCoachSetup();
+}
+
+function closeCoachSetup() {
+  document.getElementById('coachSetupOverlay')?.remove();
+  _coachSetupState = null;
+}
+
+function renderCoachSetup() {
+  document.getElementById('coachSetupOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coachSetupOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9800;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  let inner = '';
+  if (_coachSetupState.step === 'profile') inner = renderCoachSetupProfile();
+  else if (_coachSetupState.step === 'plan') inner = renderCoachSetupPlan();
+  else if (_coachSetupState.step === 'confirm') inner = renderCoachSetupConfirm();
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px;z-index:1;">
+      <button onclick="closeCoachSetup()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
+      <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">BECOME A COACH</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);">${_coachSetupState.step === 'profile' ? '1/3' : _coachSetupState.step === 'plan' ? '2/3' : '3/3'}</div>
+    </div>
+    <div style="padding:24px 18px;flex:1;">${inner}</div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function renderCoachSetupProfile() {
+  return `
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;color:var(--text);margin-bottom:8px;">YOUR COACH PROFILE</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5;">This is what clients see when you connect with them.</div>
+    <div style="margin-bottom:18px;display:flex;justify-content:center;">
+      <div style="width:84px;height:84px;border-radius:50%;background:var(--surface2);border:1px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;text-align:center;line-height:1.3;">ADD PHOTO<br>COMING SOON</div>
+    </div>
+    <label style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">FULL NAME</label>
+    <input id="csName" value="${escHtml(_coachSetupState.name)}" oninput="_coachSetupState.name = this.value" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
+    <label style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">PROFESSIONAL TITLE</label>
+    <input id="csTitle" value="${escHtml(_coachSetupState.title)}" placeholder="e.g. Personal Trainer, Online Fitness Coach" oninput="_coachSetupState.title = this.value" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
+    <label style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:0.5px;display:block;margin-bottom:6px;">BIO <span style="color:var(--muted);text-transform:none;letter-spacing:0;">(optional, max 150)</span></label>
+    <textarea id="csBio" maxlength="150" oninput="_coachSetupState.bio = this.value; document.getElementById('csBioCount').textContent = this.value.length + '/150';" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;min-height:80px;resize:vertical;">${escHtml(_coachSetupState.bio)}</textarea>
+    <div id="csBioCount" style="text-align:right;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;margin-bottom:22px;">${_coachSetupState.bio.length}/150</div>
+    <button onclick="coachSetupNext()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Continue</button>
+  `;
+}
+
+function coachSetupNext() {
+  if (!_coachSetupState.name?.trim()) { showToast('Add your name', 'error'); return; }
+  if (!_coachSetupState.title?.trim()) { showToast('Add your title', 'error'); return; }
+  _coachSetupState.step = 'plan';
+  renderCoachSetup();
+}
+
+function renderCoachSetupPlan() {
+  const billing = _coachSetupState.billing;
+  const prices = {
+    starter: { monthly: 'CHF 49', annual: 'CHF 32.99' },
+    pro: { monthly: 'CHF 89', annual: 'CHF 59.99' },
+    elite: { monthly: 'CHF 149', annual: 'CHF 99.99' },
+  };
+  const planCard = (id, name, features, recommended) => `
+    <div onclick="_coachSetupState.plan = '${id}'; renderCoachSetup();" style="padding:18px;background:var(--surface);border:2px solid ${_coachSetupState.plan === id ? 'var(--accent)' : 'var(--border)'};border-radius:14px;margin-bottom:12px;cursor:pointer;position:relative;">
+      ${recommended ? `<div style="position:absolute;top:-10px;right:14px;background:var(--accent);color:#000;padding:3px 10px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:1px;border-radius:10px;">RECOMMENDED</div>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">${name}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);">${prices[id][billing]}<span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">/mo</span></div>
+      </div>
+      <ul style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--text);line-height:1.7;">${features.map(f => '<li>' + f + '</li>').join('')}</ul>
+    </div>
+  `;
+  return `
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;color:var(--text);margin-bottom:8px;">CHOOSE YOUR COACH PLAN</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5;">Start with a 14-day free trial. No charge until your trial ends.</div>
+    <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:18px;">
+      <button onclick="_coachSetupState.billing = 'monthly'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Monthly</button>
+      <button onclick="_coachSetupState.billing = 'annual'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— 2 months free</span></button>
+    </div>
+    ${planCard('starter', 'Starter', ['Up to 10 clients','Client dashboard','Programme builder','AI review controls','10% commission'], false)}
+    ${planCard('pro', 'Pro', ['Up to 30 clients','Everything in Starter','Priority client notifications','Template library','15% commission'], true)}
+    ${planCard('elite', 'Elite', ['Unlimited clients','Everything in Pro','20% commission'], false)}
+    <div style="font-size:11px;color:var(--muted);margin:14px 0 18px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:0.5px;">Your personal FORGE subscription is billed separately.</div>
+    <button onclick="submitCoachSetup()" id="csSubmit" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Start 14-day free trial</button>
+  `;
+}
+
+async function submitCoachSetup() {
+  const btn = document.getElementById('csSubmit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+  const res = await api('/api/coach/setup', 'POST', {
+    title: _coachSetupState.title,
+    bio: _coachSetupState.bio,
+    plan: _coachSetupState.plan,
+    billing: _coachSetupState.billing,
+  });
+  if (res?.url) {
+    window.location.href = res.url;
+  } else {
+    showToast(res?.error || 'Could not start checkout', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Start 14-day free trial'; }
+  }
+}
+
+function renderCoachSetupConfirm() {
+  return `
+    <div style="text-align:center;padding:40px 20px;">
+      <div style="font-size:54px;margin-bottom:18px;">✓</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:var(--accent);margin-bottom:10px;">YOU'RE ALL SET</div>
+      <div style="font-size:14px;color:var(--text);margin-bottom:28px;line-height:1.5;">Your coach account is active. 14 days free.</div>
+      <button onclick="closeCoachSetup(); showPanel('clients');" style="padding:14px 24px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Go to my client dashboard</button>
+    </div>
+  `;
+}
+
+function showCoachSetupConfirmation() {
+  _coachSetupState = { step: 'confirm' };
+  renderCoachSetup();
+  // First-time tooltip on clients nav
+  if (!localStorage.getItem('forge-coach-welcome-shown')) {
+    setTimeout(() => {
+      const btn = document.getElementById('nav-clients');
+      if (!btn) return;
+      const tip = document.createElement('div');
+      tip.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;padding:10px 16px;border-radius:10px;font-size:12px;font-family:"DM Sans",sans-serif;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      tip.textContent = 'Welcome to your coach dashboard.';
+      document.body.appendChild(tip);
+      setTimeout(() => tip.remove(), 4000);
+      localStorage.setItem('forge-coach-welcome-shown', '1');
+    }, 1200);
+  }
+}
+
+// ── COACH REQUEST CONSENT SCREEN (client side) ────────
+async function openCoachRequestScreen(connectionId) {
+  document.getElementById('coachRequestOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coachRequestOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9700;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
+  document.body.appendChild(overlay);
+  // Pull coach details from /api/my-coach which returns pending
+  const res = await api('/api/my-coach');
+  const p = res?.pending;
+  if (!p || p.connection_id !== connectionId) {
+    overlay.innerHTML = `<div style="padding:60px 24px;text-align:center;color:var(--muted);font-size:13px;">This request is no longer available.</div><div style="padding:0 24px;"><button onclick="document.getElementById('coachRequestOverlay').remove()" style="width:100%;padding:13px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button></div>`;
+    return;
+  }
+  overlay.innerHTML = `
+    <div style="padding:20px 18px 14px;border-bottom:1px solid var(--border);">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">COACH CONNECTION REQUEST</div>
+    </div>
+    <div style="padding:22px 20px;flex:1;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px;">
+        <div style="width:60px;height:60px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(p.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:16px;font-weight:600;color:var(--text);">${escHtml(p.name || 'Coach')}</div>
+          ${p.coach_title ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${escHtml(p.coach_title)}</div>` : ''}
+        </div>
+      </div>
+      ${p.coach_bio ? `<div style="font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px;line-height:1.5;">${escHtml(p.coach_bio)}</div>` : ''}
+      <div style="font-size:14px;color:var(--text);margin-bottom:18px;line-height:1.5;">${escHtml(p.name || 'This coach')} has requested to connect with you as your coach.</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">IF YOU ACCEPT, THEY CAN:</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--text);line-height:1.7;">
+        • See your training logs, workouts, and PRs<br>
+        • See your AI coach conversations<br>
+        • See your weekly and monthly reviews<br>
+        • Assign you custom programmes<br>
+        • Toggle which AI reviews you receive<br>
+        • Add private notes about your training
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.5;">You can disconnect at any time from Account settings.</div>
+      <button onclick="respondCoachRequest('${connectionId}', 'accept')" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Accept and connect</button>
+      <button onclick="respondCoachRequest('${connectionId}', 'decline')" style="width:100%;padding:13px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Decline</button>
+    </div>
+  `;
+}
+
+async function respondCoachRequest(connectionId, action) {
+  const res = await api('/api/coach-connection/' + connectionId + '/respond', 'POST', { action });
+  if (res?.ok) {
+    showToast(action === 'accept' ? 'Connected with your coach.' : 'Request declined.', 'success');
+    document.getElementById('coachRequestOverlay')?.remove();
+    if (document.getElementById('panel-account')?.classList.contains('active')) renderAccount();
+  } else {
+    showToast('Failed', 'error');
+  }
+}
+
+// ── ACCOUNT PANEL: COACH SECTIONS ─────────────────────
+async function renderAccountCoachSections() {
+  const el = document.getElementById('coachAccountSections');
+  if (!el) return;
+  el.innerHTML = '';
+  const myCoachRes = await api('/api/my-coach');
+  const myCoach = myCoachRes?.coach;
+  const pendingCoach = myCoachRes?.pending;
+
+  let html = '';
+
+  // Pending request banner
+  if (pendingCoach) {
+    html += `
+      <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-size:13px;color:var(--text);font-weight:600;">${escHtml(pendingCoach.name || 'A coach')} wants to be your coach.</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">REQUESTED ${relTime(pendingCoach.requested_at).toUpperCase()}</div>
+        </div>
+        <button onclick="openCoachRequestScreen('${pendingCoach.connection_id}')" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">View request</button>
+      </div>`;
+  }
+
+  // My coach (active)
+  if (myCoach) {
+    html += `
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">MY COACH</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+          <div style="width:50px;height:50px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--accent);flex-shrink:0;">${initials(myCoach.name)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:15px;font-weight:600;color:var(--text);">${escHtml(myCoach.name || 'Coach')}</div>
+            ${myCoach.coach_title ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${escHtml(myCoach.coach_title)}</div>` : ''}
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;">CONNECTED ${myCoach.connected_at ? new Date(myCoach.connected_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }).toUpperCase() : ''}</div>
+          </div>
+        </div>
+        <button onclick="confirmDisconnectCoach()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Disconnect coach</button>
+      </div>`;
+  }
+
+  // Coach plan section (if user is a coach)
+  if (isCoachAccount()) {
+    const plan = userProfile.coach_plan;
+    const status = userProfile.coach_plan_status;
+    const trialDaysLeft = userProfile.coach_trial_start
+      ? Math.max(0, 14 - Math.floor((Date.now() - new Date(userProfile.coach_trial_start).getTime()) / 86400000))
+      : 0;
+    const statusBadge = status === 'trial'
+      ? `<span style="background:rgba(255,167,38,0.15);color:#ffa726;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 8px;border-radius:8px;">TRIAL — ${trialDaysLeft}D LEFT</span>`
+      : status === 'active'
+      ? `<span style="background:rgba(57,217,138,0.15);color:#39d98a;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 8px;border-radius:8px;">ACTIVE</span>`
+      : `<span style="background:rgba(255,68,68,0.15);color:var(--red, #ff4444);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 8px;border-radius:8px;">CANCELLED</span>`;
+    html += `
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">COACH PLAN</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--accent);">COACH ${(COACH_PLAN_LABEL[plan] || plan || '').toUpperCase()}</div>
+          ${statusBadge}
+        </div>
+        <div id="coachPlanSeats" style="font-size:12px;color:var(--muted);margin-bottom:14px;font-family:'DM Mono',monospace;">Loading seats…</div>
+        ${plan !== 'elite' ? `<button onclick="openCoachSetup('plan')" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Upgrade plan</button>` : ''}
+        <button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Manage billing</button>
+        <button onclick="confirmCancelCoachPlan()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel coach plan</button>
+      </div>
+      <details style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:16px;">
+        <summary style="cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;list-style:none;">COMMISSION ▾</summary>
+        <div id="coachCommissionBlock" style="margin-top:14px;font-size:13px;color:var(--muted);">Loading…</div>
+      </details>`;
+  } else if (!myCoach && !pendingCoach) {
+    // Non-coach: show "Become a coach" CTA
+    html += `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">BECOME A FORGE COACH</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:16px;">Give your clients 24/7 AI coaching. Manage their programmes and progress in one place. Earn commission on every client subscription.</div>
+        <button onclick="openCoachSetup()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Set up coach account</button>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+
+  // Async — populate seats and commission
+  if (isCoachAccount()) {
+    api('/api/coach/seat-count').then(s => {
+      const seatsEl = document.getElementById('coachPlanSeats');
+      if (!seatsEl || !s) return;
+      const limit = s.limit == null ? '∞' : s.limit;
+      let color = 'var(--muted)';
+      if (typeof s.limit === 'number') {
+        if (s.active >= s.limit) color = 'var(--red, #ff4444)';
+        else if (s.limit - s.active <= 2) color = '#ffa726';
+      }
+      seatsEl.style.color = color;
+      seatsEl.textContent = `${s.active} OF ${limit} CLIENTS`;
+    });
+    api('/api/coach/commissions').then(c => {
+      const block = document.getElementById('coachCommissionBlock');
+      if (!block || !c) return;
+      const fmt = v => (v || 0).toFixed(2);
+      block.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+          ${statCard('This month', 'CHF ' + fmt(c.this_month))}
+          ${statCard('All time', 'CHF ' + fmt(c.all_time))}
+          ${statCard('Pending', 'CHF ' + fmt(c.pending))}
+        </div>
+        ${(c.clients || []).length ? (c.clients || []).map(cl => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--accent);">${initials(cl.name)}</div>
+            <div style="flex:1;font-size:13px;color:var(--text);">${escHtml(cl.name || '')}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${(cl.tier || 'iron').toUpperCase()}</div>
+            <div style="font-size:12px;color:var(--accent);font-family:'DM Mono',monospace;">${cl.commission_rate}%</div>
+          </div>
+        `).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px 0;">No commission-generating clients yet.</div>'}
+      `;
+    });
+  }
+}
+
+function confirmDisconnectCoach() {
+  if (!confirm('Disconnect from your coach? They will lose access to your training data. Your data stays with you.')) return;
+  api('/api/coach-connection/disconnect', 'POST').then(res => {
+    if (res?.ok) { showToast('Coach disconnected', 'success'); renderAccount(); }
+    else showToast('Failed', 'error');
+  });
+}
+
+function confirmCancelCoachPlan() {
+  if (!confirm('Cancel your coach plan? You\'ll keep access until the end of your current billing period. Your client connections will end when the plan expires.')) return;
+  // Send them to the billing portal — Stripe handles the actual cancellation cleanly.
+  openBillingPortal();
 }
 
 loadTheme();
