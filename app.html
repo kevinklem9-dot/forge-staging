@@ -971,8 +971,8 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
       <button class="nav-btn" onclick="showPanel('log')" id="nav-log"><div class="nav-icon">📊</div><div class="nav-label" data-i18n="nav_log">Log</div></button>
       <button class="nav-btn" onclick="showPanel('nutrition')" id="nav-nutrition"><div class="nav-icon">🥩</div><div class="nav-label" data-i18n="nav_food">Food</div></button>
       <button class="nav-btn" onclick="showPanel('progress')" id="nav-progress"><div class="nav-icon">📈</div><div class="nav-label" data-i18n="nav_progress">Progress</div></button>
-      <button class="nav-btn" onclick="showPanel('my-coach')" id="nav-my-coach" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-2.5 2v-2H2.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/><circle cx="8" cy="7" r="1.2"/></svg></div><div class="nav-label">My Coach</div><div id="myCoachUnread" style="position:absolute;top:4px;right:14px;min-width:14px;height:14px;padding:0 4px;background:var(--accent);color:#000;border-radius:7px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:'DM Mono',monospace;">0</div></button>
-      <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" style="display:none"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
+      <button class="nav-btn" onclick="showPanel('my-coach')" id="nav-my-coach" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-2.5 2v-2H2.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/><circle cx="8" cy="7" r="1.2"/></svg></div><div class="nav-label">My Coach</div></button>
+      <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
       <button class="nav-btn" onclick="showPanel('admin')" id="nav-admin" style="display:none"><div class="nav-icon">⚙️</div><div class="nav-label" data-i18n="nav_admin">Admin</div></button>
       <button class="nav-btn" onclick="showPanel('account')" id="nav-account"><div class="nav-icon">👤</div><div class="nav-label">Account</div></button>
     </nav>
@@ -1492,6 +1492,10 @@ async function handleSession(session) {
   }
 
   userProfile = profileData;
+
+  // Notification badges — initial fetch + 60s polling
+  fetchUnreadCounts();
+  startUnreadPolling();
 
   // Fetch plan — retry up to 3 times
   let planData = null;
@@ -2379,7 +2383,10 @@ function showPanel(name) {
     renderCoachCounter();
     checkDay7Prompt();
   }
-  if (name === 'clients') renderClientsPanel();
+  if (name === 'clients') {
+    renderClientsPanel();
+    if ((_unreadCounts.new_client_connections || 0) > 0) markSeen('client_connection');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -10541,27 +10548,70 @@ async function refreshMyCoachNav() {
     const hasCoach = !!res?.coach;
     _myCoachActive = hasCoach;
     btn.style.display = hasCoach ? '' : 'none';
-    if (hasCoach) await fetchAndShowUnreadCount();
   } catch(e) {
     btn.style.display = 'none';
   }
 }
 
-function setMyCoachUnreadBadge(count) {
-  const badge = document.getElementById('myCoachUnread');
-  if (!badge) return;
-  if (!count || count < 1) { badge.style.display = 'none'; return; }
-  badge.textContent = count > 99 ? '99+' : String(count);
-  badge.style.display = 'flex';
+// ── Unread notification badges ────────────────────────
+let _unreadCounts = {};
+let _unreadPollTimer = null;
+
+function navBadge(count) {
+  if (!count || count < 1) return '';
+  return `<span class="nav-badge-pill" style="position:absolute;top:2px;right:2px;min-width:16px;height:16px;background:#ff4444;color:#fff;border-radius:8px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;">${count > 99 ? '99+' : count}</span>`;
 }
 
-async function fetchAndShowUnreadCount() {
-  // Fetch the thread silently and count unread coach messages. Don't open the panel.
-  // Reuse /api/my-coach-messages — but that endpoint marks-as-read on read, so this would erase the badge.
-  // Instead, we keep the badge updated by:
-  //   - clearing it when the panel is opened (reads happen there)
-  //   - setting it when a push notification arrives (handled by service worker, future hook)
-  // For now: leave badge in DOM, only the panel-open path clears it. Push integration is wired server-side.
+function applyBadgeTo(btn, count) {
+  if (!btn) return;
+  btn.querySelectorAll('.nav-badge-pill').forEach(el => el.remove());
+  if (count > 0) btn.insertAdjacentHTML('beforeend', navBadge(count));
+}
+
+function updateNavBadges() {
+  const myCoachBtn = document.getElementById('nav-my-coach');
+  const clientsBtn = document.getElementById('nav-clients');
+  const myCoachTotal = (_unreadCounts.coach_messages_unread || 0)
+    + (_unreadCounts.coach_feedback_unread || 0)
+    + (_unreadCounts.coach_review_unread || 0);
+  applyBadgeTo(myCoachBtn, myCoachTotal);
+  const coachTotal = (_unreadCounts.client_messages_unread || 0)
+    + (_unreadCounts.new_client_connections || 0);
+  applyBadgeTo(clientsBtn, coachTotal);
+  // Refresh roster dots if the clients list is on screen
+  if (document.getElementById('coachClientList') && typeof renderCoachClientList === 'function') {
+    try { renderCoachClientList(); } catch(e) { /* roster may not be mounted yet */ }
+  }
+}
+
+async function fetchUnreadCounts() {
+  try {
+    const res = await api('/api/notifications/unread-counts');
+    if (res && !res.error) {
+      _unreadCounts = res;
+      updateNavBadges();
+    }
+  } catch(e) { /* silent */ }
+}
+
+function startUnreadPolling() {
+  if (_unreadPollTimer) return;
+  _unreadPollTimer = setInterval(fetchUnreadCounts, 60000);
+}
+
+async function markSeen(type) {
+  try {
+    await api('/api/notifications/mark-seen', 'POST', { type });
+    await fetchUnreadCounts();
+  } catch(e) { /* silent */ }
+}
+
+async function markClientMessagesSeen(clientId) {
+  if (!clientId) return;
+  try {
+    await api('/api/notifications/mark-client-messages-seen/' + clientId, 'POST');
+    await fetchUnreadCounts();
+  } catch(e) { /* silent */ }
 }
 
 let _myCoachState = { messages: [], coachInfo: null };
@@ -10572,8 +10622,12 @@ async function renderMyCoachPanel() {
   const inputBar = document.getElementById('myCoachInputBar');
   if (!header || !thread) return;
 
-  // Clear unread badge on open
-  setMyCoachUnreadBadge(0);
+  // Mark coach messages + feedback + review as seen
+  await Promise.all([
+    markSeen('coach_messages'),
+    markSeen('coach_feedback'),
+    markSeen('coach_review'),
+  ]);
 
   thread.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
   header.innerHTML = '';
@@ -10781,6 +10835,10 @@ function renderCoachClientList() {
       const tier = c.profile?.subscription_tier || 'iron';
       const tierLabel = { iron:'IRON', steel:'STEEL', forge:'FORGE' }[tier] || 'IRON';
       const dot = clientStatusDot(c.last_active);
+      const unreadFromClient = _unreadCounts?.client_messages_by_client?.[c.client_id] || 0;
+      const unreadDot = unreadFromClient > 0
+        ? `<div title="${unreadFromClient} unread" style="width:8px;height:8px;border-radius:50%;background:#ff4444;flex-shrink:0;"></div>`
+        : '';
       return `
       <div onclick="openClientDetail('${c.client_id}')" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
         <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(name)}</div>
@@ -10791,7 +10849,7 @@ function renderCoachClientList() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
           <span style="font-size:9px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--muted);padding:3px 7px;border-radius:10px;letter-spacing:0.5px;">${tierLabel}</span>
-          <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
+          <div style="display:flex;align-items:center;gap:5px;">${unreadDot}<div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
         </div>
       </div>`;
     }).join('');
@@ -11587,6 +11645,7 @@ async function saveReviewSetting(key, value) {
 async function renderClientMessagesTab(body) {
   body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
   const cid = _currentClientDetail.clientId;
+  markClientMessagesSeen(cid);
   const res = await api('/api/coach/clients/' + cid + '/messages');
   const msgs = res?.messages || [];
   _currentClientDetail.messages = msgs;
@@ -11875,6 +11934,7 @@ async function renderAccountCoachSections() {
             <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;">CONNECTED ${myCoach.connected_at ? new Date(myCoach.connected_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }).toUpperCase() : ''}</div>
           </div>
         </div>
+        ${renderClientNotificationSummary()}
         <button onclick="confirmDisconnectCoach()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Disconnect coach</button>
       </div>`;
     if (coachFeedback.length) {
@@ -11914,6 +11974,7 @@ async function renderAccountCoachSections() {
           ${statusBadge}
         </div>
         <div id="coachPlanSeats" style="font-size:12px;color:var(--muted);margin-bottom:14px;font-family:'DM Mono',monospace;">Loading seats…</div>
+        ${renderCoachNotificationSummary()}
         ${plan !== 'elite' ? `<button onclick="openCoachSetup('plan')" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Upgrade plan</button>` : ''}
         <button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Manage billing</button>
         <button onclick="confirmCancelCoachPlan()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel coach plan</button>
@@ -11969,6 +12030,40 @@ async function renderAccountCoachSections() {
       `;
     });
   }
+}
+
+function renderClientNotificationSummary() {
+  const fb = _unreadCounts.coach_feedback_unread || 0;
+  const rv = _unreadCounts.coach_review_unread || 0;
+  const ms = _unreadCounts.coach_messages_unread || 0;
+  if (!fb && !rv && !ms) return '';
+  const row = (text) => `
+    <div onclick="showPanel('my-coach')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
+      <div style="font-size:13px;color:var(--text);">${text}</div>
+    </div>`;
+  let out = '<div style="margin-bottom:14px;">';
+  if (fb) out += row(`Your coach left ${fb} new note${fb === 1 ? '' : 's'}`);
+  if (rv) out += row(`Your coach wrote you a new review${rv > 1 ? ' (' + rv + ')' : ''}`);
+  if (ms) out += row(`${ms} unread message${ms === 1 ? '' : 's'} from your coach`);
+  out += '</div>';
+  return out;
+}
+
+function renderCoachNotificationSummary() {
+  const ms = _unreadCounts.client_messages_unread || 0;
+  const nc = _unreadCounts.new_client_connections || 0;
+  if (!ms && !nc) return '';
+  const row = (text) => `
+    <div onclick="showPanel('clients')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
+      <div style="font-size:13px;color:var(--text);">${text}</div>
+    </div>`;
+  let out = '<div style="margin-bottom:14px;">';
+  if (ms) out += row(`${ms} unread message${ms === 1 ? '' : 's'} from clients`);
+  if (nc) out += row(`${nc} new client connection${nc === 1 ? '' : 's'}`);
+  out += '</div>';
+  return out;
 }
 
 function confirmDisconnectCoach() {
