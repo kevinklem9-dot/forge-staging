@@ -2383,10 +2383,7 @@ function showPanel(name) {
     renderCoachCounter();
     checkDay7Prompt();
   }
-  if (name === 'clients') {
-    renderClientsPanel();
-    if ((_unreadCounts.new_client_connections || 0) > 0) markSeen('client_connection');
-  }
+  if (name === 'clients') renderClientsPanel();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3716,6 +3713,9 @@ async function renderWeeklyReview() {
 
 function appendCoachReviewBlock(card, coachReviews) {
   if (!card) return;
+  if (coachReviews.length > 0 && (_unreadCounts.coach_review_unread || 0) > 0) {
+    markSeen('coach_review');
+  }
   const html = coachReviews.map(r => `
     <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -10582,6 +10582,49 @@ function updateNavBadges() {
   if (document.getElementById('coachClientList') && typeof renderCoachClientList === 'function') {
     try { renderCoachClientList(); } catch(e) { /* roster may not be mounted yet */ }
   }
+  // Refresh client detail tab badges if open
+  updateClientDetailTabBadges();
+}
+
+// 8px accent dot used for tab "new activity" indicators
+function tabDot() {
+  return `<span style="position:absolute;top:6px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent);"></span>`;
+}
+
+// Red count badge used for tab "unread messages" indicator
+function tabCountBadge(count) {
+  return `<span style="position:absolute;top:4px;right:2px;min-width:14px;height:14px;background:#ff4444;color:#fff;border-radius:7px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;">${count > 99 ? '99+' : count}</span>`;
+}
+
+// Was this client active in the last 48h according to the unread-counts endpoint, AND the coach hasn't viewed Overview in 48h?
+function coachHasNewActivity(clientId) {
+  const act = _unreadCounts?.client_new_activity?.[clientId];
+  if (!act) return false;
+  const total = (act.workouts || 0) + (act.prs || 0) + (act.metrics || 0);
+  if (total < 1) return false;
+  const lastViewed = parseInt(localStorage.getItem('forge-coach-last-viewed-overview-' + clientId) || '0', 10);
+  return (Date.now() - lastViewed) > 48 * 60 * 60 * 1000;
+}
+
+function coachHasNewAi(clientId) {
+  const act = _unreadCounts?.client_new_activity?.[clientId];
+  if (!act || (act.ai || 0) < 1) return false;
+  const lastViewed = parseInt(localStorage.getItem('forge-coach-last-viewed-ai-' + clientId) || '0', 10);
+  return (Date.now() - lastViewed) > 48 * 60 * 60 * 1000;
+}
+
+function updateClientDetailTabBadges() {
+  if (!_currentClientDetail) return;
+  const cid = _currentClientDetail.clientId;
+  const overviewSlot = document.getElementById('clTabBadge-overview');
+  const aiSlot = document.getElementById('clTabBadge-ai');
+  const messagesSlot = document.getElementById('clTabBadge-messages');
+  if (!overviewSlot && !aiSlot && !messagesSlot) return;
+
+  const unreadMsgs = _unreadCounts?.client_messages_by_client?.[cid] || 0;
+  if (messagesSlot) messagesSlot.innerHTML = unreadMsgs > 0 ? tabCountBadge(unreadMsgs) : '';
+  if (overviewSlot) overviewSlot.innerHTML = coachHasNewActivity(cid) ? tabDot() : '';
+  if (aiSlot) aiSlot.innerHTML = coachHasNewAi(cid) ? tabDot() : '';
 }
 
 async function fetchUnreadCounts() {
@@ -10622,12 +10665,9 @@ async function renderMyCoachPanel() {
   const inputBar = document.getElementById('myCoachInputBar');
   if (!header || !thread) return;
 
-  // Mark coach messages + feedback + review as seen
-  await Promise.all([
-    markSeen('coach_messages'),
-    markSeen('coach_feedback'),
-    markSeen('coach_review'),
-  ]);
+  // This panel IS the Messages section — clear that badge.
+  // Feedback and reviews live elsewhere and clear there.
+  if ((_unreadCounts.coach_messages_unread || 0) > 0) markSeen('coach_messages');
 
   thread.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
   header.innerHTML = '';
@@ -10674,20 +10714,30 @@ function renderMyCoachThread() {
     thread.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--muted);font-size:13px;">No messages yet. Send your coach a message to get started.</div>`;
     return;
   }
-  thread.innerHTML = msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'client')).join('');
+  const unreadCount = msgs.filter(m => m.sender_role === 'coach' && !m.read_at).length;
+  const banner = unreadCount > 0
+    ? `<div id="myCoachNewBanner" style="background:var(--accent);color:#000;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:'DM Sans',sans-serif;">
+         <span>${unreadCount} new message${unreadCount === 1 ? '' : 's'} from your coach</span>
+         <button onclick="document.getElementById('myCoachNewBanner')?.remove()" style="background:transparent;border:none;color:#000;font-size:18px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
+       </div>`
+    : '';
+  thread.innerHTML = banner + msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'client')).join('');
   thread.scrollTop = thread.scrollHeight;
 }
 
 function renderCoachMessageBubble(m, fromMe) {
-  const isClient = fromMe;
   const time = m.created_at ? relTime(m.created_at) : '';
-  const bg = isClient ? 'var(--accent)' : 'var(--surface)';
-  const color = isClient ? '#000' : 'var(--text)';
-  const align = isClient ? 'flex-end' : 'flex-start';
-  const radius = isClient ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+  const bg = fromMe ? 'var(--accent)' : 'var(--surface)';
+  const color = fromMe ? '#000' : 'var(--text)';
+  const align = fromMe ? 'flex-end' : 'flex-start';
+  const radius = fromMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+  // A message from the other side that arrived this session and hasn't been read yet
+  // gets a 3px accent left border to draw the eye.
+  const isUnreadFromOther = !fromMe && !m.read_at;
+  const unreadBorder = isUnreadFromOther ? 'border-left:3px solid var(--accent);' : '';
   return `
-    <div style="display:flex;flex-direction:column;align-items:${align};max-width:78%;${isClient ? 'align-self:flex-end;' : 'align-self:flex-start;'}">
-      <div style="background:${bg};color:${color};padding:10px 13px;border-radius:${radius};font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;">${escHtml(m.message_text || '')}</div>
+    <div style="display:flex;flex-direction:column;align-items:${align};max-width:78%;${fromMe ? 'align-self:flex-end;' : 'align-self:flex-start;'}">
+      <div style="background:${bg};color:${color};padding:10px 13px;border-radius:${radius};font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;${unreadBorder}">${escHtml(m.message_text || '')}</div>
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px;margin-top:3px;padding:0 4px;">${escHtml(time.toUpperCase())}</div>
     </div>
   `;
@@ -10836,11 +10886,16 @@ function renderCoachClientList() {
       const tierLabel = { iron:'IRON', steel:'STEEL', forge:'FORGE' }[tier] || 'IRON';
       const dot = clientStatusDot(c.last_active);
       const unreadFromClient = _unreadCounts?.client_messages_by_client?.[c.client_id] || 0;
-      const unreadDot = unreadFromClient > 0
-        ? `<div title="${unreadFromClient} unread" style="width:8px;height:8px;border-radius:50%;background:#ff4444;flex-shrink:0;"></div>`
+      const showActivityDot = coachHasNewActivity(c.client_id);
+      const cornerMessages = unreadFromClient > 0
+        ? `<span style="position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;background:#ff4444;color:#fff;border-radius:9px;font-size:10px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;border:2px solid var(--bg);">${unreadFromClient > 99 ? '99+' : unreadFromClient}</span>`
+        : '';
+      const cornerActivity = (!unreadFromClient && showActivityDot)
+        ? `<span title="New activity in the last 48h" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);"></span>`
         : '';
       return `
-      <div onclick="openClientDetail('${c.client_id}')" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
+      <div onclick="openClientDetail('${c.client_id}')" style="position:relative;display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
+        ${cornerMessages}${cornerActivity}
         <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(name)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;color:var(--text);">${escHtml(name)}</div>
@@ -10849,7 +10904,7 @@ function renderCoachClientList() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
           <span style="font-size:9px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--muted);padding:3px 7px;border-radius:10px;letter-spacing:0.5px;">${tierLabel}</span>
-          <div style="display:flex;align-items:center;gap:5px;">${unreadDot}<div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
         </div>
       </div>`;
     }).join('');
@@ -10974,6 +11029,10 @@ function openCoachPlanUpgrade() {
 async function openClientDetail(clientId) {
   _currentClientDetail = { clientId, overview: null, notes: null, aiActivity: null, programmes: [] };
   _currentClientTab = 'overview';
+  // Opening any client clears the global "new connection" badge — coach has acknowledged.
+  if ((_unreadCounts.new_client_connections || 0) > 0) markSeen('client_connection');
+  // Overview is the default tab — record the timestamp so the activity dot clears.
+  try { localStorage.setItem('forge-coach-last-viewed-overview-' + clientId, String(Date.now())); } catch(e) { /* quota */ }
   document.getElementById('clientDetailOverlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'clientDetailOverlay';
@@ -10986,15 +11045,16 @@ async function openClientDetail(clientId) {
         <button onclick="openClientMenu()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">⋮</button>
       </div>
       <div style="display:flex;gap:0;padding:0 18px;">
-        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">OVERVIEW</button>
-        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">PROGRAMME</button>
-        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">AI</button>
-        <button onclick="switchClientTab('messages')" id="clTab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">MESSAGES</button>
+        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">OVERVIEW<span id="clTabBadge-overview"></span></button>
+        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">PROGRAMME</button>
+        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">AI<span id="clTabBadge-ai"></span></button>
+        <button onclick="switchClientTab('messages')" id="clTab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">MESSAGES<span id="clTabBadge-messages"></span></button>
       </div>
     </div>
     <div id="clientDetailBody" style="padding:18px;flex:1;"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
   `;
   document.body.appendChild(overlay);
+  updateClientDetailTabBadges();
   await loadClientOverview(clientId);
   renderClientTab();
 }
@@ -11061,6 +11121,16 @@ function switchClientTab(tab) {
       el.style.borderBottomColor = 'transparent';
     }
   });
+  // Stamp last-viewed timestamps for the tabs that drive activity dots.
+  // Messages clearing is handled server-side via markClientMessagesSeen inside renderClientMessagesTab.
+  const cid = _currentClientDetail?.clientId;
+  if (cid) {
+    try {
+      if (tab === 'overview') localStorage.setItem('forge-coach-last-viewed-overview-' + cid, String(Date.now()));
+      if (tab === 'ai') localStorage.setItem('forge-coach-last-viewed-ai-' + cid, String(Date.now()));
+    } catch(e) { /* quota */ }
+  }
+  updateClientDetailTabBadges();
   renderClientTab();
 }
 
@@ -11995,6 +12065,12 @@ async function renderAccountCoachSections() {
 
   el.innerHTML = html;
 
+  // The feedback section was just rendered in-panel for the client to read.
+  // That counts as "viewed" — clear the nav badge for feedback.
+  if (coachFeedback.length > 0 && (_unreadCounts.coach_feedback_unread || 0) > 0) {
+    markSeen('coach_feedback');
+  }
+
   // Async — populate seats and commission
   if (isCoachAccount()) {
     api('/api/coach/seat-count').then(s => {
@@ -12037,31 +12113,56 @@ function renderClientNotificationSummary() {
   const rv = _unreadCounts.coach_review_unread || 0;
   const ms = _unreadCounts.coach_messages_unread || 0;
   if (!fb && !rv && !ms) return '';
-  const row = (text) => `
-    <div onclick="showPanel('my-coach')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+  const row = (text, handler) => `
+    <div onclick="${handler}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
       <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
       <div style="font-size:13px;color:var(--text);">${text}</div>
     </div>`;
-  let out = '<div style="margin-bottom:14px;">';
-  if (fb) out += row(`Your coach left ${fb} new note${fb === 1 ? '' : 's'}`);
-  if (rv) out += row(`Your coach wrote you a new review${rv > 1 ? ' (' + rv + ')' : ''}`);
-  if (ms) out += row(`${ms} unread message${ms === 1 ? '' : 's'} from your coach`);
+  let out = '<div id="clientNotificationSummary" style="margin-bottom:14px;">';
+  if (fb) out += row(`Your coach left ${fb} new note${fb === 1 ? '' : 's'}`, "tapClientSummaryLine('feedback')");
+  if (rv) out += row(`Your coach wrote you a new review${rv > 1 ? ' (' + rv + ')' : ''}`, "tapClientSummaryLine('review')");
+  if (ms) out += row(`${ms} unread message${ms === 1 ? '' : 's'} from your coach`, "tapClientSummaryLine('messages')");
   out += '</div>';
   return out;
+}
+
+async function tapClientSummaryLine(kind) {
+  if (kind === 'feedback') {
+    await markSeen('coach_feedback');
+    // Scroll to the "FEEDBACK FROM YOUR COACH" section already on this panel
+    const panel = document.getElementById('panel-account');
+    if (panel) {
+      const headers = panel.querySelectorAll('div');
+      for (const h of headers) {
+        if (h.textContent.trim().startsWith('FEEDBACK FROM YOUR COACH')) { h.scrollIntoView({ behavior:'smooth', block:'start' }); break; }
+      }
+    }
+  } else if (kind === 'review') {
+    await markSeen('coach_review');
+    showPanel('coach');
+  } else if (kind === 'messages') {
+    // Don't call markSeen here — opening panel-my-coach will fire it (so we don't double-fire)
+    showPanel('my-coach');
+  }
+  // Re-render account panel so the line disappears
+  renderAccount();
 }
 
 function renderCoachNotificationSummary() {
   const ms = _unreadCounts.client_messages_unread || 0;
   const nc = _unreadCounts.new_client_connections || 0;
   if (!ms && !nc) return '';
-  const row = (text) => `
+  let out = '<div id="coachNotificationSummary" style="margin-bottom:14px;">';
+  if (ms) out += `
     <div onclick="showPanel('clients')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
       <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
-      <div style="font-size:13px;color:var(--text);">${text}</div>
+      <div style="font-size:13px;color:var(--text);">${ms} unread message${ms === 1 ? '' : 's'} from clients</div>
     </div>`;
-  let out = '<div style="margin-bottom:14px;">';
-  if (ms) out += row(`${ms} unread message${ms === 1 ? '' : 's'} from clients`);
-  if (nc) out += row(`${nc} new client connection${nc === 1 ? '' : 's'}`);
+  if (nc) out += `
+    <div onclick="showPanel('clients')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
+      <div style="font-size:13px;color:var(--text);">${nc} new client connection${nc === 1 ? '' : 's'}</div>
+    </div>`;
   out += '</div>';
   return out;
 }
