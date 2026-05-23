@@ -945,6 +945,16 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
         <div id="clientsPanel" style="padding-bottom:100px;"></div>
       </div>
 
+      <!-- My Coach Panel (client-side messaging with their coach) -->
+      <div class="panel" id="panel-my-coach" style="overflow:hidden;flex-direction:column;">
+        <div id="myCoachHeader" style="flex-shrink:0;padding:16px 18px 12px;border-bottom:1px solid var(--border);background:var(--bg);"></div>
+        <div id="myCoachThread" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;"></div>
+        <div id="myCoachInputBar" style="display:none;flex-shrink:0;padding:10px 14px;background:var(--bg);border-top:1px solid var(--border);gap:8px;align-items:flex-end;">
+          <textarea id="myCoachMessageInput" rows="1" placeholder="Message your coach…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
+          <button onclick="sendMyCoachMessage()" id="myCoachSendBtn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+        </div>
+      </div>
+
       <!-- Account Panel -->
       <div class="panel" id="panel-account" style="overflow-y:auto;">
         <div class="panel-header">
@@ -961,6 +971,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
       <button class="nav-btn" onclick="showPanel('log')" id="nav-log"><div class="nav-icon">📊</div><div class="nav-label" data-i18n="nav_log">Log</div></button>
       <button class="nav-btn" onclick="showPanel('nutrition')" id="nav-nutrition"><div class="nav-icon">🥩</div><div class="nav-label" data-i18n="nav_food">Food</div></button>
       <button class="nav-btn" onclick="showPanel('progress')" id="nav-progress"><div class="nav-icon">📈</div><div class="nav-label" data-i18n="nav_progress">Progress</div></button>
+      <button class="nav-btn" onclick="showPanel('my-coach')" id="nav-my-coach" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-2.5 2v-2H2.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/><circle cx="8" cy="7" r="1.2"/></svg></div><div class="nav-label">My Coach</div><div id="myCoachUnread" style="position:absolute;top:4px;right:14px;min-width:14px;height:14px;padding:0 4px;background:var(--accent);color:#000;border-radius:7px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;font-family:'DM Mono',monospace;">0</div></button>
       <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" style="display:none"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
       <button class="nav-btn" onclick="showPanel('admin')" id="nav-admin" style="display:none"><div class="nav-icon">⚙️</div><div class="nav-label" data-i18n="nav_admin">Admin</div></button>
       <button class="nav-btn" onclick="showPanel('account')" id="nav-account"><div class="nav-icon">👤</div><div class="nav-label">Account</div></button>
@@ -2322,7 +2333,7 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ═══════════════════════════════════════════════════════
 // NAV — Bulletproof panel switching
 // ═══════════════════════════════════════════════════════
-const ALL_PANELS = ['coach', 'workout', 'log', 'nutrition', 'progress', 'admin', 'programmes', 'account', 'clients'];
+const ALL_PANELS = ['coach', 'workout', 'log', 'nutrition', 'progress', 'admin', 'programmes', 'account', 'clients', 'my-coach'];
 
 function showPanel(name) {
   // Refresh coach nav visibility on every panel switch
@@ -2362,6 +2373,7 @@ function showPanel(name) {
   if (name === 'log') renderLog();
   if (name === 'admin') renderAdmin();
   if (name === 'programmes') renderProgrammes();
+  if (name === 'my-coach') renderMyCoachPanel();
   if (name === 'account') renderAccount();
   if (name === 'coach') {
     renderCoachCounter();
@@ -3671,12 +3683,16 @@ async function renderWeeklyReview() {
     return;
   }
 
-  const res = await api('/api/review/latest');
+  const [res, manualRes] = await Promise.all([
+    api('/api/review/latest'),
+    api('/api/my-manual-reviews'),
+  ]);
   const review = res?.review;
+  const coachWeekly = (manualRes?.reviews || []).filter(r => r.review_type === 'weekly');
 
   section.style.display = '';
 
-  if (!review) {
+  if (!review && !coachWeekly.length) {
     // No review yet — show generate button
     card.innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
@@ -3686,7 +3702,23 @@ async function renderWeeklyReview() {
     return;
   }
 
-  renderWeeklyReviewData(review);
+  if (review) renderWeeklyReviewData(review);
+  else card.innerHTML = '';
+  if (coachWeekly.length) appendCoachReviewBlock(card, coachWeekly);
+}
+
+function appendCoachReviewBlock(card, coachReviews) {
+  if (!card) return;
+  const html = coachReviews.map(r => `
+    <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;">FROM YOUR COACH</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;">${escHtml((r.review_period || new Date(r.created_at).toLocaleDateString('en-GB')).toUpperCase())}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${escHtml(r.review_content || '')}</div>
+    </div>
+  `).join('');
+  card.insertAdjacentHTML('beforeend', html);
 }
 
 function renderWeeklyReviewData(review) {
@@ -3739,10 +3771,14 @@ async function renderMonthlyReview() {
     return;
   }
 
-  const res = await api('/api/monthly-review/latest');
+  const [res, manualRes] = await Promise.all([
+    api('/api/monthly-review/latest'),
+    api('/api/my-manual-reviews'),
+  ]);
   const review = res?.review;
+  const coachMonthly = (manualRes?.reviews || []).filter(r => r.review_type === 'monthly');
 
-  if (!review) {
+  if (!review && !coachMonthly.length) {
     // No review yet — show a prompt
     section.style.display = '';
     const now = new Date();
@@ -3757,20 +3793,24 @@ async function renderMonthlyReview() {
   }
 
   section.style.display = '';
-  const monthDate = new Date(review.month_start || review.created_at);
-  const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  card.innerHTML = '';
 
-  card.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
-      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
-        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
-        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
-      </div>
-      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.ai_insights || ''}</div>
-      <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
-    </div>`;
+  if (review) {
+    const monthDate = new Date(review.month_start || review.created_at);
+    const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    card.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
+        <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
+          ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
+          ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.ai_insights || ''}</div>
+        <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
+      </div>`;
+  }
+  if (coachMonthly.length) appendCoachReviewBlock(card, coachMonthly);
 }
 
 async function generateMonthlyReview(btn) {
@@ -10488,8 +10528,132 @@ function isCoachAccount() {
 
 function updateCoachNav() {
   const btn = document.getElementById('nav-clients');
+  if (btn) btn.style.display = isCoachAccount() ? '' : 'none';
+  refreshMyCoachNav();
+}
+
+let _myCoachActive = null; // null = unchecked, true/false = cached
+async function refreshMyCoachNav() {
+  const btn = document.getElementById('nav-my-coach');
   if (!btn) return;
-  btn.style.display = isCoachAccount() ? '' : 'none';
+  try {
+    const res = await api('/api/my-coach');
+    const hasCoach = !!res?.coach;
+    _myCoachActive = hasCoach;
+    btn.style.display = hasCoach ? '' : 'none';
+    if (hasCoach) await fetchAndShowUnreadCount();
+  } catch(e) {
+    btn.style.display = 'none';
+  }
+}
+
+function setMyCoachUnreadBadge(count) {
+  const badge = document.getElementById('myCoachUnread');
+  if (!badge) return;
+  if (!count || count < 1) { badge.style.display = 'none'; return; }
+  badge.textContent = count > 99 ? '99+' : String(count);
+  badge.style.display = 'flex';
+}
+
+async function fetchAndShowUnreadCount() {
+  // Fetch the thread silently and count unread coach messages. Don't open the panel.
+  // Reuse /api/my-coach-messages — but that endpoint marks-as-read on read, so this would erase the badge.
+  // Instead, we keep the badge updated by:
+  //   - clearing it when the panel is opened (reads happen there)
+  //   - setting it when a push notification arrives (handled by service worker, future hook)
+  // For now: leave badge in DOM, only the panel-open path clears it. Push integration is wired server-side.
+}
+
+let _myCoachState = { messages: [], coachInfo: null };
+
+async function renderMyCoachPanel() {
+  const header = document.getElementById('myCoachHeader');
+  const thread = document.getElementById('myCoachThread');
+  const inputBar = document.getElementById('myCoachInputBar');
+  if (!header || !thread) return;
+
+  // Clear unread badge on open
+  setMyCoachUnreadBadge(0);
+
+  thread.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
+  header.innerHTML = '';
+
+  const [coachRes, msgsRes] = await Promise.all([
+    api('/api/my-coach'),
+    api('/api/my-coach-messages'),
+  ]);
+  const coach = coachRes?.coach;
+  if (!coach) {
+    header.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">MY COACH</div>`;
+    thread.innerHTML = `<div style="padding:40px 0;text-align:center;color:var(--muted);font-size:13px;">You don't have a coach yet.</div>`;
+    if (inputBar) inputBar.style.display = 'none';
+    return;
+  }
+
+  _myCoachState.coachInfo = coach;
+  _myCoachState.messages = msgsRes?.messages || [];
+
+  const connectedLabel = coach.connected_at
+    ? new Date(coach.connected_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
+    : '';
+
+  header.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--accent);flex-shrink:0;">${initials(coach.name)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:15px;font-weight:600;color:var(--text);">${escHtml(coach.name || 'Coach')}</div>
+        ${coach.coach_title ? `<div style="font-size:11px;color:var(--muted);margin-top:1px;">${escHtml(coach.coach_title)}</div>` : ''}
+        ${connectedLabel ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;letter-spacing:0.5px;">CONNECTED ${connectedLabel.toUpperCase()}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  renderMyCoachThread();
+  if (inputBar) inputBar.style.display = 'flex';
+}
+
+function renderMyCoachThread() {
+  const thread = document.getElementById('myCoachThread');
+  if (!thread) return;
+  const msgs = _myCoachState.messages || [];
+  if (!msgs.length) {
+    thread.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--muted);font-size:13px;">No messages yet. Send your coach a message to get started.</div>`;
+    return;
+  }
+  thread.innerHTML = msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'client')).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function renderCoachMessageBubble(m, fromMe) {
+  const isClient = fromMe;
+  const time = m.created_at ? relTime(m.created_at) : '';
+  const bg = isClient ? 'var(--accent)' : 'var(--surface)';
+  const color = isClient ? '#000' : 'var(--text)';
+  const align = isClient ? 'flex-end' : 'flex-start';
+  const radius = isClient ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+  return `
+    <div style="display:flex;flex-direction:column;align-items:${align};max-width:78%;${isClient ? 'align-self:flex-end;' : 'align-self:flex-start;'}">
+      <div style="background:${bg};color:${color};padding:10px 13px;border-radius:${radius};font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;">${escHtml(m.message_text || '')}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px;margin-top:3px;padding:0 4px;">${escHtml(time.toUpperCase())}</div>
+    </div>
+  `;
+}
+
+async function sendMyCoachMessage() {
+  const input = document.getElementById('myCoachMessageInput');
+  const btn = document.getElementById('myCoachSendBtn');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  if (btn) btn.disabled = true;
+  const res = await api('/api/my-coach-messages', 'POST', { message_text: text });
+  if (btn) btn.disabled = false;
+  if (res?.ok && res.message) {
+    _myCoachState.messages.push(res.message);
+    if (input) input.value = '';
+    renderMyCoachThread();
+  } else {
+    showToast('Failed to send', 'error');
+  }
 }
 
 function relTime(iso) {
@@ -10764,9 +10928,10 @@ async function openClientDetail(clientId) {
         <button onclick="openClientMenu()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">⋮</button>
       </div>
       <div style="display:flex;gap:0;padding:0 18px;">
-        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">OVERVIEW</button>
-        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">PROGRAMME</button>
-        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 0;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">AI ACTIVITY</button>
+        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">OVERVIEW</button>
+        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">PROGRAMME</button>
+        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">AI</button>
+        <button onclick="switchClientTab('messages')" id="clTab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;">MESSAGES</button>
       </div>
     </div>
     <div id="clientDetailBody" style="padding:18px;flex:1;"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
@@ -10827,7 +10992,7 @@ async function loadClientOverview(clientId) {
 
 function switchClientTab(tab) {
   _currentClientTab = tab;
-  ['overview','programme','ai'].forEach(t => {
+  ['overview','programme','ai','messages'].forEach(t => {
     const el = document.getElementById('clTab-' + t);
     if (!el) return;
     if (t === tab) {
@@ -10846,6 +11011,7 @@ function renderClientTab() {
   if (!body || !_currentClientDetail) return;
   if (_currentClientTab === 'overview') renderClientOverviewTab(body);
   else if (_currentClientTab === 'programme') renderClientProgrammeTab(body);
+  else if (_currentClientTab === 'messages') renderClientMessagesTab(body);
   else renderClientAITab(body);
 }
 
@@ -10908,6 +11074,9 @@ function renderClientOverviewTab(body) {
 
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:22px 0 8px;">SESSION FEEDBACK</div>
     <textarea id="coachFeedbackField" placeholder="Write feedback for this client — they will not see this unless you choose to share it." maxlength="1000" style="width:100%;min-height:90px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;"></textarea>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+      <input type="checkbox" id="coachFeedbackShare"> Share with client
+    </label>
     <div style="display:flex;gap:8px;margin-top:8px;">
       <button onclick="submitCoachFeedback(true, null)" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">General note</button>
       <button onclick="submitCoachFeedback(false, ${lastSessionId ? `'${lastSessionId}'` : 'null'})" ${lastSessionId ? '' : 'disabled'} style="flex:1;padding:11px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:${lastSessionId ? 'pointer' : 'not-allowed'};opacity:${lastSessionId ? '1' : '0.5'};font-family:'DM Sans',sans-serif;">Attach to last session</button>
@@ -10962,13 +11131,19 @@ function renderCoachFeedbackList(feedback, recentSessions, lastSession) {
     const tag = f.is_general
       ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.5px;">GENERAL</span>`
       : `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.5px;">${escHtml((sessionLabelById[f.session_log_id] || 'SESSION').toUpperCase())}</span>`;
+    const sharedBadge = f.visible_to_client
+      ? `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:0.5px;border:1px solid var(--accent);padding:1px 5px;border-radius:4px;margin-left:6px;">SHARED</span>`
+      : '';
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <div>${tag} <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-left:8px;">${escHtml(relTime(f.created_at).toUpperCase())}</span></div>
+          <div>${tag}${sharedBadge} <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-left:8px;">${escHtml(relTime(f.created_at).toUpperCase())}</span></div>
           <button onclick="deleteCoachFeedback('${f.id}')" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 6px;font-family:'DM Mono',monospace;">DELETE</button>
         </div>
         <div contenteditable="true" data-fbid="${f.id}" onblur="updateCoachFeedback(this)" style="font-size:13px;color:var(--text);line-height:1.5;outline:none;white-space:pre-wrap;">${escHtml(f.feedback_text)}</div>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;cursor:pointer;">
+          <input type="checkbox" ${f.visible_to_client ? 'checked' : ''} onchange="toggleCoachFeedbackShare('${f.id}', this.checked)"> SHARED WITH CLIENT
+        </label>
       </div>`;
   }).join('');
 }
@@ -10976,22 +11151,38 @@ function renderCoachFeedbackList(feedback, recentSessions, lastSession) {
 async function submitCoachFeedback(isGeneral, sessionId) {
   if (!_currentClientDetail) return;
   const field = document.getElementById('coachFeedbackField');
+  const shareEl = document.getElementById('coachFeedbackShare');
   const text = (field?.value || '').trim();
   if (!text) { showToast('Write something first', 'error'); return; }
   const res = await api('/api/coach/clients/' + _currentClientDetail.clientId + '/feedback', 'POST', {
     feedback_text: text,
     session_log_id: isGeneral ? null : sessionId,
     is_general: !!isGeneral,
+    visible_to_client: !!shareEl?.checked,
   });
   if (res?.ok) {
-    showToast('Feedback saved', 'success');
+    showToast(shareEl?.checked ? 'Feedback shared' : 'Feedback saved', 'success');
     if (field) field.value = '';
+    if (shareEl) shareEl.checked = false;
     const list = await api('/api/coach/clients/' + _currentClientDetail.clientId + '/feedback');
     _currentClientDetail.feedback = list?.feedback || [];
     const listEl = document.getElementById('coachFeedbackList');
     if (listEl) listEl.innerHTML = renderCoachFeedbackList(_currentClientDetail.feedback, _currentClientDetail.overview?.recent_sessions, _currentClientDetail.overview?.last_session);
   } else {
     showToast('Failed to save', 'error');
+  }
+}
+
+async function toggleCoachFeedbackShare(id, share) {
+  const res = await api('/api/coach/feedback/' + id, 'PATCH', { visible_to_client: !!share });
+  if (res?.ok) {
+    const item = (_currentClientDetail?.feedback || []).find(f => f.id === id);
+    if (item) item.visible_to_client = !!share;
+    showToast(share ? 'Shared with client' : 'Hidden from client', 'success');
+    const listEl = document.getElementById('coachFeedbackList');
+    if (listEl) listEl.innerHTML = renderCoachFeedbackList(_currentClientDetail.feedback, _currentClientDetail.overview?.recent_sessions, _currentClientDetail.overview?.last_session);
+  } else {
+    showToast('Failed', 'error');
   }
 }
 
@@ -11248,16 +11439,29 @@ async function saveBuilderProgramme(asDraft) {
 async function renderClientAITab(body) {
   body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
   const cid = _currentClientDetail.clientId;
-  const res = await api('/api/coach/clients/' + cid + '/ai-activity');
+  const [res, manualRes] = await Promise.all([
+    api('/api/coach/clients/' + cid + '/ai-activity'),
+    api('/api/coach/clients/' + cid + '/manual-reviews'),
+  ]);
   if (!res || res.error) { body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Could not load AI activity.</div>`; return; }
   _currentClientDetail.aiActivity = res;
+  _currentClientDetail.manualReviews = manualRes?.reviews || [];
   const tier = _currentClientDetail.overview?.profile?.subscription_tier || 'iron';
   const ironNotice = tier === 'iron' ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);">${escHtml(_currentClientDetail.overview?.profile?.name || 'This client')} is on Iron — 20 AI messages/month.</div>` : '';
   const banner = renderConsentBanner(cid);
   const settings = res.review_settings || {};
   const convs = res.conversations || [];
-  const reviews = [...(res.weekly_reviews || []).map(r => ({ ...r, type:'weekly' })), ...(res.monthly_reviews || []).map(r => ({ ...r, type:'monthly' }))]
+  const aiReviews = [
+    ...(res.weekly_reviews || []).map(r => ({ ...r, type:'weekly', source:'ai' })),
+    ...(res.monthly_reviews || []).map(r => ({ ...r, type:'monthly', source:'ai' })),
+  ];
+  const manualReviews = (_currentClientDetail.manualReviews || []).map(r => ({ ...r, source:'coach' }));
+  const reviews = [...aiReviews, ...manualReviews]
     .sort((a, b) => new Date(b.created_at || b.generated_at) - new Date(a.created_at || a.generated_at));
+
+  const weeklyOff = settings.weekly_review_enabled === false;
+  const monthlyOff = settings.monthly_review_enabled === false;
+
   body.innerHTML = `
     ${ironNotice}
     ${banner}
@@ -11265,7 +11469,9 @@ async function renderClientAITab(body) {
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px 14px;margin-bottom:18px;">
       ${reviewToggle('Post-workout check-in', 'post_workout_checkin_enabled', settings.post_workout_checkin_enabled !== false)}
       ${reviewToggle('Weekly review', 'weekly_review_enabled', settings.weekly_review_enabled !== false)}
+      ${weeklyOff ? `<button onclick="openManualReviewModal('weekly')" style="width:100%;padding:9px;margin:6px 0 10px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Write weekly review</button>` : ''}
       ${reviewToggle('Monthly review', 'monthly_review_enabled', settings.monthly_review_enabled !== false)}
+      ${monthlyOff ? `<button onclick="openManualReviewModal('monthly')" style="width:100%;padding:9px;margin:6px 0 10px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Write monthly review</button>` : ''}
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">CONVERSATIONS (READ-ONLY)</div>
     <div style="margin-bottom:18px;">
@@ -11288,16 +11494,78 @@ async function renderClientAITab(body) {
         </details>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No conversations yet.</div>'}
     </div>
     <details style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-      <summary style="cursor:pointer;font-size:13px;color:var(--text);">AI review history (${reviews.length})</summary>
+      <summary style="cursor:pointer;font-size:13px;color:var(--text);">Review history (${reviews.length})</summary>
       <div style="margin-top:10px;">
-        ${reviews.length ? reviews.map(r => `
-          <div style="padding:10px 0;border-top:1px solid var(--border);">
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${r.type.toUpperCase()} · ${new Date(r.created_at || r.generated_at).toLocaleDateString('en-GB')}</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml((r.summary || r.ai_insights || r.review_content || '').slice(0, 400))}</div>
-          </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No reviews yet.</div>'}
+        ${reviews.length ? reviews.map(r => {
+          const badge = r.source === 'coach'
+            ? `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent);padding:1px 5px;border-radius:4px;letter-spacing:0.5px;">COACH</span>`
+            : `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);border:1px solid var(--border);padding:1px 5px;border-radius:4px;letter-spacing:0.5px;">AI</span>`;
+          return `<div style="padding:10px 0;border-top:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${badge} ${r.type.toUpperCase()} · ${new Date(r.created_at || r.generated_at).toLocaleDateString('en-GB')}</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml((r.summary || r.ai_insights || r.review_content || '').slice(0, 600))}</div>
+          </div>`;
+        }).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No reviews yet.</div>'}
       </div>
     </details>
   `;
+}
+
+function openManualReviewModal(reviewType) {
+  if (!_currentClientDetail) return;
+  const clientName = _currentClientDetail.overview?.profile?.name || 'Client';
+  const now = new Date();
+  let defaultPeriod;
+  if (reviewType === 'weekly') {
+    // ISO week
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNum = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    defaultPeriod = `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  } else {
+    defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'manualReviewOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;justify-content:flex-end;';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:18px 20px 24px;max-height:90vh;overflow-y:auto;">
+      <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);margin-bottom:14px;">WRITE ${reviewType.toUpperCase()} REVIEW FOR ${escHtml(clientName.toUpperCase())}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">PERIOD</div>
+      <input id="manualReviewPeriod" type="text" value="${escHtml(defaultPeriod)}" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;margin-bottom:14px;box-sizing:border-box;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">REVIEW</div>
+      <textarea id="manualReviewContent" maxlength="2000" rows="8" placeholder="Write the review your client will see..." style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;min-height:140px;" oninput="document.getElementById('manualReviewCounter').textContent = this.value.length + ' / 2000';"></textarea>
+      <div id="manualReviewCounter" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-top:4px;text-align:right;">0 / 2000</div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="document.getElementById('manualReviewOverlay').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button onclick="submitManualReview('${reviewType}')" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save review</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function submitManualReview(reviewType) {
+  if (!_currentClientDetail) return;
+  const content = document.getElementById('manualReviewContent')?.value.trim();
+  const period = document.getElementById('manualReviewPeriod')?.value.trim();
+  if (!content) { showToast('Write something first', 'error'); return; }
+  const res = await api('/api/coach/clients/' + _currentClientDetail.clientId + '/manual-review', 'POST', {
+    review_type: reviewType,
+    review_content: content,
+    review_period: period,
+  });
+  if (res?.ok) {
+    showToast('Review saved', 'success');
+    document.getElementById('manualReviewOverlay')?.remove();
+    renderClientTab(); // refresh AI tab to show new review in history
+  } else {
+    showToast('Failed to save', 'error');
+  }
 }
 
 function reviewToggle(label, key, checked) {
@@ -11313,6 +11581,49 @@ async function saveReviewSetting(key, value) {
   const body = {}; body[key] = value;
   const res = await api('/api/coach/clients/' + cid + '/review-settings', 'PATCH', body);
   if (res?.ok) showToast('Saved', 'success');
+}
+
+// ── COACH MESSAGES TAB ────────────────────────────────
+async function renderClientMessagesTab(body) {
+  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div>`;
+  const cid = _currentClientDetail.clientId;
+  const res = await api('/api/coach/clients/' + cid + '/messages');
+  const msgs = res?.messages || [];
+  _currentClientDetail.messages = msgs;
+  body.innerHTML = `
+    <div id="coachMsgThread" style="display:flex;flex-direction:column;gap:10px;padding-bottom:14px;">
+      ${msgs.length ? msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'coach')).join('') : `<div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;">No messages yet.</div>`}
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--bg);padding-bottom:6px;">
+      <textarea id="coachMsgInput" rows="1" placeholder="Reply to your client…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
+      <button onclick="sendCoachMessage()" id="coachMsgSendBtn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+    </div>
+  `;
+  // Scroll to bottom
+  const thread = document.getElementById('coachMsgThread');
+  if (thread?.parentElement) thread.parentElement.scrollTop = thread.parentElement.scrollHeight;
+}
+
+async function sendCoachMessage() {
+  if (!_currentClientDetail) return;
+  const input = document.getElementById('coachMsgInput');
+  const btn = document.getElementById('coachMsgSendBtn');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  if (btn) btn.disabled = true;
+  const res = await api('/api/coach/clients/' + _currentClientDetail.clientId + '/messages', 'POST', { message_text: text });
+  if (btn) btn.disabled = false;
+  if (res?.ok && res.message) {
+    _currentClientDetail.messages = [...(_currentClientDetail.messages || []), res.message];
+    if (input) input.value = '';
+    const thread = document.getElementById('coachMsgThread');
+    if (thread) {
+      thread.insertAdjacentHTML('beforeend', renderCoachMessageBubble(res.message, true));
+      thread.parentElement.scrollTop = thread.parentElement.scrollHeight;
+    }
+  } else {
+    showToast('Failed to send', 'error');
+  }
 }
 
 function renderConsentBanner(clientId) {
@@ -11531,6 +11842,11 @@ async function renderAccountCoachSections() {
   const myCoachRes = await api('/api/my-coach');
   const myCoach = myCoachRes?.coach;
   const pendingCoach = myCoachRes?.pending;
+  let coachFeedback = [];
+  if (myCoach) {
+    const fbRes = await api('/api/my-coach-feedback');
+    coachFeedback = fbRes?.feedback || [];
+  }
 
   let html = '';
 
@@ -11561,6 +11877,21 @@ async function renderAccountCoachSections() {
         </div>
         <button onclick="confirmDisconnectCoach()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Disconnect coach</button>
       </div>`;
+    if (coachFeedback.length) {
+      html += `
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">FEEDBACK FROM YOUR COACH</div>
+        <div style="margin-bottom:16px;">
+          ${coachFeedback.map(f => {
+            const tag = f.is_general
+              ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.5px;">GENERAL</span>`
+              : `<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.5px;">${escHtml((f.session_label || 'SESSION').toUpperCase())}</span>`;
+            return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+              <div style="margin-bottom:6px;">${tag} <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-left:8px;">${escHtml(relTime(f.created_at).toUpperCase())}</span></div>
+              <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml(f.feedback_text)}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
   }
 
   // Coach plan section (if user is a coach)
