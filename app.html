@@ -11579,13 +11579,19 @@ async function renderClientAITab(body) {
   const banner = renderConsentBanner(cid);
   const settings = res.review_settings || {};
   const convs = res.conversations || [];
+  // Normalise the three sources into a single shape — guard every field on the way in.
+  // weekly_reviews / monthly_reviews come from AI-generated rows (no coach_id).
+  // coach_manual_reviews rows carry coach_id and use `review_type` instead of `type`.
   const aiReviews = [
-    ...(res.weekly_reviews || []).map(r => ({ ...r, type:'weekly', source:'ai' })),
-    ...(res.monthly_reviews || []).map(r => ({ ...r, type:'monthly', source:'ai' })),
+    ...(res.weekly_reviews || []).map(r => ({ ...r, type: 'weekly' })),
+    ...(res.monthly_reviews || []).map(r => ({ ...r, type: 'monthly' })),
   ];
-  const manualReviews = (_currentClientDetail.manualReviews || []).map(r => ({ ...r, source:'coach' }));
-  const reviews = [...aiReviews, ...manualReviews]
-    .sort((a, b) => new Date(b.created_at || b.generated_at) - new Date(a.created_at || a.generated_at));
+  const manualReviews = (_currentClientDetail.manualReviews || []).map(r => ({
+    ...r,
+    type: r.review_type || 'coach',
+  }));
+  const reviewTime = r => new Date(r.created_at || r.generated_at || r.updated_at || 0).getTime();
+  const reviews = [...aiReviews, ...manualReviews].sort((a, b) => reviewTime(b) - reviewTime(a));
 
   const weeklyOff = settings.weekly_review_enabled === false;
   const monthlyOff = settings.monthly_review_enabled === false;
@@ -11625,12 +11631,17 @@ async function renderClientAITab(body) {
       <summary style="cursor:pointer;font-size:13px;color:var(--text);">Review history (${reviews.length})</summary>
       <div style="margin-top:10px;">
         ${reviews.length ? reviews.map(r => {
-          const badge = r.source === 'coach'
+          const isCoachReview = !!r.coach_id;
+          const badge = isCoachReview
             ? `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent);padding:1px 5px;border-radius:4px;letter-spacing:0.5px;">COACH</span>`
             : `<span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);border:1px solid var(--border);padding:1px 5px;border-radius:4px;letter-spacing:0.5px;">AI</span>`;
+          const typeLabel = (r.type || 'review').toUpperCase();
+          const dateSource = r.created_at || r.generated_at || r.updated_at;
+          const dateLabel = dateSource ? new Date(dateSource).toLocaleDateString('en-GB') : '';
+          const content = r.summary || r.review_content || r.ai_insights || r.content || '';
           return `<div style="padding:10px 0;border-top:1px solid var(--border);">
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${badge} ${r.type.toUpperCase()} · ${new Date(r.created_at || r.generated_at).toLocaleDateString('en-GB')}</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml((r.summary || r.ai_insights || r.review_content || '').slice(0, 600))}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${badge} ${typeLabel}${dateLabel ? ' · ' + dateLabel : ''}</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml(String(content).slice(0, 600))}</div>
           </div>`;
         }).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No reviews yet.</div>'}
       </div>
@@ -11690,7 +11701,10 @@ async function submitManualReview(reviewType) {
   if (res?.ok) {
     showToast('Review saved', 'success');
     document.getElementById('manualReviewOverlay')?.remove();
-    renderClientTab(); // refresh AI tab to show new review in history
+    // Drop the cached manualReviews so the next render fetches fresh and any malformed
+    // optimistic state can't leak into the merge.
+    if (_currentClientDetail) _currentClientDetail.manualReviews = null;
+    renderClientTab(); // refresh AI tab — it refetches manual-reviews from the server
   } else {
     showToast('Failed to save', 'error');
   }
