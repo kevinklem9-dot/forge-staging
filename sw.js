@@ -6,7 +6,17 @@ self.addEventListener('install', e => {
     ).then(() => self.skipWaiting())
   );
 });
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    self.clients.claim()
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(list => {
+        for (const c of list) {
+          try { c.postMessage({ type: 'SW_ACTIVATED' }); } catch(err) {}
+        }
+      })
+  );
+});
 
 self.addEventListener('push', e => {
   if (!e.data) return;

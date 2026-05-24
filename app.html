@@ -2327,6 +2327,9 @@ async function loadPlanAndLaunch() {
       }
     }, 60000); // every 60 seconds
   }
+
+  // PWA install nudge + auto-update banner — runs once per session for any account type.
+  if (typeof bootPostLaunch === 'function') bootPostLaunch();
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -5594,11 +5597,56 @@ function renderAdminUserCards(users) {
       + '<button onclick="toggleFreezeUser(\'' + u.id + '\', ' + !isFrozen + ')" style="background:' + (isFrozen?'rgba(100,180,255,0.15)':'var(--bg)') + ';border:1px solid ' + (isFrozen?'#7eb8f7':'var(--border)') + ';color:' + (isFrozen?'#7eb8f7':'var(--muted)') + ';border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">'
       + (isFrozen ? '❄ Unfreeze' : '❄ Freeze') + '</button>'
       + '</div>'
+      + renderAdminCoachControls(u)
       + '</div>'
       + (u.email !== ADMIN_EMAIL ? '<button onclick="deleteUserConfirmed(\'' + u.id + '\', \'' + escHtml(u.email) + '\')" style="background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);color:var(--red);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;flex-shrink:0;">✕</button>' : '')
       + '</div>'
       + '</div>';
   }).join('');
+}
+
+function renderAdminCoachControls(u) {
+  if (!u.coach_plan) return '';
+  const status = u.coach_plan_status || 'unknown';
+  const statusColour = status === 'active' ? '#39d98a' : status === 'trial' ? '#ffa726' : status === 'cancelled' ? 'var(--red, #ff4444)' : 'var(--muted)';
+  const trialStartLabel = u.coach_trial_start ? new Date(u.coach_trial_start).toLocaleDateString('en-GB') : '—';
+  const exempt = !!u.is_coach_exempt;
+  const exemptBadge = exempt ? '<span style="font-family:DM Mono,monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent);padding:1px 5px;border-radius:4px;margin-left:6px;letter-spacing:0.5px;">EXEMPT</span>' : '';
+  return ''
+    + '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">COACH PLAN' + exemptBadge + '</div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">'
+    +   escHtml((u.coach_plan || '').toUpperCase()) + ' · '
+    +   '<span style="color:' + statusColour + ';">' + escHtml(status.toUpperCase()) + '</span>'
+    +   ' · TRIAL START ' + trialStartLabel
+    + '</div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+    +   (status === 'trial' ? '<button onclick="setCoachPlanAction(\'' + u.id + '\', \'expire_trial\')" style="background:rgba(255,150,0,0.1);border:1px solid rgba(255,150,0,0.4);color:#ff9600;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">⏱ Expire coach trial</button>' : '')
+    +   '<button onclick="setCoachPlanAction(\'' + u.id + '\', \'extend_trial\')" style="background:rgba(232,255,61,0.08);border:1px solid rgba(232,255,61,0.4);color:var(--accent);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">＋7d trial</button>'
+    +   '<button onclick="setCoachPlanAction(\'' + u.id + '\', \'set_active\')" style="background:rgba(57,217,138,0.1);border:1px solid rgba(57,217,138,0.4);color:#39d98a;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">✓ Set active</button>'
+    +   '<button onclick="toggleCoachExempt(\'' + u.id + '\', ' + !exempt + ')" style="background:' + (exempt ? 'rgba(232,255,61,0.15)' : 'var(--bg)') + ';border:1px solid ' + (exempt ? 'var(--accent)' : 'var(--border)') + ';color:' + (exempt ? 'var(--accent)' : 'var(--muted)') + ';border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">' + (exempt ? '★ Coach exempt' : '☆ Coach exempt') + '</button>'
+    + '</div>'
+    + '</div>';
+}
+
+async function setCoachPlanAction(userId, action) {
+  const res = await api('/api/admin/users/' + userId + '/coach-plan', 'PATCH', { action });
+  if (res?.success) {
+    showToast(action === 'expire_trial' ? 'Coach trial expired' : action === 'extend_trial' ? 'Coach trial extended 7 days' : 'Coach plan set active', 'success');
+    renderAdmin();
+  } else {
+    showToast('Failed', 'error');
+  }
+}
+
+async function toggleCoachExempt(userId, exempt) {
+  const res = await api('/api/admin/users/' + userId + '/coach-exempt', 'PATCH', { exempt });
+  if (res?.success) {
+    showToast(exempt ? 'Coach exempt enabled' : 'Coach exempt removed', 'success');
+    renderAdmin();
+  } else {
+    showToast('Failed', 'error');
+  }
 }
 
 
@@ -12193,6 +12241,97 @@ function confirmCancelCoachPlan() {
   if (!confirm('Cancel your coach plan? You\'ll keep access until the end of your current billing period. Your client connections will end when the plan expires.')) return;
   // Send them to the billing portal — Stripe handles the actual cancellation cleanly.
   openBillingPortal();
+}
+
+// ── APP VERSION — must match the deployed APP_VERSION env var on Railway ──
+// Bumped on every deployment so the auto-update banner fires on stale clients.
+const APP_VERSION = '1.0.0';
+
+function isStandalonePwa() {
+  return window.navigator?.standalone === true
+    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+
+function showPwaPrompt() {
+  // Already installed, already dismissed, or prompt already on screen — skip.
+  if (isStandalonePwa()) return;
+  if (localStorage.getItem('forge-pwa-dismissed')) return;
+  if (document.getElementById('pwaInstallPrompt')) return;
+
+  // iOS Safari vs everything else (Android Chrome, Samsung Internet, etc.)
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const steps = isIos
+    ? [
+        'Tap the Share button ⬆ at the bottom of Safari',
+        'Scroll down and tap Add to Home Screen ＋',
+      ]
+    : [
+        'Tap the ⋮ menu in your browser',
+        'Tap Add to Home screen',
+      ];
+
+  const sheet = document.createElement('div');
+  sheet.id = 'pwaInstallPrompt';
+  sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#111;border-top:1px solid #e8ff3d;padding:20px 18px;color:#fff;font-family:"DM Sans",sans-serif;box-shadow:0 -10px 30px rgba(0,0,0,0.6);';
+  sheet.innerHTML = `
+    <button onclick="dismissPwaPrompt()" aria-label="Close" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:#e8ff3d;margin-bottom:8px;">INSTALL FORGE</div>
+    <div style="font-size:13px;color:#bbb;margin-bottom:12px;line-height:1.5;">Add FORGE to your home screen for faster access and a fullscreen experience.</div>
+    <ol style="margin:0;padding-left:22px;font-size:13px;line-height:1.7;color:#eee;">
+      ${steps.map(s => `<li>${escHtml(s)}</li>`).join('')}
+    </ol>
+  `;
+  document.body.appendChild(sheet);
+
+  // Auto-dismiss after 12 seconds (no localStorage flag — they might just have ignored it once).
+  setTimeout(() => {
+    const el = document.getElementById('pwaInstallPrompt');
+    if (el) el.remove();
+  }, 12000);
+}
+
+function dismissPwaPrompt() {
+  try { localStorage.setItem('forge-pwa-dismissed', '1'); } catch(e) {}
+  document.getElementById('pwaInstallPrompt')?.remove();
+}
+
+// ── APP AUTO-UPDATE ──────────────────────────────────
+async function checkForUpdate() {
+  try {
+    const res = await fetch(BACKEND_URL + '/api/version', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data?.version && data.version !== APP_VERSION) showUpdateBanner();
+  } catch(e) { /* silent — never break the app */ }
+}
+
+function showUpdateBanner() {
+  if (document.getElementById('appUpdateBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'appUpdateBanner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#e8ff3d;color:#000;padding:12px 16px;font-family:"DM Sans",sans-serif;font-size:14px;font-weight:700;text-align:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.3);';
+  banner.textContent = 'FORGE has been updated. Tap to reload.';
+  banner.onclick = () => window.location.reload(true);
+  document.body.appendChild(banner);
+}
+
+// Wire SW activation → version check
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_ACTIVATED') checkForUpdate();
+  });
+}
+
+// Fire-once boot helpers — call these right after loadPlanAndLaunch returns.
+function bootPostLaunch() {
+  // 3s after launch — PWA install nudge
+  setTimeout(showPwaPrompt, 3000);
+  // 5s after launch — first version check (boot path stays clean)
+  setTimeout(checkForUpdate, 5000);
+  // Every 30 minutes while open
+  if (!window._versionPollInterval) {
+    window._versionPollInterval = setInterval(checkForUpdate, 30 * 60 * 1000);
+  }
 }
 
 loadTheme();
