@@ -1604,6 +1604,11 @@ async function api(path, method = 'GET', body = null, timeoutMs = 30000) {
       showAuthError('Your account has been suspended. Contact support to resolve this.');
     }
 
+    // Coach trial expired — open the non-dismissible paywall (idempotent on each 403)
+    if (res.status === 403 && data?.error === 'coach_trial_expired') {
+      if (typeof openCoachTrialExpiredPaywall === 'function') openCoachTrialExpiredPaywall();
+    }
+
     return data;
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -2464,6 +2469,96 @@ async function startCheckoutFromExpired(tier) {
   startCheckout(tier, 'annual', isPromo);
 }
 
+// ── COACH TRIAL EXPIRED PAYWALL ───────────────────────
+let _coachExpiredState = null;
+function openCoachTrialExpiredPaywall() {
+  if (document.getElementById('coachTrialExpiredOverlay')) return;
+  const currentPlan = userProfile?.coach_plan || 'pro';
+  const currentBilling = userProfile?.coach_billing_preference || 'annual';
+  _coachExpiredState = { plan: currentPlan, billing: currentBilling };
+
+  const overlay = document.createElement('div');
+  overlay.id = 'coachTrialExpiredOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.94);overflow-y:auto;display:flex;flex-direction:column;';
+  // Non-dismissible — no click-outside handler
+  document.body.appendChild(overlay);
+  renderCoachTrialExpiredPaywall();
+}
+
+function renderCoachTrialExpiredPaywall() {
+  const overlay = document.getElementById('coachTrialExpiredOverlay');
+  if (!overlay || !_coachExpiredState) return;
+  const prices = {
+    starter: { monthly: 'CHF 49', annual: 'CHF 32.99' },
+    pro: { monthly: 'CHF 89', annual: 'CHF 59.99' },
+    elite: { monthly: 'CHF 149', annual: 'CHF 99.99' },
+  };
+  const planNames = { starter: 'Starter', pro: 'Pro', elite: 'Elite' };
+  const billing = _coachExpiredState.billing;
+  const planCard = (id, name, features) => `
+    <div onclick="_coachExpiredState.plan = '${id}'; renderCoachTrialExpiredPaywall();" style="padding:16px;background:var(--surface);border:2px solid ${_coachExpiredState.plan === id ? 'var(--accent)' : 'var(--border)'};border-radius:14px;margin-bottom:10px;cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">${name}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);">${prices[id][billing]}<span style="font-size:11px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">/mo</span></div>
+      </div>
+      <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.6;">${features.map(f => '<li>' + f + '</li>').join('')}</ul>
+    </div>
+  `;
+  overlay.innerHTML = `
+    <div style="padding:36px 22px 28px;flex-shrink:0;text-align:center;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px;color:var(--accent);margin-bottom:10px;">YOUR COACH TRIAL HAS ENDED</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5;">Your 14 days are up. Add a payment method to keep your coach dashboard and client access.</div>
+    </div>
+    <div style="padding:0 18px 24px;flex:1;">
+      <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:14px;">
+        <button onclick="_coachExpiredState.billing = 'monthly'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Monthly</button>
+        <button onclick="_coachExpiredState.billing = 'annual'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— 2 months free</span></button>
+      </div>
+      ${planCard('starter', 'Starter', ['Up to 10 clients', 'Client dashboard', '10% commission'])}
+      ${planCard('pro', 'Pro', ['Up to 30 clients', 'Template library', '15% commission'])}
+      ${planCard('elite', 'Elite', ['Unlimited clients', 'Priority support', '20% commission'])}
+      <button id="coachExpiredContinueBtn" onclick="continueCoachAfterTrial()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Continue with ${escHtml(planNames[_coachExpiredState.plan] || 'Pro')}</button>
+      <button onclick="downgradeCoachFromExpired()" style="width:100%;margin-top:10px;padding:11px;background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;">Downgrade to individual plan</button>
+    </div>
+  `;
+}
+
+async function continueCoachAfterTrial() {
+  if (!_coachExpiredState) return;
+  const btn = document.getElementById('coachExpiredContinueBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+  const res = await api('/api/coach/create-checkout', 'POST', {
+    plan: _coachExpiredState.plan,
+    billing: _coachExpiredState.billing,
+  });
+  if (res?.url) {
+    window.location.href = res.url;
+  } else {
+    showToast(res?.error || 'Could not start checkout', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+  }
+}
+
+async function downgradeCoachFromExpired() {
+  if (!confirm('Downgrade to an individual plan? You will lose access to coach features and your client connections will be paused.')) return;
+  const res = await api('/api/coach/downgrade', 'POST');
+  if (res?.ok) {
+    try {
+      const p = await api('/api/profile');
+      if (p?.profile) {
+        userProfile = p.profile;
+        localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile));
+      }
+    } catch(e) {}
+    document.getElementById('coachTrialExpiredOverlay')?.remove();
+    if (typeof updateCoachNav === 'function') updateCoachNav();
+    showToast('Coach plan cancelled', 'success');
+    showPanel('coach');
+  } else {
+    showToast('Could not downgrade — try again', 'error');
+  }
+}
+
 function dismissExpiredPaywall() {
   document.getElementById('expiredPaywall')?.remove();
   // Also remove upgradeSheet if it was injected inside
@@ -2535,14 +2630,13 @@ function handlePaymentRedirect() {
   const payment = params.get('payment');
   const tier = params.get('tier');
   const portalReturn = params.get('portal_return');
-  const coachSetup = params.get('coach_setup');
+  const coachPayment = params.get('coach_payment');
   const coachRequest = params.get('coach_request');
   const coachSignup = params.get('coach_signup');
 
-  // Coach setup return from Stripe
-  if (coachSetup === 'success') {
+  // Coach post-trial Stripe return
+  if (coachPayment === 'success') {
     window.history.replaceState({}, '', window.location.pathname);
-    // Force-refresh profile so account_type updates locally
     setTimeout(() => {
       api('/api/profile').then(res => {
         if (res?.profile) {
@@ -2550,14 +2644,16 @@ function handlePaymentRedirect() {
           localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile));
         }
         if (typeof updateCoachNav === 'function') updateCoachNav();
-        if (typeof showCoachSetupConfirmation === 'function') showCoachSetupConfirmation();
+        // Dismiss the expired paywall if it's open
+        document.getElementById('coachTrialExpiredOverlay')?.remove();
+        showToast('Coach plan activated — welcome back', 'success');
       });
     }, 600);
     return;
   }
-  if (coachSetup === 'cancelled') {
+  if (coachPayment === 'cancelled') {
     window.history.replaceState({}, '', window.location.pathname);
-    showToast('Coach setup cancelled', 'error');
+    showToast('Payment cancelled — your coach access has been paused', 'error');
   }
   // Inbound coach connection request via push deeplink
   if (coachRequest) {
@@ -11936,7 +12032,7 @@ function renderCoachSetupPlan() {
   `;
   return `
     <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;color:var(--text);margin-bottom:8px;">CHOOSE YOUR COACH PLAN</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5;">Start with a 14-day free trial. No charge until your trial ends.</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5;">14 days free. No card required. You'll be asked for payment when your trial ends.</div>
     <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:18px;">
       <button onclick="_coachSetupState.billing = 'monthly'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Monthly</button>
       <button onclick="_coachSetupState.billing = 'annual'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? '#000' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— 2 months free</span></button>
@@ -11945,34 +12041,56 @@ function renderCoachSetupPlan() {
     ${planCard('pro', 'Pro', ['Up to 30 clients','Everything in Starter','Priority client notifications','Template library','15% commission'], true)}
     ${planCard('elite', 'Elite', ['Unlimited clients','Everything in Pro','20% commission'], false)}
     <div style="font-size:11px;color:var(--muted);margin:14px 0 18px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:0.5px;">Your personal FORGE subscription is billed separately.</div>
-    <button onclick="submitCoachSetup()" id="csSubmit" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Start 14-day free trial</button>
+    <button onclick="submitCoachSetup()" id="csSubmit" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Start free — no card required</button>
   `;
 }
 
 async function submitCoachSetup() {
   const btn = document.getElementById('csSubmit');
-  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Activating…'; }
   const res = await api('/api/coach/setup', 'POST', {
     title: _coachSetupState.title,
     bio: _coachSetupState.bio,
     plan: _coachSetupState.plan,
     billing: _coachSetupState.billing,
   });
-  if (res?.url) {
-    window.location.href = res.url;
+  if (res?.ok) {
+    // Refresh profile so account_type='coach' is reflected locally
+    try {
+      const p = await api('/api/profile');
+      if (p?.profile) {
+        userProfile = p.profile;
+        localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile));
+      }
+    } catch(e) {}
+    if (typeof updateCoachNav === 'function') updateCoachNav();
+    _coachSetupState.step = 'confirm';
+    renderCoachSetup();
   } else {
-    showToast(res?.error || 'Could not start checkout', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Start 14-day free trial'; }
+    showToast(res?.error || 'Could not start your coach trial', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Start free — no card required'; }
   }
 }
 
 function renderCoachSetupConfirm() {
+  const planNames = { starter: 'Starter', pro: 'Pro', elite: 'Elite' };
+  const planName = planNames[_coachSetupState.plan] || 'Pro';
+  const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  const trialEndLabel = trialEnd.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   return `
     <div style="text-align:center;padding:40px 20px;">
       <div style="font-size:54px;margin-bottom:18px;">✓</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:var(--accent);margin-bottom:10px;">YOU'RE ALL SET</div>
-      <div style="font-size:14px;color:var(--text);margin-bottom:28px;line-height:1.5;">Your coach account is active. 14 days free.</div>
-      <button onclick="closeCoachSetup(); showPanel('clients');" style="padding:14px 24px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Go to my client dashboard</button>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:var(--accent);margin-bottom:10px;">YOU'RE ALL SET.</div>
+      <div style="font-size:14px;color:var(--text);margin-bottom:6px;line-height:1.5;">Your 14-day free trial has started.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5;">No card required until your trial ends.</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:26px;display:inline-block;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">PLAN</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">COACH ${planName.toUpperCase()}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:6px;">TRIAL ENDS ${trialEndLabel.toUpperCase()}</div>
+      </div>
+      <div>
+        <button onclick="closeCoachSetup(); showPanel('clients');" style="padding:14px 24px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Go to my client dashboard</button>
+      </div>
     </div>
   `;
 }
@@ -12132,9 +12250,10 @@ async function renderAccountCoachSections() {
           ${statusBadge}
         </div>
         <div id="coachPlanSeats" style="font-size:12px;color:var(--muted);margin-bottom:14px;font-family:'DM Mono',monospace;">Loading seats…</div>
+        ${status === 'trial' ? `<div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;">Trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} remaining. No payment required until your trial ends.</div>` : ''}
         ${renderCoachNotificationSummary()}
         ${plan !== 'elite' ? `<button onclick="openCoachSetup('plan')" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Upgrade plan</button>` : ''}
-        <button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Manage billing</button>
+        ${status === 'active' ? `<button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Manage billing</button>` : ''}
         <button onclick="confirmCancelCoachPlan()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel coach plan</button>
       </div>
       <details style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:16px;">
