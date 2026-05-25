@@ -276,14 +276,14 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .user-menu { display:flex; align-items:center; gap:10px; }
 .user-avatar { width:32px; height:32px; background:var(--accent); color:var(--bg); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; }
 .panels { flex:1; overflow:hidden; position:relative; max-width:100%; }
-.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; }
+.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:calc(64px + env(safe-area-inset-bottom)); }
 .panel::-webkit-scrollbar{width:3px} .panel::-webkit-scrollbar-thumb{background:var(--border)}
-.bottom-nav { background:var(--surface); border-top:1px solid var(--border); display:flex; padding-bottom:var(--safe-bottom); flex-shrink:0; z-index:20; }
-.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 0 8px; cursor:pointer; border:none; background:none; color:var(--muted); gap:3px; transition:all 0.15s; }
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:1000; background:var(--surface); border-top:0.5px solid var(--border); display:flex; align-items:stretch; padding-top:0; padding-bottom:env(safe-area-inset-bottom); }
+.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:8px 0 6px; cursor:pointer; border:none; background:transparent; color:var(--muted); gap:3px; transition:all 0.15s; position:relative; }
 .nav-btn.active { color:var(--accent); }
 .nav-btn:active { transform:scale(0.92); }
-.nav-icon { font-size:22px; line-height:1; }
-.nav-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.5px; text-transform:uppercase; }
+.nav-icon { font-size:20px; line-height:1; }
+.nav-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.5px; text-transform:uppercase; }
 
 /* ── SHARED COMPONENTS ── */
 .panel-header { padding:20px 18px 14px; border-bottom:1px solid var(--border); }
@@ -11271,7 +11271,7 @@ function renderClientOverviewTab(body) {
       ${recent.length ? recent.map((s, i) => renderClientSessionCard(s, i)).join('') : `<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;text-align:center;">No sessions logged this week.</div>`}
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">COACH NOTES</div>
-    <textarea id="coachNotesField" data-focus="notes" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" style="width:100%;min-height:120px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;">${escHtml(notes?.content || '')}</textarea>
+    <textarea id="coachNotesField" data-focus="notes" rows="3" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight, 160)+'px';" style="width:100%;min-height:72px;max-height:160px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;resize:none;overflow-y:auto;box-sizing:border-box;">${escHtml(notes?.content || '')}</textarea>
     <div id="coachNotesStatus" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace;">${notes?.updated_at ? 'Last saved ' + relTime(notes.updated_at) : ''}</div>
 
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:22px 0 8px;">SESSION FEEDBACK</div>
@@ -12322,12 +12322,30 @@ function dismissPwaPrompt() {
 }
 
 // ── APP AUTO-UPDATE ──────────────────────────────────
+let _lastServerVersion = null;
+
 async function checkForUpdate() {
   try {
     const res = await fetch(BACKEND_URL + '/api/version', { cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
-    if (data?.version && data.version !== APP_VERSION) showUpdateBanner();
+    if (!data?.version) return;
+    _lastServerVersion = data.version;
+
+    // Reload completed successfully — APP_VERSION now matches server.
+    // Clear the "seen this version" marker so future updates can fire.
+    if (data.version === APP_VERSION) {
+      try { localStorage.removeItem('forge-last-seen-version'); } catch(e) {}
+      return;
+    }
+
+    // Versions diverge. Skip banner if the user has already seen + reloaded
+    // for this exact version — prevents the post-reload loop where the new
+    // app.html hasn't propagated through the cache yet.
+    const lastSeen = localStorage.getItem('forge-last-seen-version');
+    if (lastSeen === data.version) return;
+
+    showUpdateBanner();
   } catch(e) { /* silent — never break the app */ }
 }
 
@@ -12335,10 +12353,23 @@ function showUpdateBanner() {
   if (document.getElementById('appUpdateBanner')) return;
   const banner = document.createElement('div');
   banner.id = 'appUpdateBanner';
-  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;padding:16px 20px;padding-bottom:calc(16px + env(safe-area-inset-bottom));background:#e8ff3d;color:#000;font-family:"DM Mono",monospace;font-size:13px;font-weight:700;letter-spacing:0.5px;text-align:center;cursor:pointer;box-shadow:0 -4px 20px rgba(0,0,0,0.3);';
-  banner.textContent = '↻  New update available — tap here to reload';
-  banner.onclick = () => window.location.reload(true);
-  document.body.appendChild(banner);
+  // Sits just above the bottom nav (≈ 56px tall + safe area). Higher z-index
+  // than nav (1000) but lower than full-screen overlays so it can be covered
+  // by modals if needed.
+  banner.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom) + 56px);left:0;right:0;z-index:1001;background:#e8ff3d;color:#000;padding:10px 20px;text-align:center;font-family:"DM Mono",monospace;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,0.25);';
+  banner.textContent = '↻ Update available — tap to reload';
+  banner.onclick = () => {
+    try {
+      if (_lastServerVersion) localStorage.setItem('forge-last-seen-version', _lastServerVersion);
+    } catch(e) {}
+    window.location.reload(true);
+  };
+
+  // Insert the banner just before the bottom nav in the DOM so screen readers
+  // hit it in the right order. Fall back to body if the nav isn't found.
+  const nav = document.querySelector('.bottom-nav');
+  if (nav && nav.parentNode) nav.parentNode.insertBefore(banner, nav);
+  else document.body.appendChild(banner);
 }
 
 // Wire SW activation → version check
