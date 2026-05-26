@@ -976,8 +976,8 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
         <div id="myCoachHeader" style="flex-shrink:0;padding:16px 18px 12px;border-bottom:1px solid var(--border);background:var(--bg);"></div>
         <div id="myCoachThread" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;"></div>
         <div id="myCoachInputBar" style="display:none;flex-shrink:0;padding:10px 14px;background:var(--bg);border-top:1px solid var(--border);gap:8px;align-items:flex-end;">
-          <textarea id="myCoachMessageInput" rows="1" placeholder="Message your coach…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
-          <button onclick="sendMyCoachMessage()" id="myCoachSendBtn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+          <textarea id="myCoachMessageInput" data-testid="message-input" rows="1" placeholder="Message your coach…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
+          <button onclick="sendMyCoachMessage()" id="myCoachSendBtn" data-testid="message-send-btn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
         </div>
       </div>
 
@@ -991,14 +991,14 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
       </div>
 
     </div>
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" data-testid="nav-bar">
       <button class="nav-btn active" onclick="showPanel('coach')" id="nav-coach"><div class="nav-icon">🤖</div><div class="nav-label" data-i18n="nav_coach">Coach</div></button>
       <button class="nav-btn" onclick="showPanel('workout')" id="nav-workout"><div class="nav-icon">🏋️</div><div class="nav-label" data-i18n="nav_plan">Plan</div></button>
       <button class="nav-btn" onclick="showPanel('log')" id="nav-log"><div class="nav-icon">📊</div><div class="nav-label" data-i18n="nav_log">Log</div></button>
       <button class="nav-btn" onclick="showPanel('nutrition')" id="nav-nutrition"><div class="nav-icon">🥩</div><div class="nav-label" data-i18n="nav_food">Food</div></button>
       <button class="nav-btn" onclick="showPanel('progress')" id="nav-progress"><div class="nav-icon">📈</div><div class="nav-label" data-i18n="nav_progress">Progress</div></button>
-      <button class="nav-btn" onclick="showPanel('my-coach')" id="nav-my-coach" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-2.5 2v-2H2.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/><circle cx="8" cy="7" r="1.2"/></svg></div><div class="nav-label">My Coach</div></button>
-      <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
+      <button class="nav-btn" onclick="showPanel('my-coach')" id="nav-my-coach" data-testid="nav-my-coach" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7l-2.5 2v-2H2.5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/><circle cx="8" cy="7" r="1.2"/></svg></div><div class="nav-label">My Coach</div></button>
+      <button class="nav-btn" onclick="showPanel('clients')" id="nav-clients" data-testid="nav-clients" style="display:none;position:relative;"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6" r="2.2"/><circle cx="10.5" cy="6" r="2.2"/><path d="M2 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/><path d="M8 13c.4-1.8 1.8-3 3.5-3s3.1 1.2 3.5 3"/></svg></div><div class="nav-label">Clients</div></button>
       <button class="nav-btn" onclick="showPanel('admin')" id="nav-admin" style="display:none"><div class="nav-icon">⚙️</div><div class="nav-label" data-i18n="nav_admin">Admin</div></button>
       <button class="nav-btn" onclick="showPanel('account')" id="nav-account"><div class="nav-icon">👤</div><div class="nav-label">Account</div></button>
     </nav>
@@ -10724,7 +10724,8 @@ async function refreshMyCoachNav() {
 }
 
 // ── Unread notification badges ────────────────────────
-let _unreadCounts = {};
+window._unreadCounts = window._unreadCounts || {};
+let _unreadCounts = window._unreadCounts;
 let _unreadPollTimer = null;
 
 function navBadge(count) {
@@ -10802,6 +10803,7 @@ async function fetchUnreadCounts() {
     const res = await api('/api/notifications/unread-counts');
     if (res && !res.error) {
       _unreadCounts = res;
+      window._unreadCounts = _unreadCounts;
       updateNavBadges();
     }
   } catch(e) { /* silent */ }
@@ -11064,7 +11066,7 @@ function renderCoachClientList() {
         ? `<span title="New activity in the last 48h" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);"></span>`
         : '';
       return `
-      <div onclick="openClientDetail('${c.client_id}')" style="position:relative;display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
+      <div onclick="openClientDetail('${c.client_id}')" data-testid="client-card" data-client-id="${c.client_id}" style="position:relative;display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
         ${cornerMessages}${cornerActivity}
         <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(name)}</div>
         <div style="flex:1;min-width:0;">
@@ -11206,6 +11208,7 @@ async function openClientDetail(clientId) {
   document.getElementById('clientDetailOverlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'clientDetailOverlay';
+  overlay.setAttribute('data-testid', 'client-detail');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
   overlay.innerHTML = `
     <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:1;">
@@ -11214,11 +11217,11 @@ async function openClientDetail(clientId) {
         <div id="clientDetailTitle" style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">Client</div>
         <button onclick="openClientMenu()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">⋮</button>
       </div>
-      <div style="display:flex;gap:0;padding:0 18px;">
-        <button onclick="switchClientTab('overview')" id="clTab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">OVERVIEW<span id="clTabBadge-overview"></span></button>
-        <button onclick="switchClientTab('programme')" id="clTab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">PROGRAMME</button>
-        <button onclick="switchClientTab('ai')" id="clTab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">AI<span id="clTabBadge-ai"></span></button>
-        <button onclick="switchClientTab('messages')" id="clTab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">MESSAGES<span id="clTabBadge-messages"></span></button>
+      <div data-testid="client-detail-tabs" style="display:flex;gap:0;padding:0 18px;">
+        <button onclick="switchClientTab('overview')" id="clTab-overview" data-testid="client-tab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">OVERVIEW<span id="clTabBadge-overview"></span></button>
+        <button onclick="switchClientTab('programme')" id="clTab-programme" data-testid="client-tab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">PROGRAMME</button>
+        <button onclick="switchClientTab('ai')" id="clTab-ai" data-testid="client-tab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">AI<span id="clTabBadge-ai"></span></button>
+        <button onclick="switchClientTab('messages')" id="clTab-messages" data-testid="client-tab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">MESSAGES<span id="clTabBadge-messages"></span></button>
       </div>
     </div>
     <div id="clientDetailBody" style="padding:18px;flex:1;"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
@@ -11367,11 +11370,11 @@ function renderClientOverviewTab(body) {
       ${recent.length ? recent.map((s, i) => renderClientSessionCard(s, i)).join('') : `<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;text-align:center;">No sessions logged this week.</div>`}
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">COACH NOTES</div>
-    <textarea id="coachNotesField" data-focus="notes" rows="3" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight, 160)+'px';" style="width:100%;min-height:72px;max-height:160px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;resize:none;overflow-y:auto;box-sizing:border-box;">${escHtml(notes?.content || '')}</textarea>
+    <textarea id="coachNotesField" data-testid="coach-notes-textarea" data-focus="notes" rows="3" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight, 160)+'px';" style="width:100%;min-height:72px;max-height:160px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;resize:none;overflow-y:auto;box-sizing:border-box;">${escHtml(notes?.content || '')}</textarea>
     <div id="coachNotesStatus" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace;">${notes?.updated_at ? 'Last saved ' + relTime(notes.updated_at) : ''}</div>
 
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:22px 0 8px;">SESSION FEEDBACK</div>
-    <textarea id="coachFeedbackField" placeholder="Write feedback for this client — they will not see this unless you choose to share it." maxlength="1000" style="width:100%;min-height:90px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;"></textarea>
+    <textarea id="coachFeedbackField" data-testid="session-feedback-textarea" placeholder="Write feedback for this client — they will not see this unless you choose to share it." maxlength="1000" style="width:100%;min-height:90px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;"></textarea>
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
       <input type="checkbox" id="coachFeedbackShare"> Share with client
     </label>
@@ -11638,6 +11641,7 @@ function renderProgrammeBuilder() {
   document.getElementById('programmeBuilderOverlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'programmeBuilderOverlay';
+  overlay.setAttribute('data-testid', 'programme-builder');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
   overlay.innerHTML = `
     <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px;z-index:1;">
@@ -11908,8 +11912,8 @@ async function renderClientMessagesTab(body) {
       ${msgs.length ? msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'coach')).join('') : `<div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;">No messages yet.</div>`}
     </div>
     <div style="display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--bg);padding-bottom:6px;">
-      <textarea id="coachMsgInput" rows="1" placeholder="Reply to your client…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
-      <button onclick="sendCoachMessage()" id="coachMsgSendBtn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+      <textarea id="coachMsgInput" data-testid="message-input" rows="1" placeholder="Reply to your client…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
+      <button onclick="sendCoachMessage()" id="coachMsgSendBtn" data-testid="message-send-btn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
     </div>
   `;
   // Scroll to bottom
@@ -12472,6 +12476,7 @@ function showUpdateBanner() {
   if (document.getElementById('appUpdateBanner')) return;
   const banner = document.createElement('div');
   banner.id = 'appUpdateBanner';
+  banner.setAttribute('data-testid', 'update-banner');
   // Sits just above the bottom nav (≈ 56px tall + safe area). Higher z-index
   // than nav (1000) but lower than full-screen overlays so it can be covered
   // by modals if needed.
