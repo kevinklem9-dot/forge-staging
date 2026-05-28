@@ -5383,6 +5383,55 @@ function renderAccount() {
   renderReferralSection(document.getElementById('referralSection'));
   // Load coach sections async
   if (typeof renderAccountCoachSections === 'function') renderAccountCoachSections();
+  // Re-check pending coach connection request EVERY time the Account panel opens —
+  // catches invites sent after this client last loaded the app.
+  if (typeof checkPendingCoachRequests === 'function') checkPendingCoachRequests();
+}
+
+async function checkPendingCoachRequests() {
+  const res = await api('/api/my-pending-coach-request');
+  if (res?.pending) {
+    showCoachRequestBanner(res.coach);
+  } else {
+    hideCoachRequestBanner();
+  }
+  // Refresh the unread counts so the nav badge tracks reality between polls.
+  fetchUnreadCounts();
+}
+
+function showCoachRequestBanner(coach) {
+  const host = document.getElementById('accountPanel');
+  if (!host || !coach) return;
+  // The richer in-panel banner is rendered by renderAccountCoachSections; this is a
+  // top-of-panel banner that surfaces the request even before that async section paints,
+  // and stays in place if the client dismisses it via the × (writes to localStorage).
+  const dismissed = (localStorage.getItem('forge-coach-req-dismissed') || '').split(',').filter(Boolean);
+  if (coach.connection_id && dismissed.includes(coach.connection_id)) return;
+  document.getElementById('topCoachRequestBanner')?.remove();
+  const bar = document.createElement('div');
+  bar.id = 'topCoachRequestBanner';
+  bar.style.cssText = 'margin:0 18px 14px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;';
+  bar.innerHTML = `
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;color:var(--text);font-weight:600;">${escHtml(coach.name || 'A coach')} wants to be your coach.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">REQUESTED ${escHtml(relTime(coach.requested_at).toUpperCase())}</div>
+    </div>
+    <button onclick="openCoachRequestScreen('${escHtml(coach.connection_id || '')}')" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">View request</button>
+    <button onclick="dismissCoachRequestBanner('${escHtml(coach.connection_id || '')}')" aria-label="Dismiss" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+  `;
+  host.insertBefore(bar, host.firstChild);
+}
+
+function hideCoachRequestBanner() {
+  document.getElementById('topCoachRequestBanner')?.remove();
+}
+
+function dismissCoachRequestBanner(connectionId) {
+  hideCoachRequestBanner();
+  if (!connectionId) return;
+  const set = new Set((localStorage.getItem('forge-coach-req-dismissed') || '').split(',').filter(Boolean));
+  set.add(connectionId);
+  try { localStorage.setItem('forge-coach-req-dismissed', Array.from(set).join(',')); } catch(e) { /* quota */ }
 }
 
 async function saveAccountProfile() {
@@ -10742,6 +10791,7 @@ function applyBadgeTo(btn, count) {
 function updateNavBadges() {
   const myCoachBtn = document.getElementById('nav-my-coach');
   const clientsBtn = document.getElementById('nav-clients');
+  const accountBtn = document.getElementById('nav-account');
   const myCoachTotal = (_unreadCounts.coach_messages_unread || 0)
     + (_unreadCounts.coach_feedback_unread || 0)
     + (_unreadCounts.coach_review_unread || 0);
@@ -10749,6 +10799,11 @@ function updateNavBadges() {
   const coachTotal = (_unreadCounts.client_messages_unread || 0)
     + (_unreadCounts.new_client_connections || 0);
   applyBadgeTo(clientsBtn, coachTotal);
+  // Pending coach connection request → badge on Account nav. Persists until the user
+  // accepts/declines the request or dismisses the banner (which writes the connection_id
+  // to forge-coach-req-dismissed). Opening the Account panel does NOT auto-clear it.
+  const pending = _unreadCounts.coach_requests_pending || 0;
+  applyBadgeTo(accountBtn, pending);
   // Refresh roster dots if the clients list is on screen
   if (document.getElementById('coachClientList') && typeof renderCoachClientList === 'function') {
     try { renderCoachClientList(); } catch(e) { /* roster may not be mounted yet */ }
@@ -10945,6 +11000,21 @@ function relTime(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 }
 
+// Pending-invite age. Spec wording: "Just now / N minutes ago / N hours ago / Yesterday / N days ago".
+function formatInviteAge(iso) {
+  if (!iso) return 'just now';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return 'just now';
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return diffMins + ' minute' + (diffMins === 1 ? '' : 's') + ' ago';
+  if (diffHours < 24) return diffHours + ' hour' + (diffHours === 1 ? '' : 's') + ' ago';
+  if (diffDays === 1) return 'yesterday';
+  return diffDays + ' days ago';
+}
+
 function clientStatusDot(lastActiveIso) {
   if (!lastActiveIso) return { color:'var(--red, #ff4444)', label:'No activity' };
   const days = (Date.now() - new Date(lastActiveIso).getTime()) / 86400000;
@@ -11090,12 +11160,11 @@ function renderCoachClientList() {
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PENDING INVITATIONS</div>
       ${pending.map(p => {
         const label = p.profile?.name || p.invited_email || 'Unknown';
-        const days = Math.max(1, Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000));
         return `
         <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(label)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">Invited ${days} day${days === 1 ? '' : 's'} ago</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">Invited ${escHtml(formatInviteAge(p.created_at))}</div>
           </div>
           <button onclick="cancelCoachInvite('${p.connection_id}')" style="background:transparent;border:none;color:var(--red, #ff4444);font-size:12px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:0.5px;">Cancel</button>
         </div>`;
@@ -11139,10 +11208,24 @@ function openAddClientSheet() {
   setTimeout(() => document.getElementById('addClientEmail')?.focus(), 50);
 }
 
+function showAddClientInlineError(msg) {
+  const host = document.getElementById('addClientStep1');
+  if (!host) return;
+  let bar = document.getElementById('addClientInlineError');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'addClientInlineError';
+    bar.style.cssText = 'background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.3);color:var(--red, #ff4444);border-radius:9px;padding:10px 12px;font-size:12px;font-family:\'DM Sans\',sans-serif;margin-bottom:10px;line-height:1.4;';
+    host.insertBefore(bar, host.querySelector('#addClientContinue'));
+  }
+  bar.textContent = msg;
+}
+
 async function submitAddClient() {
   const email = document.getElementById('addClientEmail')?.value?.trim();
   if (!email) return;
   const btn = document.getElementById('addClientContinue');
+  document.getElementById('addClientInlineError')?.remove();
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   const res = await api('/api/coach/clients/invite', 'POST', { email });
   if (res?._status === 403 && res?.error === 'seat_limit') {
@@ -11152,6 +11235,16 @@ async function submitAddClient() {
   }
   if (res?.error === 'already_invited') {
     showToast('You already invited that person.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+    return;
+  }
+  if (res?._status === 409 && res?.error === 'already_has_coach') {
+    showAddClientInlineError('This user already has an active coach and cannot be invited.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+    return;
+  }
+  if (res?._status === 409 && res?.error === 'already_connected') {
+    showAddClientInlineError('You are already connected with this client.');
     if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
     return;
   }
