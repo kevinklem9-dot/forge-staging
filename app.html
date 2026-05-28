@@ -433,6 +433,12 @@ nav.bottom-nav, .bottom-nav {
 .log-actions { padding:14px 18px; display:flex; gap:10px; }
 .save-btn { flex:1; background:var(--accent); color:var(--bg); border:none; border-radius:10px; padding:14px; font-weight:700; font-size:15px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s; }
 .save-btn:active{transform:scale(.98);background:#d4eb1e}
+.save-btn:disabled{cursor:default;opacity:0.9}
+@keyframes forge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.saving { animation: forge-pulse 1s ease-in-out infinite; }
 .feedback-list { padding:0 18px 18px; display:flex; flex-direction:column; gap:8px; }
 .feedback-card { padding:12px 14px; border-radius:10px; font-size:13px; border:1px solid; }
 .feedback-card.up{background:rgba(57,217,138,.08);border-color:rgba(57,217,138,.25)}
@@ -854,7 +860,7 @@ nav.bottom-nav, .bottom-nav {
         </div>
         <div class="log-day-bar" id="logDayBar"></div>
         <div class="log-exercise-list" id="logExerciseList"></div>
-        <div class="log-actions"><button class="save-btn" onclick="saveLog()" data-i18n="log_save">Save Session</button></div>
+        <div class="log-actions"><button class="save-btn" onclick="saveLog(this)" data-i18n="log_save">Save Session</button></div>
         <div class="feedback-list" id="logFeedback"></div>
       </div>
 
@@ -3171,7 +3177,13 @@ function selectLogDay(idx) {
   renderLog();
 }
 
-async function saveLog() {
+async function saveLog(btn) {
+  // Resolve the button even if the function is called without an arg (defensive — covers
+  // any future callers that forget `this`). Synchronous disable BEFORE any await so a
+  // second tap during the API round-trip can't double-submit.
+  btn = btn || document.querySelector('.save-btn');
+  if (btn?.disabled) return;
+
   const days = userPlan?.workout_plan?.days;
   if (!days) return;
   const day = days.find(d => d.day_index === logDay) || days[logDay] || days[0];
@@ -3204,60 +3216,95 @@ async function saveLog() {
     }
   });
 
+  // Validation guard fires before any button state change — nothing to undo.
   if (!exercises.length) { showToast('Enter at least one set'); return; }
 
-  const res = await api('/api/log', 'POST', { day_index: logDay, day_label: day.label, exercises });
-  if (!res?.success) { showToast('Error saving — try again', 'error'); return; }
-
-  // Generate overload feedback
-  const feedback = [];
-  for (const ex of exercises) {
-    const histRes = await api(`/api/history/${encodeURIComponent(ex.name)}`);
-    const history = histRes?.history || [];
-    const advice = getOverloadAdvice(ex, history);
-    feedback.push(`<div class="feedback-card ${advice.type}"><strong>${advice.headline}</strong><br><span style="color:var(--muted);font-size:12px">${advice.detail}</span></div>`);
+  // ── Loading state ──
+  const originalText = btn?.textContent || 'Save Session';
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('saving');
+    btn.textContent = 'Saving...';
   }
 
-  const fbEl = document.getElementById('logFeedback');
-  fbEl.innerHTML = `<div class="section-label" style="padding:14px 0 8px">${t('overload_advice')}</div>${feedback.join('')}`;
-  fbEl.scrollIntoView({ behavior: 'smooth' });
+  let res;
+  try {
+    res = await api('/api/log', 'POST', { day_index: logDay, day_label: day.label, exercises });
+  } catch (err) {
+    res = null;
+  }
 
-  if (res.new_prs?.length) showToast(`New PR: ${res.new_prs[0]} 🏆`, 'success');
-  else showToast(t('session_saved'), 'success');
-
-  // Complete first_workout mission
-  api('/api/missions/first_workout/complete', 'POST').catch(() => {});
-
-  // Update streak (retention route) and stats in background
-  api('/api/streak/update', 'POST').catch(() => {});
-  api('/api/stats').then(stats => {
-    if (!stats) return;
-    const currentMonth = new Date().toISOString().substring(0, 7);
-    const thisMonthCount = stats.monthly_counts?.[currentMonth] || 0;
-    if (thisMonthCount === 6) {
-      const [yr, m] = currentMonth.split('-');
-      const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1];
-      setTimeout(() => showToast(`🏅 ${mName} badge unlocked!`, 'success'), 2000);
+  if (!res?.success) {
+    if (btn) {
+      btn.classList.remove('saving');
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
-    if (stats.streak >= 3) {
-      api('/api/missions/three_day_streak/complete', 'POST').catch(() => {});
-    }
-    if (stats.streak > 1) {
-      setTimeout(() => showToast(`🔥 ${stats.streak} ${t('day_streak')}!`, 'success'), 1000);
-    }
-  });
+    showToast('Failed to save session. Please try again.', 'error');
+    return;
+  }
 
-  // Clear auto-save draft now that it's properly saved
-  clearAutoSave(logDay);
+  // ── Success state — hold "Saved ✓" for 1500ms before the rest of the post-save flow runs ──
+  if (btn) {
+    btn.classList.remove('saving');
+    btn.textContent = 'Saved ✓';
+    // Button stays disabled — re-enabled next time renderLog rebuilds the panel.
+  }
 
-  // Build session summary for check-in
-  const summary = exercises.map(ex => {
-    const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'BW' : (s.weight + 'kg')} × ${s.reps}`).join(', ');
-    return `${ex.name} — ${setsStr}`;
-  }).join('\n');
+  setTimeout(() => {
+    // Generate overload feedback
+    (async () => {
+      const feedback = [];
+      for (const ex of exercises) {
+        const histRes = await api(`/api/history/${encodeURIComponent(ex.name)}`);
+        const history = histRes?.history || [];
+        const advice = getOverloadAdvice(ex, history);
+        feedback.push(`<div class="feedback-card ${advice.type}"><strong>${advice.headline}</strong><br><span style="color:var(--muted);font-size:12px">${advice.detail}</span></div>`);
+      }
+      const fbEl = document.getElementById('logFeedback');
+      if (fbEl) {
+        fbEl.innerHTML = `<div class="section-label" style="padding:14px 0 8px">${t('overload_advice')}</div>${feedback.join('')}`;
+        fbEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    })();
 
-  // Trigger post-workout check-in after a short delay
-  setTimeout(() => triggerPostWorkoutCheckin(summary), 1200);
+    if (res.new_prs?.length) showToast(`New PR: ${res.new_prs[0]} 🏆`, 'success');
+    else showToast(t('session_saved'), 'success');
+
+    // Complete first_workout mission
+    api('/api/missions/first_workout/complete', 'POST').catch(() => {});
+
+    // Update streak (retention route) and stats in background
+    api('/api/streak/update', 'POST').catch(() => {});
+    api('/api/stats').then(stats => {
+      if (!stats) return;
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const thisMonthCount = stats.monthly_counts?.[currentMonth] || 0;
+      if (thisMonthCount === 6) {
+        const [yr, m] = currentMonth.split('-');
+        const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1];
+        setTimeout(() => showToast(`🏅 ${mName} badge unlocked!`, 'success'), 2000);
+      }
+      if (stats.streak >= 3) {
+        api('/api/missions/three_day_streak/complete', 'POST').catch(() => {});
+      }
+      if (stats.streak > 1) {
+        setTimeout(() => showToast(`🔥 ${stats.streak} ${t('day_streak')}!`, 'success'), 1000);
+      }
+    });
+
+    // Clear auto-save draft now that it's properly saved
+    clearAutoSave(logDay);
+
+    // Build session summary for check-in
+    const summary = exercises.map(ex => {
+      const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'BW' : (s.weight + 'kg')} × ${s.reps}`).join(', ');
+      return `${ex.name} — ${setsStr}`;
+    }).join('\n');
+
+    // Trigger post-workout check-in after a short delay
+    setTimeout(() => triggerPostWorkoutCheckin(summary), 1200);
+  }, 1500);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -11299,6 +11346,11 @@ async function submitAddClient() {
   }
   if (res?.error === 'already_invited') {
     showToast('You already invited that person.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+    return;
+  }
+  if (res?._status === 409 && res?.error === 'cannot_invite_coach') {
+    showAddClientInlineError('This user is a coach and cannot be added as a client.');
     if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
     return;
   }
