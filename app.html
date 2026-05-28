@@ -322,18 +322,19 @@ nav.bottom-nav, .bottom-nav {
 .nav-icon svg { display:block; }
 .nav-label { font-family:'DM Mono',monospace; font-size:9px; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
 
-/* PWA standalone mode — push icons/labels toward the bottom of the nav bar so they
- * sit just above the home indicator. Browser-tab mode keeps the default top alignment
- * because Safari's bottom URL bar already occupies that zone. Toggled by JS on boot
- * via window.matchMedia('(display-mode: standalone)') or navigator.standalone. */
-.bottom-nav.pwa-mode {
-  padding-top: 12px;
-  padding-bottom: env(safe-area-inset-bottom);
-  align-items: flex-end;
+/* PWA standalone mode — shift the entire content area down so chat input, suggestions,
+ * and nav bar sit closer to the home indicator. Browser-tab mode is untouched because
+ * Safari's URL bar already occupies that bottom zone. Toggled by JS on boot via
+ * window.matchMedia('(display-mode: standalone)') or navigator.standalone. */
+body.pwa-mode {
+  padding-top: 20px;
 }
-.bottom-nav.pwa-mode button {
-  padding-bottom: 4px;
-  justify-content: flex-end;
+body.pwa-mode .bottom-nav {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+body.pwa-mode #panel-coach,
+body.pwa-mode .panel {
+  padding-bottom: calc(80px + max(env(safe-area-inset-bottom), 16px));
 }
 
 /* ── SHARED COMPONENTS ── */
@@ -444,6 +445,22 @@ nav.bottom-nav, .bottom-nav {
 .log-input { background:var(--surface2); border:1px solid var(--border); border-radius:7px; color:var(--text); font-family:'DM Mono',monospace; font-size:16px; padding:8px; width:100%; text-align:center; outline:none; -webkit-appearance:none; transition:border-color .15s; }
 .log-input:focus{border-color:var(--accent)}
 .log-input-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+
+/* ── SESSION HISTORY (progress panel) ── */
+.session-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; margin:0 0 8px; overflow:hidden; }
+.session-card summary { list-style:none; cursor:pointer; padding:14px 16px; display:flex; align-items:center; gap:12px; outline:none; }
+.session-card summary::-webkit-details-marker { display:none; }
+.session-card summary:active { background:var(--surface2); }
+.session-meta { flex:1; min-width:0; }
+.session-day { font-size:14px; font-weight:600; color:var(--text); }
+.session-sub { font-size:11px; color:var(--muted); margin-top:2px; font-family:'DM Mono',monospace; letter-spacing:0.5px; }
+.session-chevron { font-family:'DM Mono',monospace; font-size:14px; color:var(--muted); transition:transform 0.2s ease; flex-shrink:0; }
+.session-card[open] .session-chevron { transform:rotate(90deg); }
+.session-body { padding:0 16px 14px; border-top:1px solid var(--border); }
+.session-ex-row { padding:10px 0; border-bottom:1px solid var(--border); }
+.session-ex-row:last-child { border-bottom:none; }
+.session-ex-name { font-size:13px; color:var(--text); margin-bottom:4px; }
+.session-ex-sets { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; letter-spacing:0.3px; }
 .log-actions { padding:14px 18px; display:flex; gap:10px; }
 .save-btn { flex:1; background:var(--accent); color:var(--bg); border:none; border-radius:10px; padding:14px; font-weight:700; font-size:15px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s; }
 .save-btn:active{transform:scale(.98);background:#d4eb1e}
@@ -988,7 +1005,7 @@ nav.bottom-nav, .bottom-nav {
         <div class="weight-entry-card">
           <div class="weight-entry-title">Today's Weight</div>
           <div class="weight-input-row">
-            <input class="weight-input" id="weightInput" type="number" step="0.1" placeholder="kg" inputmode="decimal">
+            <input class="weight-input" id="weightInput" type="number" step="0.1" min="20" max="400" placeholder="kg" inputmode="decimal">
             <button class="action-btn" onclick="saveWeight()">Save</button>
           </div>
         </div>
@@ -996,6 +1013,8 @@ nav.bottom-nav, .bottom-nav {
           <!-- Export history: removed pending proper CSV implementation -->
           <button onclick="showPanel('programmes')" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
         <div id="overloadTracker"></div>
+        <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
+        <div id="sessionHistory" style="padding:0 18px;"></div>
         <div class="section-label" data-i18n-key="personal_records">PERSONAL RECORDS</div>
         <div class="pr-list" id="prList"></div>
       </div>
@@ -1072,21 +1091,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// PWA standalone-mode flag for the bottom nav. Sets `.pwa-mode` on `.bottom-nav` only
+// PWA standalone-mode flag for the whole document. Sets `.pwa-mode` on <body> only
 // when the app is launched from the home-screen icon (matches modern browsers and
 // legacy iOS Safari). In a normal browser tab the class is never added.
-(function tagPwaMode() {
-  const isStandalone =
-    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-    navigator.standalone === true;
-  if (!isStandalone) return;
-  const apply = () => document.querySelector('.bottom-nav')?.classList.add('pwa-mode');
+const isPWA =
+  (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+  window.navigator.standalone === true;
+if (isPWA) {
+  const apply = () => document.body?.classList.add('pwa-mode');
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', apply, { once: true });
   } else {
     apply();
   }
-})();
+}
 
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
@@ -3791,6 +3809,66 @@ async function renderStatGrid() {
   `;
 }
 
+// ── SESSION HISTORY ──
+// Groups session_logs rows into one collapsible card per session. Most recent first,
+// collapsed by default. Bodyweight sets display as "Bodyweight" instead of "0kg".
+async function renderSessionHistory() {
+  const el = document.getElementById('sessionHistory');
+  if (!el) return;
+  const res = await api('/api/sessions?limit=50');
+  const sessions = res?.sessions || [];
+  if (!sessions.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:14px 0;">No sessions logged yet.</div>`;
+    return;
+  }
+  el.innerHTML = sessions.map(s => {
+    const exercises = Array.isArray(s.exercises) ? s.exercises : [];
+    const dateLabel = formatSessionDate(s.logged_at);
+    const dayLabel = s.day_label || 'Session';
+    const exCount = exercises.length;
+    return `
+      <details class="session-card">
+        <summary>
+          <div class="session-meta">
+            <div class="session-day">${escHtml(dayLabel)}</div>
+            <div class="session-sub">${escHtml(dateLabel.toUpperCase())} · ${exCount} EXERCISE${exCount === 1 ? '' : 'S'}</div>
+          </div>
+          <div class="session-chevron">›</div>
+        </summary>
+        <div class="session-body">
+          ${exercises.map(ex => {
+            const sets = Array.isArray(ex.sets_data) ? ex.sets_data : [];
+            const setsSummary = sets.length
+              ? sets.map((st, i) => `Set ${i + 1}: ${formatSetWeight(st)} × ${st.reps ?? 0}`).join(' · ')
+              : `${ex.sets || 0} sets · ${formatSetWeight(ex)} × ${ex.reps ?? 0} reps`;
+            return `
+              <div class="session-ex-row">
+                <div class="session-ex-name">${escHtml(ex.name || 'Exercise')}</div>
+                <div class="session-ex-sets">${escHtml(setsSummary)}</div>
+              </div>`;
+          }).join('')}
+        </div>
+      </details>`;
+  }).join('');
+}
+
+function formatSetWeight(s) {
+  if (s?.is_bw === true) return 'Bodyweight';
+  if (s?.weight === 'bodyweight' || s?.weight === null || s?.weight === undefined) return 'Bodyweight';
+  return `${s.weight}kg`;
+}
+
+function formatSessionDate(iso) {
+  if (!iso) return 'Unknown';
+  const d = (iso + '').split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (d === today) return 'Today';
+  if (d === yesterday) return 'Yesterday';
+  const dt = new Date(iso);
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 async function renderProgress() {
   // Run independent fetches in parallel for speed
   await Promise.all([
@@ -3801,6 +3879,7 @@ async function renderProgress() {
     renderMonthlyReview(),
     renderAdherence(),
     renderMetricsHistory(),
+    renderSessionHistory(),
     checkDeloadWarning()
   ]);
 
@@ -3877,12 +3956,31 @@ async function renderProgress() {
 }
 
 async function saveWeight() {
-  const val = parseFloat(document.getElementById('weightInput').value);
-  if (!val || val < 30 || val > 300) { showToast(t('enter_weight')); return; }
-  await api('/api/bodyweight', 'POST', { weight_kg: val });
-  document.getElementById('weightInput').value = '';
+  const input = document.getElementById('weightInput');
+  const w = parseFloat(input?.value);
+  if (isNaN(w) || w < 20 || w > 400) { showToast(t('enter_weight')); return; }
+
+  const res = await api('/api/bodyweight', 'POST', { weight_kg: w });
+  if (!res || res._error || res.error) {
+    showToast('Failed to save — try again', 'error');
+    return;
+  }
+
+  // Snappy in-place update: rewrite the bodyweight stat-card before the heavier
+  // renderProgress() refresh kicks in, so the user sees the new value instantly.
+  const statGrid = document.getElementById('statGrid');
+  const currentValEl = statGrid?.querySelector('.stat-card .stat-val');
+  if (currentValEl) {
+    currentValEl.innerHTML = `${w}<span style="font-size:18px;color:var(--muted)"> kg</span>`;
+  }
+  if (input) input.value = '';
+
+  showToast('Bodyweight updated', 'success');
+
+  // Full re-render in background — refetches /api/bodyweight, redraws the chart in
+  // #metricsHistory with the new data point appended, recomputes stat-card delta.
   renderProgress();
-  showToast(`${val}kg ${t('saved')}`, 'success');
+
   api('/api/missions/log_bodyweight/complete', 'POST').catch(() => {});
 }
 
