@@ -322,6 +322,20 @@ nav.bottom-nav, .bottom-nav {
 .nav-icon svg { display:block; }
 .nav-label { font-family:'DM Mono',monospace; font-size:9px; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
 
+/* PWA standalone mode — push icons/labels toward the bottom of the nav bar so they
+ * sit just above the home indicator. Browser-tab mode keeps the default top alignment
+ * because Safari's bottom URL bar already occupies that zone. Toggled by JS on boot
+ * via window.matchMedia('(display-mode: standalone)') or navigator.standalone. */
+.bottom-nav.pwa-mode {
+  padding-top: 12px;
+  padding-bottom: env(safe-area-inset-bottom);
+  align-items: flex-end;
+}
+.bottom-nav.pwa-mode button {
+  padding-bottom: 4px;
+  justify-content: flex-end;
+}
+
 /* ── SHARED COMPONENTS ── */
 .panel-header { padding:20px 18px 14px; border-bottom:1px solid var(--border); }
 .panel-title { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; color:var(--accent); }
@@ -979,7 +993,7 @@ nav.bottom-nav, .bottom-nav {
           </div>
         </div>
         <div class="section-label" data-i18n-key="overload_tracker">OVERLOAD TRACKER</div>
-          <button onclick="exportHistory()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>⬇</span> Export History</button>
+          <!-- Export history: removed pending proper CSV implementation -->
           <button onclick="showPanel('programmes')" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
         <div id="overloadTracker"></div>
         <div class="section-label" data-i18n-key="personal_records">PERSONAL RECORDS</div>
@@ -1057,6 +1071,22 @@ if ('serviceWorker' in navigator) {
     regs.forEach(reg => reg.update());
   });
 }
+
+// PWA standalone-mode flag for the bottom nav. Sets `.pwa-mode` on `.bottom-nav` only
+// when the app is launched from the home-screen icon (matches modern browsers and
+// legacy iOS Safari). In a normal browser tab the class is never added.
+(function tagPwaMode() {
+  const isStandalone =
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    navigator.standalone === true;
+  if (!isStandalone) return;
+  const apply = () => document.querySelector('.bottom-nav')?.classList.add('pwa-mode');
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', apply, { once: true });
+  } else {
+    apply();
+  }
+})();
 
 // ═══════════════════════════════════════════════════════
 // CONFIG — Replace these with your actual values
@@ -3073,14 +3103,14 @@ function renderSetRow(exIdx, setIdx, setData, totalSets) {
       <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);width:36px;text-align:center;flex-shrink:0">S${setIdx + 1}</div>
       <div class="log-input-cell" style="flex:1;display:flex;align-items:center;gap:6px;">
         ${isBw
-          ? `<div class="log-input" style="flex:1;text-align:center;color:var(--accent);font-family:'DM Mono',monospace;font-weight:600;letter-spacing:1px;">BW</div>`
+          ? `<div class="log-input" style="flex:1;text-align:center;color:var(--accent);font-family:'DM Mono',monospace;font-weight:600;letter-spacing:1px;">Bodyweight</div>`
           : `<input class="log-input" id="lw-${exIdx}-${setIdx}" type="text" inputmode="decimal" placeholder="kg" value="${setData.weight || ''}" style="flex:1;"
               oninput="this.value=this.value.replace(',','.')"
               onchange="updateSetData(${exIdx}, ${setIdx}, 'weight', this.value); autoSaveLog();">`}
         <button type="button" onclick="toggleBodyweight(${exIdx}, ${setIdx})"
           aria-pressed="${isBw}" title="Mark as bodyweight"
-          style="${isBw ? bwActiveStyle : bwIdleStyle};font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;">BW</button>
-        <div class="log-input-label">${isBw ? 'BW' : 'KG'}</div>
+          style="${isBw ? bwActiveStyle : bwIdleStyle};font-family:'DM Mono',monospace;font-size:9px;padding:4px 8px;border-radius:6px;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;white-space:nowrap;">Bodyweight</button>
+        <div class="log-input-label">${isBw ? 'Bodyweight' : 'KG'}</div>
       </div>
       <div class="log-input-cell" style="flex:1">
         <input class="log-input" id="lr-${exIdx}-${setIdx}" type="number" inputmode="numeric" placeholder="reps" value="${setData.reps || ''}"
@@ -3298,7 +3328,7 @@ async function saveLog(btn) {
 
     // Build session summary for check-in
     const summary = exercises.map(ex => {
-      const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'BW' : (s.weight + 'kg')} × ${s.reps}`).join(', ');
+      const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'Bodyweight' : (s.weight + 'kg')} × ${s.reps}`).join(', ');
       return `${ex.name} — ${setsStr}`;
     }).join('\n');
 
@@ -5230,36 +5260,8 @@ function showLockedFeature(featureName, requiredTier) {
   document.body.appendChild(modal);
 }
 
-// ── EXPORT HISTORY ────────────────────────────────────
-async function exportHistory() {
-  if (!canAccess('export_history')) {
-    showLockedFeature('Workout History Export', 'steel');
-    return;
-  }
-  showToast('Preparing export...', '');
-  try {
-    const token = (await getSession())?.access_token;
-    if (!token) return;
-    const res = await fetch(BACKEND_URL + '/api/export/history', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      if (err.error === 'feature_locked') { showLockedFeature('Workout History Export', 'steel'); return; }
-      throw new Error(err.message || 'Export failed');
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `FORGE_History_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Export downloaded', 'success');
-  } catch(e) {
-    showToast('Export failed — try again', 'error');
-  }
-}
+// Export history function: removed pending proper CSV implementation.
+// The /api/export/history endpoint is left intact server-side per spec.
 
 // ── PROGRAMMES PANEL ──────────────────────────────────
 async function renderProgrammes() {
@@ -11616,7 +11618,7 @@ function renderClientSessionCard(s, i) {
           return `
             <div style="padding:10px 0;border-bottom:1px solid var(--border);">
               <div style="font-size:13px;color:var(--text);margin-bottom:4px;">${escHtml(ex.name || 'Exercise')}</div>
-              ${sets.length ? sets.map((st, n) => `<div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;">SET ${n + 1}: ${st.is_bw ? 'BW' : escHtml(String(st.weight ?? '0')) + 'KG'} × ${escHtml(String(st.reps ?? '0'))} REPS${st.completed === false ? ' · SKIPPED' : ''}</div>`).join('') : ''}
+              ${sets.length ? sets.map((st, n) => `<div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;">SET ${n + 1}: ${st.is_bw ? 'BODYWEIGHT' : escHtml(String(st.weight ?? '0')) + 'KG'} × ${escHtml(String(st.reps ?? '0'))} REPS${st.completed === false ? ' · SKIPPED' : ''}</div>`).join('') : ''}
             </div>`;
         }).join('') : `<div style="padding:10px 0;color:var(--muted);font-size:12px;">No exercise detail.</div>`}
       </div>
