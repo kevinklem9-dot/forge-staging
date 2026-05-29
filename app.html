@@ -273,8 +273,9 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * Both the fixed .bottom-nav and every .panel's bottom padding read these, so the
  * panel content box always ends EXACTLY at the nav top — no var(--bg) gap, no
  * content hidden behind the nav. PWA standalone mode raises the safe-area floor
- * (see body.pwa-mode .app below). 48px = nav padding-top(8) + icon(22) + gap(4) +
- * label(~14). If nav button sizing changes, recompute the 48px here only. */
+ * (see body.pwa-mode .app below). 48px = nav padding-top(6) + icon(22) + gap(3) +
+ * label(~13) + button padding-bottom(4). If nav button sizing changes, recompute
+ * the 48px here only — #panel-coach's bottom offset reads it too. */
 .app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: env(safe-area-inset-bottom); --nav-h: calc(48px + var(--nav-safe)); }
 body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 20px); }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
@@ -283,11 +284,12 @@ body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 20px); }
 .user-menu { display:flex; align-items:center; gap:10px; }
 .user-avatar { width:32px; height:32px; background:var(--accent); color:var(--bg); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; }
 .panels { flex:1; overflow:hidden; position:relative; max-width:100%; }
-/* padding-bottom is locked to the nav height via --nav-h (defined on .app). This
- * guarantees the panel content box ends exactly at the nav top — no var(--bg)
- * strip between the chat input and the nav on #panel-coach. See known-bugs:
- * "Dark gap between chat input and nav bar". */
-.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:var(--nav-h); }
+/* Scrollable panels (plan, log, food, progress, account) reserve nav height +
+ * a little breathing room so their last row clears the fixed nav. --nav-safe
+ * tracks env(safe-area-inset-bottom) (with a PWA floor). #panel-coach overrides
+ * this with padding-bottom:0 because it is position:fixed and pins its own input
+ * flush to the nav top. */
+.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:calc(60px + var(--nav-safe)); }
 .panel::-webkit-scrollbar{width:3px} .panel::-webkit-scrollbar-thumb{background:var(--border)}
 nav.bottom-nav, .bottom-nav {
   position: fixed;
@@ -298,8 +300,8 @@ nav.bottom-nav, .bottom-nav {
   background: var(--surface, #111);
   border-top: 0.5px solid var(--border, #222);
   display: flex;
-  align-items: flex-start;
-  padding-top: 8px;
+  align-items: flex-end;
+  padding-top: 6px;
   padding-bottom: var(--nav-safe);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -309,10 +311,10 @@ nav.bottom-nav, .bottom-nav {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 3px;
   flex: 1;
-  padding: 0;
+  padding: 0 0 4px;
   margin: 0;
   background: transparent;
   border: none;
@@ -364,15 +366,34 @@ nav.bottom-nav, .bottom-nav {
 .conv-delete:active { color:var(--red); }
 
 /* ── CHAT CONTAINER ── */
-#panel-coach { overflow:hidden; }
-.chat-container { display:flex; flex-direction:column; height:100%; }
+/* Coach panel is pinned with EXPLICIT top/bottom instead of a height:100%
+ * percentage chain. The percentage approach proved unreliable in the iOS PWA
+ * webview — the chat input floated mid-screen with a black gap above the chips.
+ * Explicit fixed bounds remove that dependency entirely:
+ *   top    = topbar height (54px + safe-top)
+ *   bottom = nav height (--nav-h)
+ * so the flex column fills exactly the space between topbar and nav: scrollable
+ * thread (flex:1, min-height:0) on top, input area (flex-shrink:0) pinned flush
+ * at the nav top with zero gap. Note: NO `display` here — showPanel() owns the
+ * inline display:flex/none toggle, and an id-level display:flex would override
+ * the hide and leave the coach panel visible under other panels. */
+#panel-coach {
+  position: fixed;
+  top: calc(54px + var(--safe-top));
+  left: 0;
+  right: 0;
+  bottom: var(--nav-h);
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.chat-container { display:flex; flex-direction:column; flex:1; min-height:0; }
 .chat-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--bg); }
 .trainer-avatar { width:38px; height:38px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
 .trainer-name { font-weight:600; font-size:15px; }
 .trainer-status { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
 .online-dot { width:7px; height:7px; background:var(--green); border-radius:50%; display:inline-block; margin-right:5px; animation:pulse 2s infinite; }
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.chat-messages { flex:1; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:16px; -webkit-overflow-scrolling:touch; }
+.chat-messages { flex:1; min-height:0; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:16px; -webkit-overflow-scrolling:touch; }
 .chat-messages::-webkit-scrollbar{display:none}
 .message { display:flex; gap:10px; max-width:90%; animation:fadeUp .25s ease; }
 .message.user { align-self:flex-end; flex-direction:row-reverse; }
@@ -389,8 +410,12 @@ nav.bottom-nav, .bottom-nav {
 .typing-dot{width:6px;height:6px;background:var(--muted);border-radius:50%;animation:typing 1.2s infinite}
 .typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
 @keyframes typing{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-4px);opacity:1}}
-.chat-input-area { background:var(--surface); border-top:1px solid var(--border); padding:10px 14px; flex-shrink:0; }
-.quick-prompts { display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
+/* Chips + input wrapper — pinned to the bottom of the coach flex column.
+ * flex-shrink:0 so it never collapses; flex column + gap stacks chips above the
+ * input with no margin gaps. Background matches the thread (var(--bg)) so the
+ * border-top is the only visible seam between thread and input. */
+.chat-input-area { background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
+.quick-prompts { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
 .quick-prompts::-webkit-scrollbar{display:none}
 .quick-btn { background:var(--surface2); border:1px solid var(--border); color:var(--muted); padding:5px 11px; border-radius:100px; font-size:11px; cursor:pointer; white-space:nowrap; font-family:'DM Sans',sans-serif; transition:all .15s; }
 .quick-btn:active{border-color:var(--accent);color:var(--accent)}
