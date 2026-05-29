@@ -538,6 +538,43 @@ nav.bottom-nav, .bottom-nav {
 .pr-val { font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--accent); }
 .pr-badge { font-family:'DM Mono',monospace; font-size:9px; background:rgba(232,255,61,.12); color:var(--accent); border:1px solid rgba(232,255,61,.25); padding:2px 6px; border-radius:4px; letter-spacing:1px; display:inline-block; margin-top:2px; }
 
+/* ── PR SEARCH ── */
+.pr-search-row { position:relative; display:flex; align-items:center; }
+.pr-search-input { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 38px 11px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none; transition:border-color .2s; -webkit-appearance:none; }
+.pr-search-input:focus { border-color:var(--accent); }
+.pr-search-input::placeholder { color:var(--muted); }
+.pr-search-clear { position:absolute; right:8px; top:50%; transform:translateY(-50%); display:none; align-items:center; justify-content:center; width:24px; height:24px; background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:50%; font-size:15px; line-height:1; cursor:pointer; }
+.pr-search-clear:active { transform:translateY(-50%) scale(0.9); }
+.pr-search-results { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.pr-search-results:empty { margin-top:0; }
+.pr-search-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.pr-search-name { font-family:'DM Sans',sans-serif; font-weight:700; font-size:15px; color:var(--text); margin-bottom:10px; }
+.pr-search-entry { display:flex; flex-direction:column; gap:2px; padding:8px 0; border-top:1px solid var(--border); }
+.pr-search-entry:first-of-type { border-top:none; padding-top:0; }
+.pr-search-lift { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; color:var(--accent); }
+.pr-search-meta { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.5px; }
+
+/* ── BODYWEIGHT HISTORY OVERLAY ── */
+.stat-card.tappable { cursor:pointer; position:relative; transition:border-color .15s; }
+.stat-card.tappable:active { border-color:var(--accent); }
+.stat-card-hint { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.5px; margin-top:6px; display:flex; align-items:center; gap:3px; }
+.bwh-summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.bwh-summary-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.bwh-summary-lbl { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.bwh-summary-val { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1.1; margin-top:6px; color:var(--accent); }
+.bwh-summary-val.pos { color:var(--red); }
+.bwh-summary-val.neg { color:var(--green); }
+.bwh-summary-val.flat { color:var(--muted); }
+.bwh-chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:14px; }
+.bwh-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); }
+.bwh-row:last-child { border-bottom:none; }
+.bwh-row-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); letter-spacing:0.5px; }
+.bwh-row-right { display:flex; align-items:baseline; gap:8px; }
+.bwh-row-delta { font-family:'DM Mono',monospace; font-size:10px; }
+.bwh-row-delta.up { color:var(--red); }
+.bwh-row-delta.down { color:var(--green); }
+.bwh-row-weight { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; color:var(--text); }
+
 /* ── MISSIONS ── */
 .mission-row { display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; transition:all 0.2s; }
 .mission-row.done { opacity:0.5; }
@@ -1012,6 +1049,14 @@ nav.bottom-nav, .bottom-nav {
         <div id="overloadTracker"></div>
         <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
         <div id="sessionHistory" style="padding:0 18px;"></div>
+        <div class="section-label">SEARCH PRS</div>
+        <div style="padding:0 18px;">
+          <div class="pr-search-row">
+            <input id="prSearchInput" class="pr-search-input" type="text" autocomplete="off" placeholder="Search an exercise..." oninput="onPrSearchInput(this.value)">
+            <button id="prSearchClear" class="pr-search-clear" type="button" onclick="clearPrSearch()">×</button>
+          </div>
+          <div id="prSearchResults" class="pr-search-results"></div>
+        </div>
         <div class="section-label" data-i18n-key="personal_records">PERSONAL RECORDS</div>
         <div class="pr-list" id="prList"></div>
       </div>
@@ -3797,10 +3842,11 @@ async function renderStatGrid() {
     : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
 
   document.getElementById('statGrid').innerHTML = `
-    <div class="stat-card" data-metric="bodyweight">
+    <div class="stat-card tappable" data-metric="bodyweight" onclick="openBodyweightHistory()">
       <div class="stat-lbl">${t('log_bodyweight')}</div>
       <div class="stat-val" id="bodyweightVal">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
       ${diff !== null ? `<div class="stat-change ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}kg</div>` : '<div class="stat-change">' + t('log_bodyweight') + '</div>'}
+      <div class="stat-card-hint">View history ›</div>
     </div>
     <div class="stat-card">
       <div class="stat-lbl">${t('ob_goal_title')}</div>
@@ -4023,6 +4069,213 @@ async function saveWeight() {
   await renderProgress();
 
   api('/api/missions/log_bodyweight/complete', 'POST').catch(() => {});
+}
+
+// Long-form date: "12 May 2026". Falls back to the raw string if unparseable.
+function formatFullDate(iso) {
+  if (!iso) return '';
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return String(iso);
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ── PR SEARCH ────────────────────────────────────
+let _prSearchTimer = null;
+function onPrSearchInput(val) {
+  const clearBtn = document.getElementById('prSearchClear');
+  if (clearBtn) clearBtn.style.display = val ? 'flex' : 'none';
+  clearTimeout(_prSearchTimer);
+  const q = (val || '').trim();
+  const resEl = document.getElementById('prSearchResults');
+  if (!q) { if (resEl) resEl.innerHTML = ''; return; }
+  _prSearchTimer = setTimeout(() => runPrSearch(q), 300);
+}
+
+function clearPrSearch() {
+  clearTimeout(_prSearchTimer);
+  const input = document.getElementById('prSearchInput');
+  if (input) input.value = '';
+  const clearBtn = document.getElementById('prSearchClear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  const resEl = document.getElementById('prSearchResults');
+  if (resEl) resEl.innerHTML = '';
+}
+
+async function runPrSearch(q) {
+  const resEl = document.getElementById('prSearchResults');
+  if (!resEl) return;
+  const res = await api('/api/prs/search?q=' + encodeURIComponent(q));
+  // Ignore stale responses if the user kept typing.
+  const cur = (document.getElementById('prSearchInput')?.value || '').trim();
+  if (cur !== q) return;
+  const prs = res?.prs || [];
+  if (!prs.length) {
+    resEl.innerHTML = `<div class="empty-state" style="padding:14px 0;">No PRs found for '${escHtml(q)}'</div>`;
+    return;
+  }
+  // Group records by exercise name, preserving the achieved_at DESC order from the API.
+  const groups = {};
+  const order = [];
+  prs.forEach(p => {
+    const name = p.exercise_name || 'Exercise';
+    if (!groups[name]) { groups[name] = []; order.push(name); }
+    groups[name].push(p);
+  });
+  resEl.innerHTML = order.map(name => `
+    <div class="pr-search-card">
+      <div class="pr-search-name">${escHtml(name)}</div>
+      ${groups[name].map(p => `
+        <div class="pr-search-entry">
+          <span class="pr-search-lift">${p.weight_kg}kg × ${p.reps}</span>
+          <span class="pr-search-meta">Est. 1RM: ${p.est_1rm}kg · ${formatFullDate(p.achieved_at)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ── BODYWEIGHT HISTORY OVERLAY ───────────────────
+async function openBodyweightHistory() {
+  // Remove any prior instance so re-taps don't stack overlays.
+  document.getElementById('bwHistoryOverlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'bwHistoryOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:1;padding-top:max(env(safe-area-inset-top),44px);">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px 14px;">
+        <button onclick="closeBodyweightHistory()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">←</button>
+        <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">Bodyweight History</div>
+      </div>
+    </div>
+    <div id="bwHistoryBody" style="padding:16px 18px 40px;flex:1;">
+      <div class="empty-state">Loading…</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const res = await api('/api/bodyweight/history');
+  const body = document.getElementById('bwHistoryBody');
+  if (!body) return;
+
+  const history = res?.history || [];
+  if (!history.length) {
+    body.innerHTML = `<div class="empty-state" style="padding:32px 0;">No bodyweight logged yet.<br>Log your weight on the progress screen to start tracking.</div>`;
+    return;
+  }
+
+  const change = Number(res.current_weight) - Number(res.starting_weight);
+  const changeClass = change > 0 ? 'pos' : (change < 0 ? 'neg' : 'flat');
+
+  body.innerHTML = `
+    <div class="bwh-summary-grid">
+      <div class="bwh-summary-card">
+        <div class="bwh-summary-lbl">Current</div>
+        <div class="bwh-summary-val">${res.current_weight} kg</div>
+      </div>
+      <div class="bwh-summary-card">
+        <div class="bwh-summary-lbl">Starting</div>
+        <div class="bwh-summary-val">${res.starting_weight} kg</div>
+      </div>
+      <div class="bwh-summary-card">
+        <div class="bwh-summary-lbl">Change</div>
+        <div class="bwh-summary-val ${changeClass}">${res.total_change} kg</div>
+      </div>
+      <div class="bwh-summary-card">
+        <div class="bwh-summary-lbl">Logged</div>
+        <div class="bwh-summary-val">${history.length} <span style="font-size:14px;color:var(--muted)">${history.length === 1 ? 'entry' : 'entries'}</span></div>
+      </div>
+    </div>
+    <div class="bwh-chart-wrap">${buildBodyweightChart(history)}</div>
+    <div class="section-label" style="padding:18px 0 8px;">ALL ENTRIES</div>
+    ${buildBodyweightList(history)}`;
+}
+
+function closeBodyweightHistory() {
+  document.getElementById('bwHistoryOverlay')?.remove();
+}
+
+// Inline SVG line chart — no external library. Accent polyline + dots, muted grid.
+function buildBodyweightChart(history) {
+  if (history.length === 1) {
+    const w = history[0].weight_kg;
+    return `
+      <svg viewBox="0 0 320 200" width="100%" height="200" preserveAspectRatio="none">
+        <circle cx="160" cy="100" r="4" fill="var(--accent)" />
+      </svg>
+      <div style="text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;">${w} kg · Log more entries to see your progression</div>`;
+  }
+
+  const W = 320, H = 200, padL = 38, padR = 12, padT = 14, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const weights = history.map(h => Number(h.weight_kg));
+  let minW = Math.min(...weights) - 2;
+  let maxW = Math.max(...weights) + 2;
+  if (maxW === minW) { maxW += 1; minW -= 1; }
+
+  const n = history.length;
+  const x = i => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = v => padT + plotH - ((v - minW) / (maxW - minW)) * plotH;
+
+  const pts = history.map((h, i) => `${x(i).toFixed(1)},${y(Number(h.weight_kg)).toFixed(1)}`);
+
+  // 4 horizontal grid lines + y-axis weight labels
+  let grid = '';
+  const gridLines = 4;
+  for (let g = 0; g <= gridLines; g++) {
+    const val = minW + (g / gridLines) * (maxW - minW);
+    const gy = y(val);
+    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="0.5" />`;
+    grid += `<text x="${padL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${val.toFixed(0)}</text>`;
+  }
+
+  // X-axis labels: first, middle, last — "MMM YY"
+  const xLabel = iso => {
+    const dt = new Date(iso);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+  };
+  const labelIdx = n <= 2 ? [0, n - 1] : [0, Math.floor((n - 1) / 2), n - 1];
+  const xLabels = [...new Set(labelIdx)].map(i =>
+    `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${xLabel(history[i].recorded_at)}</text>`
+  ).join('');
+
+  const dots = history.map((h, i) =>
+    `<circle cx="${x(i).toFixed(1)}" cy="${y(Number(h.weight_kg)).toFixed(1)}" r="3" fill="var(--accent)" />`
+  ).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="200">
+      ${grid}
+      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      ${dots}
+      ${xLabels}
+    </svg>`;
+}
+
+// Entry list, most recent first, with per-entry change vs the previous (older) entry.
+function buildBodyweightList(history) {
+  const single = history.length === 1;
+  // history is ASC (oldest→newest); reverse for display.
+  const rows = history.map((h, i) => {
+    const prev = i > 0 ? Number(history[i - 1].weight_kg) : null;
+    const cur = Number(h.weight_kg);
+    let delta = '';
+    if (!single && prev !== null) {
+      const d = cur - prev;
+      const cls = d > 0 ? 'up' : (d < 0 ? 'down' : '');
+      const sign = d > 0 ? '+' : (d < 0 ? '−' : '');
+      if (d !== 0) delta = `<span class="bwh-row-delta ${cls}">${sign}${Math.abs(d).toFixed(1)} kg</span>`;
+    }
+    return { html: `
+      <div class="bwh-row">
+        <div class="bwh-row-date">${formatFullDate(h.recorded_at)}</div>
+        <div class="bwh-row-right">
+          ${delta}
+          <div class="bwh-row-weight">${h.weight_kg} kg</div>
+        </div>
+      </div>` };
+  });
+  return rows.reverse().map(r => r.html).join('');
 }
 
 // ── MISSIONS ────────────────────────────────────
