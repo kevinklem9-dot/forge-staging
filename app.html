@@ -322,19 +322,30 @@ nav.bottom-nav, .bottom-nav {
 .nav-icon svg { display:block; }
 .nav-label { font-family:'DM Mono',monospace; font-size:9px; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
 
-/* PWA standalone mode — shift the entire content area down so chat input, suggestions,
- * and nav bar sit closer to the home indicator. Browser-tab mode is untouched because
- * Safari's URL bar already occupies that bottom zone. Toggled by JS on boot via
+/* PWA standalone mode — anchor coach panel content to the bottom of the screen so
+ * suggestion chips → chat input → nav icons stack naturally with no wasted space
+ * above them. Browser-tab mode is untouched because Safari's URL bar already
+ * occupies that bottom zone. Toggled by JS on boot via
  * window.matchMedia('(display-mode: standalone)') or navigator.standalone. */
-body.pwa-mode {
-  padding-top: 20px;
-}
 body.pwa-mode .bottom-nav {
-  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
 }
-body.pwa-mode #panel-coach,
-body.pwa-mode .panel {
-  padding-bottom: calc(80px + max(env(safe-area-inset-bottom), 16px));
+/* Push coach panel content toward bottom. justify-content:flex-end on the panel
+ * pins the chat-container to the bottom; the chat-container itself stretches to
+ * fill height so chat-messages still scroll inside it. */
+body.pwa-mode #panel-coach {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: calc(100px + max(env(safe-area-inset-bottom), 20px));
+}
+/* Chat input area sits directly above nav with breathing room */
+body.pwa-mode .chat-input-area {
+  margin-bottom: 8px;
+}
+/* Suggestion chips sit above chat input */
+body.pwa-mode .quick-prompts {
+  margin-bottom: 8px;
 }
 
 /* ── SHARED COMPONENTS ── */
@@ -1005,7 +1016,7 @@ body.pwa-mode .panel {
         <div class="weight-entry-card">
           <div class="weight-entry-title">Today's Weight</div>
           <div class="weight-input-row">
-            <input class="weight-input" id="weightInput" type="number" step="0.1" min="20" max="400" placeholder="kg" inputmode="decimal">
+            <input class="weight-input" id="weightInput" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="e.g. 75.5">
             <button class="action-btn" onclick="saveWeight()">Save</button>
           </div>
         </div>
@@ -3858,6 +3869,28 @@ function formatSetWeight(s) {
   return `${s.weight}kg`;
 }
 
+// One-line "top set" summary for the overload tracker prev→now row. Picks the
+// heaviest weight × reps from sets_data when available, otherwise falls back to
+// the exercise's legacy top-level weight/reps/sets fields.
+function formatTopSet(ex) {
+  if (!ex) return '—';
+  const sets = Array.isArray(ex.sets_data) ? ex.sets_data : [];
+  let top = null;
+  if (sets.length) {
+    for (const s of sets) {
+      const w = s?.is_bw ? 0 : (parseFloat(s?.weight) || 0);
+      if (!top) { top = s; continue; }
+      const tw = top?.is_bw ? 0 : (parseFloat(top?.weight) || 0);
+      if (w > tw || (w === tw && (s?.reps || 0) > (top?.reps || 0))) top = s;
+    }
+  } else if (ex.weight !== undefined || ex.reps !== undefined) {
+    top = { weight: ex.weight, reps: ex.reps, is_bw: ex.is_bw };
+  }
+  if (!top) return '—';
+  const setCount = sets.length || ex.sets || 1;
+  return `${setCount} × ${top.reps ?? 0} @ ${formatSetWeight(top)}`;
+}
+
 function formatSessionDate(iso) {
   if (!iso) return 'Unknown';
   const d = (iso + '').split('T')[0];
@@ -3883,58 +3916,61 @@ async function renderProgress() {
     checkDeloadWarning()
   ]);
 
-  // Overload tracker
-  const histRes = await api('/api/history');
-  const allHistory = histRes?.history || [];
-  const byExercise = {};
-  allHistory.forEach(h => {
-    if (!byExercise[h.exercise_name]) byExercise[h.exercise_name] = [];
-    byExercise[h.exercise_name].push(h);
-  });
-
+  // Overload tracker — session-grouped collapsibles. Each session shows day_label +
+  // date + exercise count; expand to see each exercise with prev→now progression.
+  // Reuses .session-card CSS from the session-history section for visual consistency.
+  const sessRes = await api('/api/sessions?limit=50');
+  const allSessions = sessRes?.sessions || [];  // newest first
   const trackerEl = document.getElementById('overloadTracker');
-  const exNames = Object.keys(byExercise);
 
-  if (!exNames.length) {
+  if (!allSessions.length) {
     trackerEl.innerHTML = `<div class="empty-state">${t('overload_tracker')} — ${t('log_sub')}</div>`;
   } else {
-    trackerEl.innerHTML = exNames.map(name => {
-      const sessions = byExercise[name];
-      const last4 = sessions.slice(-4);
-      const maxVol = Math.max(...last4.map(s => s.volume), 1);
+    // Build per-exercise chronological timeline (oldest → newest) so we can find each
+    // exercise's PRIOR appearance when rendering the current session.
+    const exTimeline = {};
+    [...allSessions].reverse().forEach(s => {
+      (s.exercises || []).forEach(ex => {
+        const key = (ex.name || '').toLowerCase().trim();
+        if (!key) return;
+        if (!exTimeline[key]) exTimeline[key] = [];
+        exTimeline[key].push({ session_id: s.id, ex });
+      });
+    });
 
-      // Find exercise def
-      let exDef = null;
-      for (const d of (userPlan?.workout_plan?.days || [])) {
-        exDef = d.exercises?.find(e => e.name === name);
-        if (exDef) break;
-      }
-      const advice = exDef ? getOverloadAdvice({ ...exDef, reps_range: exDef.reps, target_sets: exDef.sets }, sessions) : null;
-      const advColor = advice?.type === 'up' ? 'var(--green)' : advice?.type === 'deload' ? 'var(--red)' : 'var(--accent)';
-
-      const bars = last4.map((s, i) => {
-        const pct = Math.round((s.volume / maxVol) * 100);
-        const isLast = i === last4.length - 1;
-        return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">${s.volume}</div>
-          <div style="width:100%;background:var(--surface2);border-radius:4px;height:40px;display:flex;align-items:flex-end;overflow:hidden">
-            <div style="width:100%;height:${pct}%;background:${isLast ? 'var(--accent)' : 'var(--border)'};border-radius:4px"></div>
+    trackerEl.innerHTML = allSessions.map(s => {
+      const exercises = Array.isArray(s.exercises) ? s.exercises : [];
+      const dateLabel = formatSessionDate(s.logged_at);
+      const dayLabel = s.day_label || 'Session';
+      const exCount = exercises.length;
+      return `
+        <details class="session-card">
+          <summary>
+            <div class="session-meta">
+              <div class="session-day">${escHtml(dayLabel)}</div>
+              <div class="session-sub">${escHtml(dateLabel.toUpperCase())} · ${exCount} EXERCISE${exCount === 1 ? '' : 'S'}</div>
+            </div>
+            <div class="session-chevron">›</div>
+          </summary>
+          <div class="session-body">
+            ${exercises.map(ex => {
+              const key = (ex.name || '').toLowerCase().trim();
+              const timeline = exTimeline[key] || [];
+              const idx = timeline.findIndex(t => t.session_id === s.id);
+              const prev = idx > 0 ? timeline[idx - 1].ex : null;
+              const now = formatTopSet(ex);
+              const before = prev ? formatTopSet(prev) : null;
+              const delta = before
+                ? `<span style="color:var(--muted);">${escHtml(before)}</span> <span style="color:var(--muted);">→</span> <span style="color:var(--text);font-weight:600;">${escHtml(now)}</span>`
+                : `<span style="color:var(--text);font-weight:600;">${escHtml(now)}</span> <span style="color:var(--muted);">(first session)</span>`;
+              return `
+                <div class="session-ex-row">
+                  <div class="session-ex-name">${escHtml(ex.name || 'Exercise')}</div>
+                  <div class="session-ex-sets">${delta}</div>
+                </div>`;
+            }).join('')}
           </div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-align:center">${s.weight_kg}kg<br>${s.sets}×${s.reps}</div>
-        </div>`;
-      }).join('');
-
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:0 18px 10px;overflow:hidden">
-        <div style="padding:12px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:600;font-size:13px">${name}</div>
-          ${advice ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:${advColor}">${advice.headline.split('—')[0].trim()}</div>` : ''}
-        </div>
-        <div style="padding:12px 14px">
-          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">${t('overload_last_sessions').replace('{n}', last4.length)}</div>
-          <div style="display:flex;gap:8px;align-items:flex-end">${bars}</div>
-        </div>
-        ${advice ? `<div style="padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.5">${advice.detail}</div>` : ''}
-      </div>`;
+        </details>`;
     }).join('');
   }
 
@@ -3957,8 +3993,15 @@ async function renderProgress() {
 
 async function saveWeight() {
   const input = document.getElementById('weightInput');
-  const w = parseFloat(input?.value);
-  if (isNaN(w) || w < 20 || w > 400) { showToast(t('enter_weight')); return; }
+  // Normalise comma → period for locales that use comma as the decimal separator,
+  // then parseFloat. The input is type=text so iOS Safari won't pre-validate and
+  // block decimals before this runs.
+  const raw = input?.value?.replace(',', '.') || '';
+  const w = parseFloat(raw);
+  if (isNaN(w) || w < 20 || w > 400) {
+    showToast('Enter a weight between 20 and 400 kg');
+    return;
+  }
 
   const res = await api('/api/bodyweight', 'POST', { weight_kg: w });
   if (!res || res._error || res.error) {
