@@ -269,20 +269,25 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 @keyframes genPulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
 
 /* ── MAIN APP ── */
-.app { display:flex; flex-direction:column; height:100%; height:100dvh; }
+/* --nav-safe / --nav-h are the single source of truth for the bottom-nav size.
+ * Both the fixed .bottom-nav and every .panel's bottom padding read these, so the
+ * panel content box always ends EXACTLY at the nav top — no var(--bg) gap, no
+ * content hidden behind the nav. PWA standalone mode raises the safe-area floor
+ * (see body.pwa-mode .app below). 48px = nav padding-top(8) + icon(22) + gap(4) +
+ * label(~14). If nav button sizing changes, recompute the 48px here only. */
+.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: env(safe-area-inset-bottom); --nav-h: calc(48px + var(--nav-safe)); }
+body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 20px); }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:4px; color:var(--accent); }
 .logo-sub { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; }
 .user-menu { display:flex; align-items:center; gap:10px; }
 .user-avatar { width:32px; height:32px; background:var(--accent); color:var(--bg); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; }
 .panels { flex:1; overflow:hidden; position:relative; max-width:100%; }
-/* Panel padding-bottom MUST match the bottom-nav's natural content height (~48px
- * with the spec'd icon/label sizing) + env(safe-area-inset-bottom). If this is
- * larger than the nav's actual rendered height, a strip of var(--bg) shows
- * between the panel's last content and the nav top — most visible on #panel-coach
- * where .chat-input-area is pinned to the panel bottom. See known-bugs:
+/* padding-bottom is locked to the nav height via --nav-h (defined on .app). This
+ * guarantees the panel content box ends exactly at the nav top — no var(--bg)
+ * strip between the chat input and the nav on #panel-coach. See known-bugs:
  * "Dark gap between chat input and nav bar". */
-.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:calc(48px + env(safe-area-inset-bottom)); }
+.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:var(--nav-h); }
 .panel::-webkit-scrollbar{width:3px} .panel::-webkit-scrollbar-thumb{background:var(--border)}
 nav.bottom-nav, .bottom-nav {
   position: fixed;
@@ -295,7 +300,7 @@ nav.bottom-nav, .bottom-nav {
   display: flex;
   align-items: flex-start;
   padding-top: 8px;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--nav-safe);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -322,31 +327,12 @@ nav.bottom-nav, .bottom-nav {
 .nav-icon svg { display:block; }
 .nav-label { font-family:'DM Mono',monospace; font-size:9px; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
 
-/* PWA standalone mode — anchor coach panel content to the bottom of the screen so
- * suggestion chips → chat input → nav icons stack naturally with no wasted space
- * above them. Browser-tab mode is untouched because Safari's URL bar already
- * occupies that bottom zone. Toggled by JS on boot via
- * window.matchMedia('(display-mode: standalone)') or navigator.standalone. */
-body.pwa-mode .bottom-nav {
-  padding-bottom: max(env(safe-area-inset-bottom), 20px);
-}
-/* Push coach panel content toward bottom. justify-content:flex-end on the panel
- * pins the chat-container to the bottom; the chat-container itself stretches to
- * fill height so chat-messages still scroll inside it. */
-body.pwa-mode #panel-coach {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding-bottom: calc(100px + max(env(safe-area-inset-bottom), 20px));
-}
-/* Chat input area sits directly above nav with breathing room */
-body.pwa-mode .chat-input-area {
-  margin-bottom: 8px;
-}
-/* Suggestion chips sit above chat input */
-body.pwa-mode .quick-prompts {
-  margin-bottom: 8px;
-}
+/* PWA standalone mode: the only adjustment needed is the larger safe-area floor,
+ * which is handled centrally by `body.pwa-mode .app { --nav-safe: ... }`. Both the
+ * nav and every panel (including #panel-coach) read --nav-safe / --nav-h, so the
+ * chat input pins flush above the nav in standalone mode with no extra rules. The
+ * old body.pwa-mode #panel-coach { padding-bottom: 100px+ } override was the source
+ * of the large black gap above the nav and has been removed. */
 
 /* ── SHARED COMPONENTS ── */
 .panel-header { padding:20px 18px 14px; border-bottom:1px solid var(--border); }
@@ -3796,7 +3782,11 @@ async function renderStreak() {
 
 async function renderStatGrid() {
   const bwRes = await api('/api/bodyweight');
-  const weights = bwRes?.history || [];
+  // Sort ascending by timestamp so "current" = newest and "start" = oldest,
+  // regardless of the order the API returns rows in. Falls back to array order
+  // if no timestamp field is present.
+  const tsOf = e => e?.recorded_at || e?.logged_at || e?.created_at || '';
+  const weights = (bwRes?.history || []).slice().sort((a, b) => String(tsOf(a)).localeCompare(String(tsOf(b))));
   const current = weights.length ? weights[weights.length - 1].weight_kg : (userProfile?.weight_kg || '—');
   const start = weights.length ? weights[0].weight_kg : (userProfile?.weight_kg || null);
   const diff = (start && weights.length > 1) ? (current - start).toFixed(1) : null;
@@ -3807,9 +3797,9 @@ async function renderStatGrid() {
     : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
 
   document.getElementById('statGrid').innerHTML = `
-    <div class="stat-card">
+    <div class="stat-card" data-metric="bodyweight">
       <div class="stat-lbl">${t('log_bodyweight')}</div>
-      <div class="stat-val">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
+      <div class="stat-val" id="bodyweightVal">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
       ${diff !== null ? `<div class="stat-change ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}kg</div>` : '<div class="stat-change">' + t('log_bodyweight') + '</div>'}
     </div>
     <div class="stat-card">
@@ -4009,20 +3999,28 @@ async function saveWeight() {
     return;
   }
 
-  // Snappy in-place update: rewrite the bodyweight stat-card before the heavier
-  // renderProgress() refresh kicks in, so the user sees the new value instantly.
-  const statGrid = document.getElementById('statGrid');
-  const currentValEl = statGrid?.querySelector('.stat-card .stat-val');
-  if (currentValEl) {
-    currentValEl.innerHTML = `${w}<span style="font-size:18px;color:var(--muted)"> kg</span>`;
-  }
+  // Prefer the value the server actually persisted (POST may return the saved
+  // entry as { id, weight_kg, recorded_at } or { entry: {...} }); fall back to
+  // the value we sent so the display still updates if the response is bare.
+  const saved = res.entry?.weight_kg ?? res.weight_kg ?? res.bodyweight ?? w;
+  const html = `${saved}<span style="font-size:18px;color:var(--muted)"> kg</span>`;
+
+  // Snappy in-place update of EVERY element that shows current bodyweight, before
+  // the heavier renderProgress() refresh runs. Covers the progress stat-card hook
+  // plus any future bodyweight display markup.
+  document.querySelectorAll('[data-metric="bodyweight"] .stat-val, #bodyweightVal, .current-weight-val').forEach(el => {
+    el.innerHTML = html;
+  });
   if (input) input.value = '';
 
   showToast('Bodyweight updated', 'success');
 
-  // Full re-render in background — refetches /api/bodyweight, redraws the chart in
-  // #metricsHistory with the new data point appended, recomputes stat-card delta.
-  renderProgress();
+  // Brief pause so the write is committed before we re-fetch — without it,
+  // renderProgress() can pull a stale /api/bodyweight that lacks the new entry
+  // and overwrite the in-place update with the old value. Then full re-render to
+  // refresh the stat-card delta + history-dependent sections with fresh data.
+  await new Promise(r => setTimeout(r, 500));
+  await renderProgress();
 
   api('/api/missions/log_bodyweight/complete', 'POST').catch(() => {});
 }
