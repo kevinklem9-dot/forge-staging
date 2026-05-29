@@ -637,8 +637,13 @@ nav.bottom-nav, .bottom-nav {
 .theme-btn { background:none; border:none; cursor:pointer; font-size:18px; padding:4px 6px; border-radius:8px; transition:all 0.15s; -webkit-tap-highlight-color:transparent; }
 .theme-btn:active { transform:scale(0.9); }
 
+/* z-index must clear the bottom-nav (z-index:1000) — at the old 199/200 the
+ * lower portion of the sheet (and its swatches/language rows) rendered BEHIND
+ * the nav. The sheet is a modal, so it sits above the nav and its backdrop
+ * covers the nav too (tapping it dismisses). padding-bottom keeps the last row
+ * clear of the home indicator. */
 .theme-overlay {
-  position:fixed; inset:0; z-index:199;
+  position:fixed; inset:0; z-index:1001;
   background:rgba(0,0,0,0.5);
   opacity:0; pointer-events:none;
   transition:opacity 0.2s;
@@ -653,7 +658,7 @@ nav.bottom-nav, .bottom-nav {
   border-radius:16px 16px 0 0;
   padding:20px 18px;
   padding-bottom:calc(20px + var(--safe-bottom));
-  z-index:200;
+  z-index:1002;
   transform:translateY(100%);
   transition:transform 0.25s cubic-bezier(0.32,0.72,0,1);
 }
@@ -938,6 +943,12 @@ nav.bottom-nav, .bottom-nav {
           <div class="panel-title">PLAN</div>
           <div class="panel-sub" id="workout-sub">Loading your programme...</div>
         </div>
+        <div style="padding:12px 18px 0;">
+          <button onclick="openProgrammes()" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span style="display:flex;align-items:center;gap:8px;"><span>📋</span> My Programmes</span>
+            <span style="color:var(--muted);">›</span>
+          </button>
+        </div>
         <div class="day-scroll" id="dayScroll"></div>
         <div class="exercise-list" id="exerciseList"></div>
       </div>
@@ -1070,7 +1081,7 @@ nav.bottom-nav, .bottom-nav {
         </div>
         <div class="section-label" data-i18n-key="overload_tracker">OVERLOAD TRACKER</div>
           <!-- Export history: removed pending proper CSV implementation -->
-          <button onclick="showPanel('programmes')" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
+          <button onclick="openProgrammes()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
         <div id="overloadTracker"></div>
         <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
         <div id="sessionHistory" style="padding:0 18px;"></div>
@@ -1098,9 +1109,12 @@ nav.bottom-nav, .bottom-nav {
 
       <!-- Programmes Panel -->
       <div class="panel" id="panel-programmes" style="overflow-y:auto;">
-        <div class="panel-header">
-          <div class="panel-title">MY PROGRAMMES</div>
-          <div class="panel-sub">Saved training programmes</div>
+        <div class="panel-header" style="display:flex;align-items:center;gap:10px;">
+          <button onclick="showPanel('workout')" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 6px;line-height:1;">←</button>
+          <div style="flex:1;min-width:0;">
+            <div class="panel-title">MY PROGRAMMES</div>
+            <div class="panel-sub">Bulk, cut, comp prep — switch any time</div>
+          </div>
         </div>
         <div id="programmesPanel" style="padding-bottom:100px;"></div>
       </div>
@@ -4065,8 +4079,9 @@ async function saveWeight() {
   }
 
   const res = await api('/api/bodyweight', 'POST', { weight_kg: w });
+  console.log('[saveWeight] response:', res);
   if (!res || res._error || res.error) {
-    showToast('Failed to save — try again', 'error');
+    showToast('Failed to save bodyweight', 'error');
     return;
   }
 
@@ -5681,6 +5696,25 @@ function showLockedFeature(featureName, requiredTier) {
 // The /api/export/history endpoint is left intact server-side per spec.
 
 // ── PROGRAMMES PANEL ──────────────────────────────────
+// Entry point from the Plan panel. Iron → upgrade prompt; Steel/Forge → open panel.
+function openProgrammes() {
+  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
+  if (tier !== 'steel' && tier !== 'forge') {
+    showLockedFeature('Multiple Saved Programmes', 'steel');
+    return;
+  }
+  showPanel('programmes');
+}
+
+function programmeTierLimit() {
+  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
+  return tier === 'forge' ? Infinity : (tier === 'steel' ? 3 : 1);
+}
+
+function programmeLimitToast() {
+  showToast("You've reached your 3 programme limit on Steel. Upgrade to Forge for unlimited programmes.", 'error');
+}
+
 async function renderProgrammes() {
   const el = document.getElementById('programmesPanel');
   if (!el) return;
@@ -5688,66 +5722,75 @@ async function renderProgrammes() {
 
   const res = await api('/api/programmes');
   const progs = res?.programmes || [];
-  const tier = userSubscription?.accessTier || 'iron';
-  const isExempt = userSubscription?.isExempt || false;
-  const canMultiple = isExempt || tier === 'steel' || tier === 'forge';
+  userProgrammes = progs;
+  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
+  const limit = programmeTierLimit();
+  const atLimit = progs.length >= limit;
+
+  // Save-current button: disabled at limit (Steel cap). Steel also shows slots used.
+  const saveBtn = atLimit
+    ? `<button onclick="programmeLimitToast()" title="You've reached your 3 programme limit on Steel. Upgrade to Forge for unlimited programmes." style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:16px;">Programme limit reached</button>`
+    : `<button onclick="showNewProgrammeModal()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">+ Save current programme</button>`;
+
+  const slotsLine = (tier === 'steel')
+    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-top:14px;text-align:center;">${progs.length} of 3 slots used</div>`
+    : '';
 
   el.innerHTML = `
     <div style="padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;">SAVED PROGRAMMES</div>
-        <button onclick="showNewProgrammeModal()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Save Current</button>
+      ${saveBtn}
+      ${progs.length === 0
+        ? '<div class="empty-state">No saved programmes yet. Tap "Save current programme" to store your active plan.</div>'
+        : progs.map(programmeCard).join('')}
+      ${slotsLine}
+    </div>`;
+}
+
+function programmeCard(p) {
+  const dateStr = new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  return `
+    <div style="background:var(--surface);border:1px solid ${p.is_active ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div onclick="showRenameProgrammeModal('${p.id}')" style="cursor:pointer;">
+        <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${escHtml(p.name)}
+          ${p.is_active ? '<span style="font-size:9px;background:var(--accent);color:#000;padding:2px 8px;border-radius:20px;font-family:DM Mono,monospace;letter-spacing:0.5px;">ACTIVE</span>' : ''}
+          <span style="font-size:12px;color:var(--muted);">✎</span>
+        </div>
+        ${p.description ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;">${escHtml(p.description)}</div>` : ''}
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;">${dateStr}</div>
       </div>
-      ${progs.length === 0 ? '<div class="empty-state">No saved programmes yet. Generate a plan to save it here.</div>' :
-        progs.map(p => `
-          <div style="background:var(--surface);border:1px solid ${p.is_active ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:600;font-size:14px;">${escHtml(p.name)}${p.is_active ? ' <span style="font-size:10px;background:var(--accent);color:#000;padding:2px 7px;border-radius:20px;font-family:DM Mono,monospace">ACTIVE</span>' : ''}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px;">${new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</div>
-            </div>
-            <div style="display:flex;gap:8px;">
-              ${!p.is_active ? `<button onclick="switchProgramme('${p.id}')" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Activate</button>` : ''}
-              <button onclick="deleteProgramme('${p.id}')" style="background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">✕</button>
-            </div>
-          </div>
-        `).join('')
-      }
-      ${!canMultiple ? `
-        <div onclick="showLockedFeature('Multiple Saved Programmes','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;margin-top:8px;">
-          <div style="font-size:20px;margin-bottom:6px;">🔒</div>
-          <div style="font-size:13px;font-weight:600;">Multiple Programmes</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Available on Steel and above</div>
+      ${!p.is_active ? `
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="switchProgramme('${p.id}')" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Switch to this</button>
+          <button onclick="deleteProgramme('${p.id}')" style="background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Delete</button>
         </div>` : ''}
-    </div>
-  `;
+    </div>`;
 }
 
 function showNewProgrammeModal() {
-  const tier = userSubscription?.accessTier || 'iron';
-  const isExempt = userSubscription?.isExempt || false;
-  const canMultiple = isExempt || tier === 'steel' || tier === 'forge';
-
-  if (!canMultiple && userProgrammes.length >= 1) {
-    showLockedFeature('Multiple Saved Programmes', 'steel');
+  if (userProgrammes.length >= programmeTierLimit()) {
+    const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
+    if (tier === 'iron') showLockedFeature('Multiple Saved Programmes', 'steel');
+    else programmeLimitToast();
     return;
   }
 
-  const existing = document.getElementById('newProgModal');
-  if (existing) existing.remove();
-
+  document.getElementById('newProgModal')?.remove();
+  const inStyle = "width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:12px;";
   const modal = document.createElement('div');
   modal.id = 'newProgModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML = `
     <div style="background:var(--bg);border-radius:16px;padding:24px;max-width:340px;width:100%;">
-      <div style="font-size:16px;font-weight:700;margin-bottom:14px;">Save Current Programme</div>
-      <input id="progNameInput" placeholder="e.g. Bulk 2026, Cut Phase..." style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Name this programme</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Saves your current active plan.</div>
+      <input id="progNameInput" placeholder="e.g. Bulk Phase, Competition Prep" style="${inStyle}">
+      <textarea id="progDescInput" placeholder="Description (optional)" rows="2" style="${inStyle}resize:none;"></textarea>
       <div style="display:flex;gap:10px;">
         <button onclick="saveCurrentProgramme()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
         <button onclick="document.getElementById('newProgModal').remove()" style="flex:1;padding:12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       </div>
-    </div>
-  `;
+    </div>`;
   document.body.appendChild(modal);
   document.getElementById('progNameInput').focus();
 }
@@ -5755,38 +5798,87 @@ function showNewProgrammeModal() {
 async function saveCurrentProgramme() {
   if (!userPlan) { showToast('No active plan to save', 'error'); return; }
   const name = document.getElementById('progNameInput')?.value.trim() || 'My Programme';
+  const description = document.getElementById('progDescInput')?.value.trim() || '';
   const res = await api('/api/programmes', 'POST', {
-    name,
+    name, description,
     plan_data: { workout: userPlan.workout_plan, nutrition: userPlan.nutrition_plan }
   });
   if (res?.programme) {
     document.getElementById('newProgModal')?.remove();
     showToast('Programme saved', 'success');
     renderProgrammes();
-  } else if (res?.error === 'programme_limit_reached') {
+  } else if (res?.error === 'upgrade_required') {
     document.getElementById('newProgModal')?.remove();
     showLockedFeature('Multiple Saved Programmes', 'steel');
+  } else if (res?.error === 'programme_limit_reached') {
+    document.getElementById('newProgModal')?.remove();
+    showToast(res.message || 'Programme limit reached', 'error');
   } else {
-    showToast(t('failed_save'), 'error');
+    showToast('Failed to save programme', 'error');
+  }
+}
+
+function showRenameProgrammeModal(id) {
+  const prog = userProgrammes.find(p => p.id === id);
+  if (!prog) return;
+  document.getElementById('renameProgModal')?.remove();
+  const inStyle = "width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:12px;";
+  const modal = document.createElement('div');
+  modal.id = 'renameProgModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);border-radius:16px;padding:24px;max-width:340px;width:100%;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:14px;">Edit Programme</div>
+      <input id="renameNameInput" placeholder="Programme name" style="${inStyle}">
+      <textarea id="renameDescInput" placeholder="Description (optional)" rows="2" style="${inStyle}resize:none;"></textarea>
+      <div style="display:flex;gap:10px;">
+        <button onclick="submitRenameProgramme('${id}')" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save</button>
+        <button onclick="document.getElementById('renameProgModal').remove()" style="flex:1;padding:12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const ni = document.getElementById('renameNameInput');
+  ni.value = prog.name || '';
+  document.getElementById('renameDescInput').value = prog.description || '';
+  ni.focus();
+}
+
+async function submitRenameProgramme(id) {
+  const name = document.getElementById('renameNameInput')?.value.trim();
+  const description = document.getElementById('renameDescInput')?.value.trim() || '';
+  if (!name) { showToast('Enter a programme name', 'error'); return; }
+  const res = await api(`/api/programmes/${id}`, 'PATCH', { name, description });
+  if (res?.programme) {
+    document.getElementById('renameProgModal')?.remove();
+    showToast('Programme updated', 'success');
+    renderProgrammes();
+  } else {
+    showToast('Failed to update programme', 'error');
   }
 }
 
 async function switchProgramme(id) {
-  const res = await api(`/api/programmes/${id}`, 'PATCH', { is_active: true });
-  if (res?.programme) {
-    showToast('Programme activated', 'success');
-    // Load new plan
+  const prog = userProgrammes.find(p => p.id === id);
+  const name = prog?.name || 'this programme';
+  if (!confirm(`Switch to ${name}? Your current progress and logs are saved. This will replace your active programme.`)) return;
+  const res = await api(`/api/programmes/${id}/activate`, 'POST');
+  if (res?.ok) {
     await reloadPlan();
     renderProgrammes();
+    showToast(`Switched to ${name}`, 'success');
+  } else {
+    showToast(res?.message || 'Failed to switch programme', 'error');
   }
 }
 
 async function deleteProgramme(id) {
-  if (!confirm('Delete this programme?')) return;
+  if (!confirm('Delete this programme? This cannot be undone.')) return;
   const res = await api(`/api/programmes/${id}`, 'DELETE');
   if (res?.success) {
     showToast('Programme deleted', 'success');
     renderProgrammes();
+  } else {
+    showToast(res?.message || 'Failed to delete programme', 'error');
   }
 }
 
