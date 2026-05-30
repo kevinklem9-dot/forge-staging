@@ -3518,6 +3518,13 @@ function renderNutritionPanel() {
   const n = userPlan.nutrition_plan;
   document.getElementById('nutrition-sub').textContent = n.strategy || t('nutrition_personalised');
 
+  // Coach-assigned nutrition banner (Feature 2)
+  document.getElementById('coachNutritionBanner')?.remove();
+  if (n.coach_assigned) {
+    const mr = document.getElementById('macroRow');
+    if (mr) mr.insertAdjacentHTML('beforebegin', `<div id="coachNutritionBanner" style="background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:14px;"><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:4px;">FROM YOUR COACH</div><div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml(n.coach_name || 'Your coach')} has set your nutrition plan.</div>${n.coach_notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">${escHtml(n.coach_notes)}</div>` : ''}</div>`);
+  }
+
   // Macros
   document.getElementById('macroRow').innerHTML = `
     <div class="macro-card kcal"><div class="macro-val">${n.calories}<span class="macro-unit"> kcal</span></div><div class="macro-lbl">${t('macro_calories')}</div></div>
@@ -12049,6 +12056,57 @@ function formatDateSession(dateStr) {
   return d;
 }
 
+function renderClientSummaryCard(ov) {
+  if (ov && ov.summary) {
+    return `<div id="clientSummaryCard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">CLIENT OVERVIEW</span>
+          <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Regenerate</button>
+        </div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);">${escHtml(ov.summary).replace(/\n/g,'<br>')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:'DM Mono',monospace;">Generated ${ov.summary_generated_at ? relTime(ov.summary_generated_at) : 'just now'}</div>
+      </div>`;
+  }
+  return `<div id="clientSummaryCard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
+      <div id="clientSummaryPending" style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;color:var(--muted);animation:forge-pulse 1.4s ease-in-out infinite;">Generating client overview…</div>
+    </div>`;
+}
+
+async function maybeAutoGenerateSummary(clientId) {
+  try {
+    const res = await api('/api/coach/clients/' + clientId + '/generate-summary', 'POST', {});
+    if (!res?.summary) throw new Error('no_summary');
+    if (!_currentClientDetail || _currentClientDetail.clientId !== clientId) return;
+    _currentClientDetail.overview = Object.assign({}, _currentClientDetail.overview, { summary: res.summary, summary_generated_at: res.summary_generated_at });
+    if (_currentClientTab === 'overview') {
+      const card = document.getElementById('clientSummaryCard');
+      if (card) card.outerHTML = renderClientSummaryCard(_currentClientDetail.overview);
+    }
+  } catch(e) {
+    const pend = document.getElementById('clientSummaryPending');
+    if (pend) { pend.style.animation = 'none'; pend.textContent = 'Could not generate overview. Tap Regenerate to retry.'; }
+  }
+}
+
+async function regenerateClientSummary() {
+  if (!_currentClientDetail) return;
+  const clientId = _currentClientDetail.clientId;
+  const card = document.getElementById('clientSummaryCard');
+  if (card) card.innerHTML = `<div id="clientSummaryPending" style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;color:var(--muted);animation:forge-pulse 1.4s ease-in-out infinite;">Generating client overview…</div>`;
+  try {
+    const res = await api('/api/coach/clients/' + clientId + '/generate-summary', 'POST', {});
+    if (!res?.summary) throw new Error('no_summary');
+    if (!_currentClientDetail || _currentClientDetail.clientId !== clientId) return;
+    _currentClientDetail.overview = Object.assign({}, _currentClientDetail.overview, { summary: res.summary, summary_generated_at: res.summary_generated_at });
+    const c2 = document.getElementById('clientSummaryCard');
+    if (c2) c2.outerHTML = renderClientSummaryCard(_currentClientDetail.overview);
+  } catch(e) {
+    showToast('Failed to generate overview', 'error');
+    const c3 = document.getElementById('clientSummaryCard');
+    if (c3 && _currentClientDetail) c3.outerHTML = renderClientSummaryCard(_currentClientDetail.overview);
+  }
+}
+
 function renderClientOverviewTab(body) {
   const ov = _currentClientDetail.overview;
   if (!ov || ov._error || ov.error) {
@@ -12063,6 +12121,7 @@ function renderClientOverviewTab(body) {
   const recent = ov.recent_sessions || [];
   const lastSessionId = recent[0]?.id || ov.last_session?.id || null;
   body.innerHTML = `
+    ${renderClientSummaryCard(ov)}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
       ${statCard('Sessions this week', ov.sessions_this_week ?? 0)}
       ${statCard('Current streak', (ov.current_streak ?? 0) + 'd')}
@@ -12106,6 +12165,8 @@ function renderClientOverviewTab(body) {
       ${renderCoachFeedbackList(feedback, recent, ov.last_session)}
     </div>
   `;
+  // First open with no summary yet → generate one in the background and swap the card in
+  if (!ov.summary) maybeAutoGenerateSummary(_currentClientDetail.clientId);
 }
 
 function renderClientSessionCard(s, i) {
@@ -12278,12 +12339,17 @@ async function saveCoachNotes(content) {
 // ── PROGRAMME TAB ─────────────────────────────────────
 async function renderClientProgrammeTab(body) {
   body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading programmes…</div>`;
-  const res = await api('/api/coach/programmes');
-  const all = res?.programmes || [];
   const cid = _currentClientDetail.clientId;
-  const assigned = all.find(p => p.client_id === cid && !p.is_template);
-  const templates = all.filter(p => p.is_template);
+  const [res, npRes] = await Promise.all([
+    api('/api/coach/programmes'),
+    api('/api/coach/clients/' + cid + '/nutrition-plan'),
+  ]);
+  const all = res?.programmes || [];
+  const isNutri = p => (p.programme_type || 'workout') === 'nutrition';
+  const assigned = all.find(p => p.client_id === cid && !p.is_template && !isNutri(p));
+  const templates = all.filter(p => p.is_template && !isNutri(p));
   _currentClientDetail.programmes = all;
+  _currentClientDetail.nutritionPlan = npRes?.nutrition_plan || null;
   if (assigned) {
     const data = assigned.programme_data || {};
     const sessions = data.sessions || [];
@@ -12315,6 +12381,31 @@ async function renderClientProgrammeTab(body) {
       ` : ''}
     `;
   }
+  // Nutrition plan section (Feature 2) — appended below the workout programme section
+  body.innerHTML += renderCoachNutritionSection(_currentClientDetail.nutritionPlan);
+}
+
+function renderCoachNutritionSection(np) {
+  const coachAssigned = !!(np && np.coach_assigned);
+  const cals = (np && (np.calories ?? np.daily_calories)) || 0;
+  const p = (np && (np.protein_g ?? np.protein)) || 0;
+  const c = (np && (np.carbs_g ?? np.carbs)) || 0;
+  const f = (np && (np.fat_g ?? np.fat)) || 0;
+  const meals = (np && (np.meals || []).length) || 0;
+  const cid = _currentClientDetail.clientId;
+  let h = `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:26px 0 8px;">NUTRITION PLAN</div>`;
+  h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text);letter-spacing:0.3px;">${cals} KCAL · ${p}P / ${c}C / ${f}F</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;letter-spacing:0.3px;">${meals} MEAL${meals === 1 ? '' : 'S'} · ${coachAssigned ? 'CUSTOM' : 'AI GENERATED'}</div>
+    </div>`;
+  if (coachAssigned) {
+    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Edit nutrition plan</button>`;
+    h += `<button onclick="if(confirm('Reset to AI nutrition plan? Your custom plan will be removed.')) resetClientNutrition('${cid}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Reset to AI plan</button>`;
+  } else {
+    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Assign custom nutrition plan</button>`;
+    h += `<button onclick="openNutritionBuilder('${cid}', true)" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Edit AI nutrition plan</button>`;
+  }
+  return h;
 }
 
 function programmeSessionPreview(s) {
@@ -12342,6 +12433,155 @@ async function deleteAssignedProgramme(programmeId) {
   const res = await api('/api/coach/programmes/' + programmeId, 'DELETE');
   if (res?.ok) { showToast('Reset to AI programme', 'success'); renderClientTab(); }
   else showToast('Failed', 'error');
+}
+
+// ── NUTRITION BUILDER ─────────────────────────────────
+let _nbMeals = [];
+let _nbClientId = null;
+
+function nbField(label, id) {
+  return `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace;">${label}</div><input id="${id}" type="number" inputmode="numeric" oninput="nbRecalc()" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>`;
+}
+
+function openNutritionBuilder(clientId) {
+  _nbClientId = clientId;
+  const np = _currentClientDetail?.nutritionPlan || {};
+  const clientName = (_currentClientDetail?.overview?.profile?.name) || 'client';
+  _nbMeals = ((np.meals) || []).map(m => ({
+    name: m.name || '', time: m.time || '',
+    calories: m.kcal ?? m.calories ?? '',
+    protein_g: m.protein_g ?? '', carbs_g: m.carbs_g ?? '', fat_g: m.fat_g ?? '',
+    notes: m.notes || ''
+  }));
+  document.getElementById('nutritionBuilderOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'nutritionBuilderOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10002;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;';
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:max(env(safe-area-inset-top),44px) 18px 14px;display:flex;align-items:center;gap:12px;z-index:2;">
+      <button onclick="closeNutritionBuilder()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;line-height:1;">←</button>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);">Build nutrition plan for ${escHtml(clientName)}</div>
+    </div>
+    <div style="padding:18px;flex:1;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">DAILY TARGETS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;">
+        ${nbField('Daily calories','nbCalories')}
+        ${nbField('Protein (g)','nbProtein')}
+        ${nbField('Carbs (g)','nbCarbs')}
+        ${nbField('Fat (g)','nbFat')}
+      </div>
+      <div id="nbCalcLine" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:18px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">MEALS</span>
+        <button onclick="addNutritionMeal()" style="padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Add meal</button>
+      </div>
+      <div id="nbMealList"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:18px 0 8px;">NOTES FOR CLIENT</div>
+      <textarea id="nbCoachNotes" rows="3" placeholder="Notes for client about this nutrition plan" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;line-height:1.5;resize:vertical;box-sizing:border-box;">${escHtml(np.coach_notes || '')}</textarea>
+      <label style="display:flex;align-items:center;gap:8px;margin:14px 0;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <input type="checkbox" id="nbTemplateToggle"> Save as template
+      </label>
+      <button onclick="saveNutritionPlan()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Save and assign to ${escHtml(clientName)}</button>
+      <button onclick="closeNutritionBuilder()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('nbCalories').value = np.calories ?? np.daily_calories ?? '';
+  document.getElementById('nbProtein').value = np.protein_g ?? '';
+  document.getElementById('nbCarbs').value = np.carbs_g ?? '';
+  document.getElementById('nbFat').value = np.fat_g ?? '';
+  renderNbMeals();
+  nbRecalc();
+}
+
+function closeNutritionBuilder() { document.getElementById('nutritionBuilderOverlay')?.remove(); }
+
+function nbRecalc() {
+  const p = parseFloat(document.getElementById('nbProtein')?.value) || 0;
+  const c = parseFloat(document.getElementById('nbCarbs')?.value) || 0;
+  const f = parseFloat(document.getElementById('nbFat')?.value) || 0;
+  const el = document.getElementById('nbCalcLine');
+  if (el) el.textContent = `Calories from macros: ${Math.round(p * 4 + c * 4 + f * 9)} kcal`;
+}
+
+function addNutritionMeal() {
+  _nbMeals.push({ name: '', time: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', notes: '' });
+  renderNbMeals();
+}
+
+function moveNbMeal(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= _nbMeals.length) return;
+  const tmp = _nbMeals[i]; _nbMeals[i] = _nbMeals[j]; _nbMeals[j] = tmp;
+  renderNbMeals();
+}
+
+function renderNbMeals() {
+  const list = document.getElementById('nbMealList');
+  if (!list) return;
+  const inp = 'padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;';
+  list.innerHTML = _nbMeals.map((m, i) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input value="${escHtml(m.name)}" oninput="_nbMeals[${i}].name=this.value" placeholder="Breakfast" style="flex:1;${inp}font-family:'DM Sans',sans-serif;">
+        <button onclick="moveNbMeal(${i},-1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↑</button>
+        <button onclick="moveNbMeal(${i},1)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↓</button>
+        <button onclick="_nbMeals.splice(${i},1);renderNbMeals()" style="background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:8px;width:32px;cursor:pointer;">×</button>
+      </div>
+      <input value="${escHtml(m.time)}" oninput="_nbMeals[${i}].time=this.value" placeholder="7:00 AM" style="width:100%;${inp}font-family:'DM Sans',sans-serif;margin-bottom:6px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px;">
+        <input value="${escHtml(m.calories)}" oninput="_nbMeals[${i}].calories=this.value" type="number" inputmode="numeric" placeholder="kcal" style="${inp}">
+        <input value="${escHtml(m.protein_g)}" oninput="_nbMeals[${i}].protein_g=this.value" type="number" inputmode="numeric" placeholder="P" style="${inp}">
+        <input value="${escHtml(m.carbs_g)}" oninput="_nbMeals[${i}].carbs_g=this.value" type="number" inputmode="numeric" placeholder="C" style="${inp}">
+        <input value="${escHtml(m.fat_g)}" oninput="_nbMeals[${i}].fat_g=this.value" type="number" inputmode="numeric" placeholder="F" style="${inp}">
+      </div>
+      <input value="${escHtml(m.notes)}" oninput="_nbMeals[${i}].notes=this.value" placeholder="Optional notes for this meal" style="width:100%;${inp}font-family:'DM Sans',sans-serif;">
+    </div>`).join('') || `<div style="color:var(--muted);font-size:12px;padding:8px 0;font-family:'DM Sans',sans-serif;">No meals yet. Tap "Add meal".</div>`;
+}
+
+async function saveNutritionPlan() {
+  const cals = parseFloat(document.getElementById('nbCalories')?.value) || 0;
+  if (!cals) { showToast('Enter daily calories', 'error'); return; }
+  const meals = _nbMeals.filter(m => (m.name || '').trim() || m.calories).map(m => {
+    const k = parseFloat(m.calories) || 0;
+    return {
+      name: (m.name || '').trim() || 'Meal', time: (m.time || '').trim(),
+      kcal: k, calories: k,
+      protein_g: parseFloat(m.protein_g) || 0, carbs_g: parseFloat(m.carbs_g) || 0, fat_g: parseFloat(m.fat_g) || 0,
+      notes: (m.notes || '').trim(), foods: []
+    };
+  });
+  const notes = (document.getElementById('nbCoachNotes')?.value || '').trim();
+  const nutrition_data = {
+    calories: cals,
+    protein_g: parseFloat(document.getElementById('nbProtein')?.value) || 0,
+    carbs_g: parseFloat(document.getElementById('nbCarbs')?.value) || 0,
+    fat_g: parseFloat(document.getElementById('nbFat')?.value) || 0,
+    strategy: notes || 'Set by your coach',
+    coach_notes: notes || null,
+    meals,
+  };
+  const asTemplate = document.getElementById('nbTemplateToggle')?.checked;
+  const clientName = (_currentClientDetail?.overview?.profile?.name) || 'Client';
+  const res = await api('/api/coach/programmes', 'POST', {
+    name: `Nutrition — ${clientName}`,
+    programme_type: 'nutrition',
+    nutrition_data,
+    client_id: asTemplate ? null : _nbClientId,
+    is_template: !!asTemplate,
+  });
+  if (res?.ok) {
+    showToast(asTemplate ? 'Template saved' : 'Nutrition plan assigned', 'success');
+    closeNutritionBuilder();
+    renderClientTab();
+  } else {
+    showToast('Failed to save', 'error');
+  }
+}
+
+async function resetClientNutrition(clientId) {
+  const res = await api('/api/coach/clients/' + clientId + '/reset-nutrition', 'POST', {});
+  if (res?.ok) { showToast('Reset to AI plan', 'success'); renderClientTab(); }
+  else showToast('Failed to reset', 'error');
 }
 
 // ── PROGRAMME BUILDER ─────────────────────────────────
