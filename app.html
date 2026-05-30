@@ -13719,5 +13719,378 @@ function urlBase64ToUint8Array(base64String) {
 
 </script>
   <div style="position:fixed;top:50px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
+
+<style>
+/* FIX 2 — collapsible client overview card */
+.summary-card summary::-webkit-details-marker { display:none; }
+.summary-card summary { list-style:none; }
+.summary-card[open] .summary-chevron { transform: rotate(90deg); }
+.summary-chevron { transition: transform 0.2s; }
+</style>
+<script>
+/* ============================================================
+   FORGE staging patch — UI fixes (1-3) + multi-programme onboarding (Feature 1)
+   Appended after all other scripts: overrides selected render functions and
+   adds the "Create new programme" full-onboarding flow. Override-by-reassignment
+   is used so the original declarations are replaced cleanly.
+   ============================================================ */
+
+/* ---------- FIX 1: keep coach Chat/History tabs clear of the trial banner ----------
+   #panel-coach is position:fixed at top: calc(54px + safe-top). The trial banner is a
+   flex child inserted above .panels, so it overlaps the fixed coach panel and hides the
+   Chat/History tab row. updateCoachTabsOffset() pushes the coach panel down by the live
+   banner height. The message thread already sits below the tabs (flex column), so it is
+   never hidden behind them. */
+function updateCoachTabsOffset() {
+  try {
+    var banner = document.getElementById('trialBanner');
+    var coach = document.getElementById('panel-coach');
+    if (!coach) return;
+    var visible = !!banner && banner.offsetParent !== null && banner.offsetHeight > 0;
+    var h = visible ? banner.offsetHeight : 0;
+    coach.style.top = h > 0 ? ('calc(54px + var(--safe-top) + ' + h + 'px)') : '';
+  } catch (e) {}
+}
+if (typeof renderTrialBanner === 'function' && !renderTrialBanner._coachOffsetWrapped) {
+  var _forgeOrigRenderTrialBanner = renderTrialBanner;
+  renderTrialBanner = async function () {
+    try { await _forgeOrigRenderTrialBanner.apply(this, arguments); }
+    finally { updateCoachTabsOffset(); }
+  };
+  renderTrialBanner._coachOffsetWrapped = true;
+}
+window.addEventListener('resize', updateCoachTabsOffset);
+window.addEventListener('orientationchange', function () { setTimeout(updateCoachTabsOffset, 250); });
+setTimeout(updateCoachTabsOffset, 800);
+
+/* ---------- FIX 2: collapsible client overview summary card ---------- */
+renderClientSummaryCard = function (ov, opened) {
+  var openAttr = opened ? ' open' : '';
+  var head = "list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px;";
+  var lbl = "font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex-shrink:0;";
+  var chev = "color:var(--muted);font-size:11px;display:inline-block;flex-shrink:0;";
+  if (ov && ov.summary) {
+    var oneLine = String(ov.summary).replace(/\s+/g, ' ').trim();
+    var preview = escHtml(oneLine.slice(0, 60)) + (oneLine.length > 60 ? '…' : '');
+    var gen = ov.summary_generated_at ? (typeof relTime === 'function' ? relTime(ov.summary_generated_at) : '') : 'just now';
+    return `<details id="clientSummaryCard" class="summary-card"${openAttr} style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden;">
+      <summary class="summary-head" style="${head}">
+        <span class="summary-chevron" style="${chev}">▶</span>
+        <span style="${lbl}">CLIENT OVERVIEW</span>
+        <span style="flex:1;min-width:0;font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</span>
+      </summary>
+      <div style="padding:0 14px 14px;">
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);">${escHtml(ov.summary).replace(/\n/g, '<br>')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;">
+          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">Generated ${gen}</span>
+          <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Regenerate</button>
+        </div>
+      </div>
+    </details>`;
+  }
+  return `<details id="clientSummaryCard" class="summary-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden;">
+      <summary class="summary-head" style="${head}">
+        <span class="summary-chevron" style="${chev}">▶</span>
+        <span style="${lbl}">CLIENT OVERVIEW</span>
+        <span id="clientSummaryPending" style="flex:1;min-width:0;font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;animation:forge-pulse 1.4s ease-in-out infinite;">Generating overview…</span>
+      </summary>
+      <div style="padding:0 14px 14px;"><div style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;">Your AI client overview is being written. This usually takes a few seconds.</div></div>
+    </details>`;
+};
+
+/* ---------- FIX 3: nutrition builder meal cards — labelled 2x2 grid + overflow guard ---------- */
+renderNbMeals = function () {
+  var list = document.getElementById('nbMealList');
+  if (!list) return;
+  var lblS = "font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;";
+  var inpS = "width:100%;min-width:0;padding:9px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;box-sizing:border-box;";
+  var cardS = "background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;overflow:hidden;box-sizing:border-box;width:100%;";
+  function cell(txt, val, key, i, ph) {
+    return `<div><div style="${lblS}">${txt}</div><input value="${escHtml(val)}" oninput="_nbMeals[${i}].${key}=this.value" type="number" inputmode="numeric" placeholder="${ph}" style="${inpS}text-align:center;"></div>`;
+  }
+  list.innerHTML = _nbMeals.map(function (m, i) {
+    return `
+    <div style="${cardS}">
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <input value="${escHtml(m.name)}" oninput="_nbMeals[${i}].name=this.value" placeholder="Meal name e.g. Breakfast" style="flex:1;${inpS}font-family:'DM Sans',sans-serif;">
+        <button onclick="moveNbMeal(${i},-1)" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↑</button>
+        <button onclick="moveNbMeal(${i},1)" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↓</button>
+        <button onclick="_nbMeals.splice(${i},1);renderNbMeals()" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:8px;width:32px;cursor:pointer;">×</button>
+      </div>
+      <input value="${escHtml(m.time)}" oninput="_nbMeals[${i}].time=this.value" placeholder="Time e.g. 7:00 AM" style="${inpS}font-family:'DM Sans',sans-serif;margin-bottom:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${cell('KCAL', m.calories, 'calories', i, 'e.g. 500')}
+        ${cell('PROTEIN (g)', m.protein_g, 'protein_g', i, 'e.g. 40')}
+        ${cell('CARBS (g)', m.carbs_g, 'carbs_g', i, 'e.g. 60')}
+        ${cell('FAT (g)', m.fat_g, 'fat_g', i, 'e.g. 15')}
+      </div>
+      <input value="${escHtml(m.notes)}" oninput="_nbMeals[${i}].notes=this.value" placeholder="Optional notes for this meal" style="${inpS}font-family:'DM Sans',sans-serif;margin-top:8px;">
+    </div>`;
+  }).join('') || `<div style="color:var(--muted);font-size:12px;padding:8px 0;font-family:'DM Sans',sans-serif;">No meals yet. Tap "Add meal".</div>`;
+};
+
+/* ---------- FEATURE 1: multiple saved programmes via full onboarding ---------- */
+renderProgrammes = async function () {
+  var el = document.getElementById('programmesPanel');
+  if (!el) return;
+  el.innerHTML = '<div class="loader"><div class="spin"></div></div>';
+  var res = await api('/api/programmes');
+  var progs = (res && res.programmes) || [];
+  userProgrammes = progs;
+  var tier = (userSubscription && userSubscription.isExempt) ? 'forge' : ((userSubscription && userSubscription.accessTier) || 'iron');
+  var limit = programmeTierLimit();
+  var atLimit = progs.length >= limit;
+  var createBtn = atLimit
+    ? `<button onclick="programmeLimitToast()" style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Programme limit reached</button>`
+    : `<button onclick="startNewProgramme()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">+ Create new programme</button>`;
+  var saveBtn = atLimit
+    ? ''
+    : `<button onclick="showNewProgrammeModal()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">Save current plan as a programme</button>`;
+  var slotsLine = (tier === 'steel')
+    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-top:14px;text-align:center;">${progs.length} of 3 slots used</div>`
+    : '';
+  el.innerHTML = `
+    <div style="padding:16px;">
+      ${createBtn}
+      ${saveBtn}
+      ${progs.length === 0
+        ? '<div class="empty-state">No saved programmes yet. Create a new one for a different goal, or save your current plan.</div>'
+        : progs.map(programmeCard).join('')}
+      ${slotsLine}
+    </div>`;
+};
+
+let _npData = {};
+let _npStep = 0;
+let _npLastId = null;
+let _npLastName = '';
+
+function npSteps() {
+  var base = (typeof getObStepsBase === 'function' ? getObStepsBase() : []).filter(function (s) { return s.field !== 'stats'; });
+  var steps = [{ field: 'progname', type: 'progname', title: 'New Programme', sub: 'Name your programme, then answer a few quick questions.' }].concat(base);
+  if (Array.isArray(_npData.goal) && _npData.goal.includes('sport')) {
+    steps.splice(2, 0, { field: 'sport_name', type: 'sport_name', title: 'Your sport', sub: 'Which sport are you training for?' });
+  }
+  return steps;
+}
+
+function startNewProgramme() {
+  var tier = (userSubscription && userSubscription.isExempt) ? 'forge' : ((userSubscription && userSubscription.accessTier) || 'iron');
+  if (tier !== 'steel' && tier !== 'forge') { showLockedFeature('Multiple Saved Programmes', 'steel'); return; }
+  if (Array.isArray(userProgrammes) && userProgrammes.length >= programmeTierLimit()) { programmeLimitToast(); return; }
+  _npData = { goal: [], equipment: [], preferred_days: [] };
+  _npStep = 0;
+  var prev = document.getElementById('newProgOnb');
+  if (prev) prev.remove();
+  var ov = document.createElement('div');
+  ov.id = 'newProgOnb';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
+  ov.innerHTML = `
+    <div style="padding:max(env(safe-area-inset-top),44px) 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <button onclick="closeNewProgramme()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;line-height:1;">←</button>
+      <div style="flex:1;min-width:0;">
+        <div id="npStepLabel" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;"></div>
+        <div id="npTitle" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--text);"></div>
+      </div>
+    </div>
+    <div style="height:3px;background:var(--surface);flex-shrink:0;"><div id="npBar" style="height:100%;background:var(--accent);width:0%;transition:width .2s;"></div></div>
+    <div id="npSub" style="padding:14px 18px 0;font-size:13px;color:var(--muted);flex-shrink:0;"></div>
+    <div id="npBody" style="flex:1;overflow-y:auto;padding:14px 18px 18px;"></div>
+    <div style="display:flex;gap:10px;padding:12px 18px max(env(safe-area-inset-bottom),16px);border-top:1px solid var(--border);flex-shrink:0;">
+      <button id="npBackBtn" onclick="npBack()" style="display:none;flex:0 0 auto;padding:13px 18px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Back</button>
+      <button id="npNextBtn" onclick="npNext()" style="flex:1;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Next</button>
+    </div>`;
+  document.body.appendChild(ov);
+  renderNpStep();
+}
+function closeNewProgramme() { var e = document.getElementById('newProgOnb'); if (e) e.remove(); }
+
+function npOptionCard(field, o, selected, multi) {
+  var handler = multi ? `npToggleMulti('${field}','${o.value}')` : `npSelect('${field}','${o.value}')`;
+  return `<div onclick="${handler}" style="background:var(--surface);border:2px solid ${selected ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:24px;flex-shrink:0;">${o.icon || ''}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:15px;font-weight:600;color:${selected ? 'var(--accent)' : 'var(--text)'};">${escHtml(o.label || '')}</div>
+        ${o.sub ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${escHtml(o.sub)}</div>` : ''}
+      </div>
+      ${selected ? '<span style="color:var(--accent);font-size:18px;flex-shrink:0;">✓</span>' : ''}
+    </div>`;
+}
+
+function npDaysHtml() {
+  var dayKeys = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  if (!Array.isArray(_npData.preferred_days)) _npData.preferred_days = [];
+  var target = parseInt(_npData.days_per_week) || 3;
+  var rows = dayKeys.map(function (d) {
+    var sel = _npData.preferred_days.includes(d);
+    var label = (typeof t === 'function') ? t('day_' + d.toLowerCase()) : d;
+    return `<div onclick="npToggleDay('${d}')" style="background:var(--surface);border:2px solid ${sel ? 'var(--accent)' : 'var(--border)'};border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+        <span style="font-size:14px;font-weight:600;color:${sel ? 'var(--accent)' : 'var(--text)'};">${escHtml(label)}</span>
+        ${sel ? '<span style="color:var(--accent);font-size:18px;">✓</span>' : ''}
+      </div>`;
+  }).join('');
+  return `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PICK ${target} DAY${target === 1 ? '' : 'S'} (${_npData.preferred_days.length}/${target})</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>`;
+}
+
+function renderNpStep() {
+  var steps = npSteps();
+  if (_npStep >= steps.length) _npStep = steps.length - 1;
+  if (_npStep < 0) _npStep = 0;
+  var step = steps[_npStep];
+  var total = steps.length;
+  var f = step.field;
+  function set(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+  set('npStepLabel', 'STEP ' + (_npStep + 1) + ' OF ' + total);
+  set('npTitle', step.title || 'New Programme');
+  set('npSub', step.sub || '');
+  var bar = document.getElementById('npBar'); if (bar) bar.style.width = Math.round(((_npStep + 1) / total) * 100) + '%';
+  var back = document.getElementById('npBackBtn'); if (back) back.style.display = _npStep > 0 ? '' : 'none';
+  var nextBtn = document.getElementById('npNextBtn'); if (nextBtn) nextBtn.textContent = (_npStep === total - 1) ? 'Build programme' : 'Next';
+  var body = document.getElementById('npBody');
+  if (!body) return;
+  if (step.type === 'progname') {
+    body.innerHTML = `<input id="npName" value="${escHtml(_npData.name || '')}" oninput="_npData.name=this.value;npUpdateNext()" placeholder="e.g. Bulk Phase, Competition Prep, Off-season" style="width:100%;padding:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">`;
+  } else if (step.type === 'grid') {
+    body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${(step.options || []).map(function (o) { return npOptionCard(f, o, String(_npData[f]) === String(o.value), false); }).join('')}</div>`;
+  } else if (step.type === 'multi') {
+    if (!Array.isArray(_npData[f])) _npData[f] = [];
+    body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${(step.options || []).map(function (o) { return npOptionCard(f, o, _npData[f].includes(o.value), true); }).join('')}</div>`;
+  } else if (step.type === 'days') {
+    body.innerHTML = npDaysHtml();
+  } else if (step.type === 'sport_name') {
+    body.innerHTML = `<input id="npSport" value="${escHtml(_npData.sport_name || '')}" oninput="_npData.sport_name=this.value;npUpdateNext()" placeholder="e.g. Football, Brazilian Jiu-Jitsu, Rowing" style="width:100%;padding:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">`;
+  } else if (step.type === 'text') {
+    body.innerHTML = `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-family:'DM Sans',sans-serif;">Dietary restrictions</div>
+        <input id="npDiet" value="${escHtml(_npData.diet_restrictions || '')}" placeholder="e.g. lactose intolerant — or leave blank" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;font-family:'DM Sans',sans-serif;">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-family:'DM Sans',sans-serif;">Injuries or limitations</div>
+        <input id="npInj" value="${escHtml(_npData.injuries || '')}" placeholder="e.g. bad lower back — or leave blank" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;font-family:'DM Sans',sans-serif;">
+      </div>`;
+  } else {
+    body.innerHTML = `<div style="font-size:13px;color:var(--muted);">Tap Next to continue.</div>`;
+  }
+  npUpdateNext();
+}
+
+function npUpdateNext() {
+  var steps = npSteps();
+  var step = steps[_npStep];
+  if (!step) return;
+  var f = step.field;
+  var ok = true;
+  if (step.type === 'progname') ok = !!(_npData.name && _npData.name.trim());
+  else if (step.type === 'grid') ok = _npData[f] !== undefined && _npData[f] !== '' && _npData[f] !== null;
+  else if (step.type === 'multi') ok = Array.isArray(_npData[f]) && _npData[f].length > 0;
+  else if (step.type === 'days') ok = (_npData.preferred_days || []).length === (parseInt(_npData.days_per_week) || 3);
+  else if (step.type === 'sport_name') ok = !!(_npData.sport_name && _npData.sport_name.trim());
+  var btn = document.getElementById('npNextBtn');
+  if (btn) { btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.4'; }
+}
+
+function npSelect(field, value) { _npData[field] = value; renderNpStep(); }
+function npToggleMulti(field, value) {
+  if (!Array.isArray(_npData[field])) _npData[field] = [];
+  var i = _npData[field].indexOf(value);
+  if (i >= 0) _npData[field].splice(i, 1); else _npData[field].push(value);
+  renderNpStep();
+}
+function npToggleDay(d) {
+  if (!Array.isArray(_npData.preferred_days)) _npData.preferred_days = [];
+  var target = parseInt(_npData.days_per_week) || 3;
+  var i = _npData.preferred_days.indexOf(d);
+  if (i >= 0) _npData.preferred_days.splice(i, 1);
+  else { if (_npData.preferred_days.length >= target) return; _npData.preferred_days.push(d); }
+  renderNpStep();
+}
+
+function npNext() {
+  var steps = npSteps();
+  var step = steps[_npStep];
+  if (step.type === 'progname') { var n = document.getElementById('npName'); _npData.name = (n ? n.value : '').trim(); }
+  if (step.type === 'sport_name') { var sp = document.getElementById('npSport'); _npData.sport_name = (sp ? sp.value : '').trim(); }
+  if (step.type === 'text') {
+    var dt = document.getElementById('npDiet'); var ij = document.getElementById('npInj');
+    _npData.diet_restrictions = (dt ? dt.value : '').trim();
+    _npData.injuries = (ij ? ij.value : '').trim();
+  }
+  npUpdateNext();
+  var btn = document.getElementById('npNextBtn');
+  if (btn && btn.disabled) { showToast('Please complete this step', ''); return; }
+  if (_npStep >= steps.length - 1) { submitNewProgramme(); return; }
+  _npStep++;
+  renderNpStep();
+}
+function npBack() { if (_npStep > 0) { _npStep--; renderNpStep(); } }
+
+async function submitNewProgramme() {
+  var toStr = function (v) { return Array.isArray(v) ? v.join(', ') : (v || ''); };
+  var name = (_npData.name || '').trim() || 'My Programme';
+  var body = {
+    name: name,
+    language: (typeof appLanguage !== 'undefined' && appLanguage) ? appLanguage : 'en',
+    goal: toStr(_npData.goal),
+    experience: _npData.experience || '',
+    days_per_week: parseInt(_npData.days_per_week) || 4,
+    preferred_days: toStr(_npData.preferred_days),
+    equipment: toStr(_npData.equipment),
+    diet_style: _npData.diet_style || '',
+    diet_restrictions: _npData.diet_restrictions || 'none',
+    injuries: _npData.injuries || 'none',
+    sport: _npData.sport_name || null
+  };
+  var ov = document.getElementById('newProgOnb');
+  if (ov) ov.innerHTML = `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
+      <div class="loader" style="margin-bottom:20px;"><div class="spin"></div></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Building your programme…</div>
+      <div style="font-size:13px;color:var(--muted);max-width:260px;line-height:1.5;">This can take up to a minute while we build a full personalised plan.</div>
+    </div>`;
+  var res = await api('/api/programmes/generate', 'POST', body, 300000);
+  if (res && res.programme_id) {
+    showNewProgrammeSuccess(res.programme_id, name);
+  } else if (res && res.error === 'upgrade_required') {
+    closeNewProgramme(); showLockedFeature('Multiple Saved Programmes', 'steel');
+  } else if (res && res.error === 'programme_limit_reached') {
+    closeNewProgramme(); showToast(res.message || 'Programme limit reached', 'error');
+  } else {
+    closeNewProgramme(); showToast('Could not build programme — please try again', 'error');
+  }
+}
+
+function showNewProgrammeSuccess(programmeId, name) {
+  _npLastId = programmeId;
+  _npLastName = name;
+  var ov = document.getElementById('newProgOnb');
+  if (!ov) return;
+  ov.innerHTML = `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
+      <div style="font-size:46px;margin-bottom:14px;">✅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);margin-bottom:8px;">Your ${escHtml(name)} programme is ready.</div>
+      <div style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.5;margin-bottom:26px;">Switch to it now, or keep your current plan active and switch whenever you like.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
+        <button onclick="activateNewProgramme()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Switch to this now</button>
+        <button onclick="closeNewProgramme();showPanel('programmes');renderProgrammes();" style="width:100%;padding:13px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Save for later</button>
+      </div>
+    </div>`;
+}
+
+async function activateNewProgramme() {
+  if (!_npLastId) { closeNewProgramme(); return; }
+  var res = await api('/api/programmes/' + _npLastId + '/activate', 'POST');
+  if (res && res.ok) {
+    closeNewProgramme();
+    if (typeof reloadPlan === 'function') await reloadPlan();
+    showPanel('workout');
+    showToast('Switched to ' + _npLastName, 'success');
+  } else {
+    showToast((res && res.message) || 'Failed to switch programme', 'error');
+  }
+}
+
+</script>
 </body>
 </html>
