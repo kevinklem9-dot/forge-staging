@@ -1357,6 +1357,40 @@ function applyLandingLanguage(code) {
   if (footerLinks[1] && s.footer_terms) footerLinks[1].textContent = s.footer_terms;
   if (footerLinks[2] && s.footer_contact) footerLinks[2].textContent = s.footer_contact;
 }
+
+// FIX 9: PWA install nudge on the landing page — fires 5s after load for new visitors
+// who haven't installed the app or dismissed the prompt. Mirrors the in-app prompt.
+(function () {
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  function dismissLandingPwa() {
+    try { localStorage.setItem('forge-pwa-dismissed', '1'); } catch (e) {}
+    var el = document.getElementById('pwaInstallPrompt');
+    if (el) el.remove();
+  }
+  window.dismissLandingPwa = dismissLandingPwa;
+  function showLandingPwa() {
+    if (isStandalone()) return;
+    try { if (localStorage.getItem('forge-pwa-dismissed')) return; } catch (e) {}
+    if (document.getElementById('pwaInstallPrompt')) return;
+    var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var steps = isIos
+      ? ['Tap the Share button at the bottom of Safari', 'Scroll down and tap Add to Home Screen']
+      : ['Tap the menu in your browser', 'Tap Add to Home screen'];
+    var sheet = document.createElement('div');
+    sheet.id = 'pwaInstallPrompt';
+    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#111;border-top:1px solid #e8ff3d;padding:20px 18px calc(20px + env(safe-area-inset-bottom));color:#fff;font-family:"DM Sans",sans-serif;box-shadow:0 -10px 30px rgba(0,0,0,0.6);';
+    sheet.innerHTML = '<button onclick="dismissLandingPwa()" aria-label="Close" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>'
+      + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:20px;letter-spacing:1.5px;color:#e8ff3d;margin-bottom:8px;">INSTALL FORGE</div>'
+      + '<div style="font-size:13px;color:#bbb;margin-bottom:12px;line-height:1.5;">Add FORGE to your home screen for faster access and a fullscreen experience.</div>'
+      + '<ol style="margin:0;padding-left:22px;font-size:13px;line-height:1.7;color:#eee;">' + steps.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>';
+    document.body.appendChild(sheet);
+    setTimeout(function () { var el = document.getElementById('pwaInstallPrompt'); if (el) el.remove(); }, 12000);
+  }
+  setTimeout(showLandingPwa, 5000);
+})();
+
 </script>
   <div style="position:fixed;top:68px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
 </body>
