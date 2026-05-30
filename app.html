@@ -238,8 +238,11 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .auth-error { color:var(--red); font-size:12px; font-family:'DM Mono',monospace; margin-top:10px; text-align:center; display:none; }
 
 /* ── ONBOARDING ── */
-.onboarding-screen { padding-top:var(--safe-top); }
-.ob-header { padding:24px 22px 0; }
+.onboarding-screen { padding-top:max(env(safe-area-inset-top), 44px); }
+/* FIX 2: clear the Dynamic Island / notch. The 24px top was hidden behind the camera
+ * on iPhone. max(env(safe-area-inset-top), 44px) floors the inset at 44px where env()
+ * returns 0. This header holds the step indicator + headline + progress bar. */
+.ob-header { padding:max(env(safe-area-inset-top), 44px) 22px 0; }
 .ob-step { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:6px; }
 .ob-title { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:2px; color:var(--accent); }
 .ob-sub { color:var(--muted); font-size:13px; margin-top:4px; }
@@ -276,8 +279,13 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * (see body.pwa-mode .app below). 48px = nav padding-top(6) + icon(22) + gap(3) +
  * label(~13) + button padding-bottom(4). If nav button sizing changes, recompute
  * the 48px here only — #panel-coach's bottom offset reads it too. */
-.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: env(safe-area-inset-bottom); --nav-h: calc(48px + var(--nav-safe)); }
-body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 20px); }
+/* FIX 3: hardcoded 34px fallback for the iPhone home indicator. env(safe-area-inset-bottom)
+ * fails to resolve on some iPhones (e.g. 15 Plus in browser tab), leaving the nav too high.
+ * max(env(...), 34px) uses env() where it works and 34px (the 15 Plus home-indicator height)
+ * everywhere else. --nav-safe is the single source of truth read by .bottom-nav, every
+ * .panel, and #panel-coach's bottom offset, so the floor propagates to all of them. */
+.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 34px); --nav-h: calc(48px + var(--nav-safe)); }
+body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 34px); }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:4px; color:var(--accent); }
 .logo-sub { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; }
@@ -1730,7 +1738,10 @@ async function handleSession(session) {
   }
 
   // No plan found — only go to onboarding if we're genuinely sure
-  if (userProfile.onboarding_complete) {
+  // FIX 1: treat ONLY an explicit `true` as "onboarding done". null / undefined / false
+  // (a brand-new account whose profile row has no flag yet) must fall through to onboarding,
+  // not skip it. `userProfile?.` also guards against a null/not-yet-fetched profile.
+  if (userProfile?.onboarding_complete === true) {
     // Marked complete but no plan — something went wrong, try generating
     await loadPlanAndLaunch();
     return;
@@ -3400,6 +3411,11 @@ async function saveLog(btn) {
     if (res.new_prs?.length) showToast(`New PR: ${res.new_prs[0]} 🏆`, 'success');
     else showToast(t('session_saved'), 'success');
 
+    // FIX 4: refresh the Progress panel so the just-saved session appears in Session
+    // History immediately. renderProgress() re-fetches /api/sessions fresh (no cached
+    // session_logs), so the new session is always included.
+    if (typeof renderProgress === 'function') renderProgress();
+
     // Complete first_workout mission
     api('/api/missions/first_workout/complete', 'POST').catch(() => {});
 
@@ -3650,9 +3666,29 @@ function formatWeeklyAmount(amounts) {
   return displayUnit ? `${rounded} ${displayUnit}` : `${rounded}`;
 }
 
+
+// FIX 7: render a coach-provided plain-text shopping list (UPPERCASE category headings +
+// "- item" bullets) into the Food panel. Takes precedence over the auto-generated list.
+function renderCoachShoppingHtml(text, coachName) {
+  var safe = (typeof escHtml === "function") ? escHtml(text || "") : (text || "");
+  var lines = safe.split("\n").map(function(l){return l.trim();}).filter(Boolean);
+  var rows = lines.map(function(l){
+    if (/^[-•*]/.test(l)) return '<div style="font-size:13px;color:var(--text);padding:4px 0 4px 14px;line-height:1.5;">• ' + l.replace(/^[-•*]\s*/, "") + '</div>';
+    return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);margin:14px 0 4px;text-transform:uppercase;">' + l + '</div>';
+  }).join("");
+  var who = coachName ? (escHtml(coachName) + " built this shopping list from your meal plan.") : "Your coach built this shopping list from your meal plan.";
+  return '<div style="background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:12px;"><div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:4px;">FROM YOUR COACH</div><div style="font-size:12px;color:var(--muted);">' + who + '</div></div><div>' + rows + '</div>';
+}
+
 function renderShoppingList() {
   const el = document.getElementById('shoppingList');
   if (!el) return;
+  // FIX 7: a coach-assigned shopping list takes precedence over the auto-generated one.
+  var _coachNp = (typeof userPlan !== 'undefined' && userPlan) ? userPlan.nutrition_plan : null;
+  if (_coachNp && _coachNp.coach_assigned && _coachNp.shopping_list) {
+    el.innerHTML = renderCoachShoppingHtml(_coachNp.shopping_list, _coachNp.coach_name);
+    return;
+  }
 
   if (!canAccess('shopping_list')) {
     el.innerHTML = `<div onclick="showLockedFeature('Weekly Shopping List','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
@@ -4127,6 +4163,27 @@ function formatFullDate(iso) {
 }
 
 // ── PR SEARCH ────────────────────────────────────
+// FIX 5: fuzzy PR search helpers — common abbreviations + Levenshtein typo tolerance.
+const PR_ALIASES = { 'db': 'dumbbell', 'bb': 'barbell', 'ohp': 'overhead press', 'rdl': 'romanian deadlift', 'cgbp': 'close grip bench' };
+function expandPrAliases(q) {
+  return (q || '').split(/\s+/).map(w => PR_ALIASES[w.toLowerCase()] || w).join(' ').trim();
+}
+function levenshtein(a, b) {
+  const m = [], al = a.length, bl = b.length;
+  for (let i = 0; i <= al; i++) m[i] = [i];
+  for (let j = 0; j <= bl; j++) m[0][j] = j;
+  for (let i = 1; i <= al; i++)
+    for (let j = 1; j <= bl; j++)
+      m[i][j] = a[i-1] === b[j-1] ? m[i-1][j-1] : 1 + Math.min(m[i-1][j], m[i][j-1], m[i-1][j-1]);
+  return m[al][bl];
+}
+function fuzzyMatch(str, query) {
+  const s = (str || '').toLowerCase().replace(/\s/g, '');
+  const q = (query || '').toLowerCase().replace(/\s/g, '');
+  if (!q) return true;
+  return s.includes(q) || q.includes(s) || levenshtein(s, q) <= 2;
+}
+
 let _prSearchTimer = null;
 function onPrSearchInput(val) {
   const clearBtn = document.getElementById('prSearchClear');
@@ -12437,6 +12494,7 @@ async function deleteAssignedProgramme(programmeId) {
 
 // ── NUTRITION BUILDER ─────────────────────────────────
 let _nbMeals = [];
+let _nbShopping = false; // FIX 7: coach "include shopping list" toggle state
 let _nbClientId = null;
 
 function nbField(label, id) {
@@ -12444,6 +12502,7 @@ function nbField(label, id) {
 }
 
 function openNutritionBuilder(clientId) {
+  _nbShopping = false; // FIX 7: reset the shopping-list toggle each time the builder opens
   _nbClientId = clientId;
   const np = _currentClientDetail?.nutritionPlan || {};
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'client';
@@ -12480,6 +12539,13 @@ function openNutritionBuilder(clientId) {
       <textarea id="nbCoachNotes" rows="3" placeholder="Notes for client about this nutrition plan" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;line-height:1.5;resize:vertical;box-sizing:border-box;">${escHtml(np.coach_notes || '')}</textarea>
       <label style="display:flex;align-items:center;gap:8px;margin:14px 0;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
         <input type="checkbox" id="nbTemplateToggle"> Save as template
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;box-sizing:border-box;">
+        <input type="checkbox" id="nbShoppingToggle" ${_nbShopping ? 'checked' : ''} onchange="_nbShopping = this.checked" style="margin-top:2px;flex-shrink:0;width:18px;height:18px;accent-color:var(--accent);">
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:13px;font-weight:600;color:var(--text);">Include shopping list</span>
+          <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">AI generates a shopping list from the meals above</span>
+        </span>
       </label>
       <button onclick="saveNutritionPlan()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Save and assign to ${escHtml(clientName)}</button>
       <button onclick="closeNutritionBuilder()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
@@ -12562,6 +12628,13 @@ async function saveNutritionPlan() {
   };
   const asTemplate = document.getElementById('nbTemplateToggle')?.checked;
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'Client';
+  // FIX 7: shopping-list generation — when the coach toggled it on, build a list
+  // from the meals (server-side AI) and attach it to nutrition_data before assigning.
+  if (_nbShopping && Array.isArray(meals) && meals.length) {
+    try { showToast('Generating shopping list…', ''); } catch(e){}
+    const _slRes = await api('/api/coach/generate-shopping-list', 'POST', { meals: meals, client_name: (typeof clientName !== 'undefined' ? clientName : '') });
+    if (_slRes && _slRes.shopping_list) nutrition_data.shopping_list = _slRes.shopping_list;
+  }
   const res = await api('/api/coach/programmes', 'POST', {
     name: `Nutrition — ${clientName}`,
     programme_type: 'nutrition',
@@ -12638,15 +12711,17 @@ function renderBuilderSessions() {
       </div>
       <input value="${escHtml(s.note || '')}" placeholder="Coach note (client sees this)" oninput="_builderState.sessions[${sIdx}].note = this.value" style="width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:10px;">
       ${(s.exercises || []).map((e, eIdx) => `
-        <div style="display:grid;grid-template-columns:1fr 60px 80px 80px auto;gap:6px;margin-bottom:6px;align-items:center;">
-          <input value="${escHtml(e.name || '')}" placeholder="Exercise name" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].name = this.value" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
-          <input type="number" value="${escHtml(e.sets || '')}" placeholder="Sets" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].sets = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
-          <input value="${escHtml(e.reps || '')}" placeholder="Reps" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].reps = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
-          <input value="${escHtml(e.rpe || '')}" placeholder="RPE/wt" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].rpe = this.value" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
-          <div style="display:flex;gap:2px;">
-            <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, -1)" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↑</button>
-            <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, 1)" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↓</button>
-            <button onclick="deleteBuilderExercise(${sIdx}, ${eIdx})" style="padding:4px 6px;background:transparent;border:1px solid var(--border);color:var(--red, #ff4444);border-radius:6px;cursor:pointer;font-size:11px;">✕</button>
+        <div style="display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box;overflow:hidden;margin-bottom:8px;">
+          <input value="${escHtml(e.name || '')}" placeholder="Exercise name" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].name = this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+          <div style="display:flex;align-items:center;gap:6px;width:100%;">
+            <input type="number" value="${escHtml(e.sets || '')}" placeholder="Sets" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].sets = this.value" style="flex:1;min-width:0;max-width:80px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+            <input value="${escHtml(e.reps || '')}" placeholder="Reps" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].reps = this.value" style="flex:1;min-width:0;max-width:80px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+            <input value="${escHtml(e.rpe || '')}" placeholder="RPE/wt" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].rpe = this.value" style="flex:1;min-width:0;max-width:80px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;text-align:center;">
+            <div style="display:flex;gap:4px;flex-shrink:0;margin-left:auto;">
+              <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, -1)" style="padding:6px 8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↑</button>
+              <button onclick="moveBuilderExercise(${sIdx}, ${eIdx}, 1)" style="padding:6px 8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:11px;">↓</button>
+              <button onclick="deleteBuilderExercise(${sIdx}, ${eIdx})" style="padding:6px 8px;background:transparent;border:1px solid var(--border);color:var(--red, #ff4444);border-radius:6px;cursor:pointer;font-size:11px;">✕</button>
+            </div>
           </div>
         </div>
       `).join('')}
@@ -13366,6 +13441,11 @@ function showPwaPrompt() {
   if (isStandalonePwa()) return;
   if (localStorage.getItem('forge-pwa-dismissed')) return;
   if (document.getElementById('pwaInstallPrompt')) return;
+  // FIX 9: never show during onboarding — only once the user is in the main app view.
+  // On a brand-new account the prompt previously fired mid-onboarding (or before the
+  // app rendered) and got lost. Gate it on screen-app being active and onboarding not.
+  if (document.getElementById('screen-onboarding')?.classList.contains('active')) return;
+  if (!document.getElementById('screen-app')?.classList.contains('active')) return;
 
   // iOS Safari vs everything else (Android Chrome, Samsung Internet, etc.)
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -13465,8 +13545,9 @@ if ('serviceWorker' in navigator) {
 
 // Fire-once boot helpers — call these right after loadPlanAndLaunch returns.
 function bootPostLaunch() {
-  // 3s after launch — PWA install nudge
-  setTimeout(showPwaPrompt, 3000);
+  // 4s after launch — PWA install nudge (FIX 9: was 3s; give the app time to fully
+  // render and onboarding to settle before the prompt fires).
+  setTimeout(showPwaPrompt, 4000);
   // 5s after launch — first version check (boot path stays clean)
   setTimeout(checkForUpdate, 5000);
   // Every 30 minutes while open
@@ -13834,12 +13915,22 @@ renderProgrammes = async function () {
   var el = document.getElementById('programmesPanel');
   if (!el) return;
   el.innerHTML = '<div class="loader"><div class="spin"></div></div>';
-  var res = await api('/api/programmes');
-  var progs = (res && res.programmes) || [];
+  // FIX 8: fetch ALL programmes (incl. archived) so we can render the Archived section and
+  // enforce limits against only the active (non-archived) ones.
+  var res = await api('/api/programmes?include_archived=true');
+  var all = (res && res.programmes) || [];
+  var progs = all.filter(function (p) { return !p.is_archived; });
+  var archived = all.filter(function (p) { return p.is_archived; });
   userProgrammes = progs;
   var tier = (userSubscription && userSubscription.isExempt) ? 'forge' : ((userSubscription && userSubscription.accessTier) || 'iron');
   var limit = programmeTierLimit();
   var atLimit = progs.length >= limit;
+  // FIX 8: over-limit after a downgrade (e.g. trial -> Steel). Show the one-time archive
+  // chooser modal so the user resolves which programmes to keep.
+  var overLimit = (limit !== Infinity) && progs.length > limit;
+  if (overLimit && !localStorage.getItem('forge-programmes-overlimit-shown')) {
+    showProgrammeOverLimitModal(progs, limit);
+  }
   var createBtn = atLimit
     ? `<button onclick="programmeLimitToast()" style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Programme limit reached</button>`
     : `<button onclick="startNewProgramme()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">+ Create new programme</button>`;
@@ -13849,6 +13940,11 @@ renderProgrammes = async function () {
   var slotsLine = (tier === 'steel')
     ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-top:14px;text-align:center;">${progs.length} of 3 slots used</div>`
     : '';
+  var archivedSection = archived.length ? `
+      <details style="margin-top:20px;">
+        <summary style="list-style:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);padding:8px 0;">&#9656; ARCHIVED (${archived.length})</summary>
+        <div style="margin-top:10px;">${archived.map(programmeArchivedCard).join('')}</div>
+      </details>` : '';
   el.innerHTML = `
     <div style="padding:16px;">
       ${createBtn}
@@ -13857,8 +13953,92 @@ renderProgrammes = async function () {
         ? '<div class="empty-state">No saved programmes yet. Create a new one for a different goal, or save your current plan.</div>'
         : progs.map(programmeCard).join('')}
       ${slotsLine}
+      ${archivedSection}
     </div>`;
 };
+
+// FIX 8: archived programme card with a Restore button.
+function programmeArchivedCard(p) {
+  var dateStr = new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  return `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;opacity:0.8;">
+      <div style="font-weight:700;font-size:14px;">${escHtml(p.name)}</div>
+      ${p.description ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;">${escHtml(p.description)}</div>` : ''}
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;">ARCHIVED &middot; ${dateStr}</div>
+      <button onclick="restoreProgramme('${p.id}')" style="margin-top:12px;width:100%;background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Restore</button>
+    </div>`;
+}
+
+// FIX 8: one-time, non-dismissible modal to choose which over-limit programmes to archive.
+function showProgrammeOverLimitModal(progs, limit) {
+  if (document.getElementById('progOverLimitModal')) return;
+  var overBy = progs.length - limit;
+  var tierName = (userSubscription && userSubscription.accessTier)
+    ? (userSubscription.accessTier[0].toUpperCase() + userSubscription.accessTier.slice(1)) : 'your plan';
+  var modal = document.createElement('div');
+  modal.id = 'progOverLimitModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+  var rows = progs.map(function (p) {
+    var locked = !!p.is_active;
+    return `<label style="display:flex;align-items:center;gap:10px;padding:11px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;${locked ? 'opacity:0.55;' : 'cursor:pointer;'}box-sizing:border-box;">
+        <input type="checkbox" class="prog-archive-check" value="${p.id}" ${locked ? 'disabled' : ''} onchange="updateOverLimitArchiveBtn(${overBy})" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:14px;font-weight:600;color:var(--text);">${escHtml(p.name)}${locked ? ' &#128274;' : ''}</span>
+          ${p.is_active ? `<span style="display:block;font-size:11px;color:var(--accent);margin-top:2px;">Active &mdash; can't be archived</span>` : (p.description ? `<span style="display:block;font-size:11px;color:var(--muted);margin-top:2px;">${escHtml(p.description)}</span>` : '')}
+        </span>
+      </label>`;
+  }).join('');
+  modal.innerHTML = `
+    <div style="background:var(--bg);border-radius:16px;padding:22px;max-width:380px;width:100%;max-height:85vh;overflow-y:auto;">
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">You're over your programme limit</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;">You have ${progs.length} programmes but ${tierName} allows ${limit}. Choose ${overBy} programme${overBy === 1 ? '' : 's'} to archive. Archived programmes are saved but inactive &mdash; upgrade to restore them.</div>
+      ${rows}
+      <button id="overLimitArchiveBtn" onclick="archiveSelectedProgrammes(${overBy})" disabled style="width:100%;margin-top:8px;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;">Archive selected (0/${overBy})</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function updateOverLimitArchiveBtn(overBy) {
+  var checked = document.querySelectorAll('.prog-archive-check:checked').length;
+  var btn = document.getElementById('overLimitArchiveBtn');
+  if (!btn) return;
+  var ok = checked === overBy;
+  btn.disabled = !ok;
+  btn.textContent = `Archive selected (${checked}/${overBy})`;
+  btn.style.background = ok ? 'var(--accent)' : 'var(--border)';
+  btn.style.color = ok ? '#000' : 'var(--muted)';
+  btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+}
+
+async function archiveSelectedProgrammes(overBy) {
+  var ids = Array.from(document.querySelectorAll('.prog-archive-check:checked')).map(function (c) { return c.value; });
+  if (ids.length !== overBy) return;
+  var btn = document.getElementById('overLimitArchiveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Archiving...'; }
+  for (var i = 0; i < ids.length; i++) {
+    await api('/api/programmes/' + ids[i] + '/archive', 'PATCH');
+  }
+  try { localStorage.setItem('forge-programmes-overlimit-shown', '1'); } catch(e) {}
+  document.getElementById('progOverLimitModal')?.remove();
+  showToast(ids.length === 1 ? 'Programme archived' : 'Programmes archived', 'success');
+  renderProgrammes();
+}
+
+async function restoreProgramme(id) {
+  var limit = programmeTierLimit();
+  if (limit !== Infinity && Array.isArray(userProgrammes) && userProgrammes.length >= limit) {
+    programmeLimitToast();
+    return;
+  }
+  var res = await api('/api/programmes/' + id + '/restore', 'PATCH');
+  if (res && res.ok) {
+    try { localStorage.removeItem('forge-programmes-overlimit-shown'); } catch(e) {}
+    showToast('Programme restored', 'success');
+    renderProgrammes();
+  } else {
+    showToast('Failed to restore programme', 'error');
+  }
+}
 
 let _npData = {};
 let _npStep = 0;
