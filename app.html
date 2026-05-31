@@ -843,9 +843,7 @@ nav.bottom-nav, .bottom-nav {
     <div class="topbar">
       <div><div class="logo">FORGE</div><div class="logo-sub">AI TRAINER</div></div>
       <div class="user-menu">
-        <button id="langBtn" class="theme-btn" onclick="toggleLangDrawer()" title="Change language" style="font-size:20px">🇬🇧</button>
-        <button class="theme-btn" onclick="toggleThemeDrawer()" title="Change theme">🎨</button>
-        <div class="user-avatar" id="userAvatar" onclick="signOut()">?</div>
+        <div class="user-avatar" id="userAvatar" onclick="showPanel('account')">?</div>
       </div>
     </div>
 
@@ -5964,6 +5962,9 @@ function renderAccount() {
   const displayTier = sub.isExempt ? 'forge' : (sub.tier || 'iron');
   const trialDays = sub.trialEndsAt ? Math.max(0, Math.ceil((new Date(sub.trialEndsAt) - new Date()) / (1000*60*60*24))) : (sub.trialDaysLeft || 0);
   const statusText = sub.isExempt ? t('exempt_free') : (sub.status === 'trial' ? t('trial_days_left', {n: trialDays}) : (sub.status || 'Trial'));
+  // Current language flag for the Preferences > Language control (kept in sync by setLanguage/loadLanguage)
+  const _curLang = (typeof LANGUAGES !== 'undefined' && Array.isArray(LANGUAGES)) ? (LANGUAGES.find(l => l.code === appLanguage) || LANGUAGES[0]) : { flag: '🌐' };
+  const langFlag = _curLang ? _curLang.flag : '🌐';
 
   el.innerHTML = `
     <div style="padding:0 18px 24px;">
@@ -6038,6 +6039,28 @@ function renderAccount() {
         <button onclick="saveAccountProfile()" style="width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
           ${t('save_changes')}
         </button>
+      </div>
+
+      <!-- Preferences (Language + Colour theme) — moved here from the header -->
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PREFERENCES</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
+        <!-- Language -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+          <div style="min-width:0;">
+            <div style="font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);font-weight:600;">Language</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif;">App display language</div>
+          </div>
+          <button id="langBtn" class="theme-btn" onclick="toggleLangDrawer()" title="Change language" style="font-size:20px">${langFlag}</button>
+        </div>
+        <div style="height:1px;background:var(--border);margin:16px 0;"></div>
+        <!-- Colour theme -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+          <div style="min-width:0;">
+            <div style="font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);font-weight:600;">Colour theme</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif;">Choose your app theme</div>
+          </div>
+          <button class="theme-btn" onclick="toggleThemeDrawer()" title="Change theme">🎨</button>
+        </div>
       </div>
 
       <!-- Password -->
