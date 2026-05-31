@@ -996,7 +996,7 @@ input:focus, textarea:focus, select:focus { outline: none; }
 
           <!-- CHAT VIEW -->
           <div id="view-chat" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-            <div class="chat-header">
+            <div class="chat-header" id="chatHeader" style="display:none">
               <div class="trainer-avatar">🤖</div>
               <div style="flex:1;min-width:0">
                 <div class="trainer-name" id="chatTitle">Your AI Coach</div>
@@ -4949,7 +4949,7 @@ window._populateGreetingStats = function () {
     const targetDays = userProfile?.days_per_week || 4;
     if (stats) {
       const sessionsThisWeek = stats.sessions_this_week || 0;
-      const trainingPct = Math.round((sessionsThisWeek / targetDays) * 100);
+      const trainingPct = Math.min(100, Math.round((sessionsThisWeek / targetDays) * 100));
       const tp = document.getElementById('greetingTrainingPct'); if (tp) tp.textContent = trainingPct + '%';
 
       const lastLabel = stats.last_session_label || null;
@@ -4975,6 +4975,9 @@ function initCoach() {
   currentConvId = null;
   currentConvMessages = [];
   document.getElementById('chatTitle').textContent = t('new_chat') !== '+ New Chat' ? t('new_chat').replace('+ ','') : 'New Conversation';
+  // Fresh greeting view: hide the conversation header so the greeting card sits directly
+  // under the Chat/History tabs. The header only appears when opening a saved conversation.
+  const _freshHeader = document.getElementById('chatHeader'); if (_freshHeader) _freshHeader.style.display = 'none';
   const g1 = t('coach_greeting_1').replace('{name}', name);
   const g2 = t('coach_greeting_2');
   document.getElementById('chatMessages').innerHTML = `
@@ -4985,17 +4988,17 @@ function initCoach() {
         <div class="msg-bubble">
           <!-- STATUS STRIP -->
           <div style="display:flex;justify-content:space-between;margin-bottom:13px;padding-bottom:12px;border-bottom:1px solid #1c1c1c;">
-            <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
               <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Training</span>
               <span style="font-family:'DM Mono',monospace;font-size:13px;color:#e8ff3d;font-weight:500;" id="greetingTrainingPct">—</span>
             </div>
-            <div style="width:1px;background:#1c1c1c;"></div>
-            <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="width:1px;background:#1c1c1c;align-self:stretch;"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
               <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Recovery</span>
               <span style="font-family:'DM Mono',monospace;font-size:13px;color:#44ff88;font-weight:500;" id="greetingRecovery">—</span>
             </div>
-            <div style="width:1px;background:#1c1c1c;"></div>
-            <div style="display:flex;flex-direction:column;gap:3px;">
+            <div style="width:1px;background:#1c1c1c;align-self:stretch;"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
               <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Next Session</span>
               <span style="font-family:'DM Mono',monospace;font-size:13px;color:#f0f0f0;font-weight:500;" id="greetingNextSession">—</span>
             </div>
@@ -5026,7 +5029,7 @@ function initCoach() {
           </div>
           <!-- DIVIDER before existing greeting text -->
           <div style="border-top:1px solid #1c1c1c;margin-bottom:10px;"></div>
-          <strong>${g1}</strong><br><br>
+          <strong style="color:#f0f0f0;">${g1}</strong><br><br>
           ${g2}
         </div>
       </div>
@@ -5081,6 +5084,8 @@ async function loadConversation(id, title) {
   currentConvId = conv.id;
   currentConvMessages = conv.messages || [];
 
+  // Opening a saved conversation from History: show the conversation header.
+  const _convHeader = document.getElementById('chatHeader'); if (_convHeader) _convHeader.style.display = 'flex';
   document.getElementById('chatTitle').textContent = conv.title || 'Conversation';
   document.getElementById('chatMessages').innerHTML = '';
 
@@ -5424,6 +5429,58 @@ const IRON_COACH_LIMIT = 20;
 async function renderTrialBanner() {
   // Load promo status so banner copy is accurate
   await loadLaunchPricingStatus();
+
+  // ── STREAK WIDGET (FIX 2) ──────────────────────────────────────────────
+  // Sits directly ABOVE the trial banner. Rendered here, before the early returns
+  // below, so it also shows for paid/exempt users who never get a trial banner.
+  // Built once, repositioned cheaply on each call (the banner, inserted lower down,
+  // lands between this widget and .panels, so the widget always stays on top).
+  const streakAppDiv = document.querySelector('#screen-app .app');
+  if (streakAppDiv) {
+    let streakWidget = document.getElementById('streakWidget');
+    if (!streakWidget) {
+      streakWidget = document.createElement('div');
+      streakWidget.id = 'streakWidget';
+      streakWidget.style.cssText = 'margin:10px 20px 0;background:#111;border:1px solid #222;border-radius:12px;padding:13px 16px;flex-shrink:0;';
+      streakWidget.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;">Current Streak</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:#555;" id="streakPbText"></span>
+        </div>
+        <div>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0f0f0;line-height:1;" id="streakNumber">—</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555;margin-left:4px;letter-spacing:1px;text-transform:uppercase;">Days</span>
+        </div>
+        <div style="width:100%;height:5px;background:#1a1a1a;border-radius:3px;margin-top:8px;overflow:hidden;">
+          <div style="height:100%;background:#e8ff3d;border-radius:3px;transition:width 0.3s;" id="streakFill"></div>
+        </div>`;
+    }
+    const streakPanelsDiv = streakAppDiv.querySelector('.panels');
+    if (streakPanelsDiv && streakWidget.parentNode !== streakAppDiv) {
+      streakAppDiv.insertBefore(streakWidget, streakPanelsDiv);
+    }
+    // Populate once from /api/stats, which returns { streak, longest_streak, ... }.
+    if (!streakWidget.dataset.loaded) {
+      streakWidget.dataset.loaded = '1';
+      api('/api/stats').then(stats => {
+        if (!stats) { delete streakWidget.dataset.loaded; return; }   // allow retry next render
+        const cur = stats.streak ?? stats.current_streak ?? 0;
+        const best = stats.longest_streak ?? cur ?? 0;
+        const numEl = document.getElementById('streakNumber');
+        const fillEl = document.getElementById('streakFill');
+        const pbEl = document.getElementById('streakPbText');
+        if (numEl) numEl.textContent = cur;
+        if (fillEl) fillEl.style.width = (best > 0 ? Math.min(100, Math.round((cur / best) * 100)) : 0) + '%';
+        if (pbEl) {
+          if (best > cur) pbEl.innerHTML = '<span style="color:#e8ff3d;">+' + (best - cur) + '</span> DAYS TO PERSONAL BEST';
+          else if (best > 0) pbEl.innerHTML = '<span style="color:#e8ff3d;">PERSONAL BEST 🏆</span>';
+          else pbEl.textContent = '';
+        }
+        updateCoachTabsOffset();
+      });
+    }
+  }
+
   const existing = document.getElementById('trialBanner');
   if (existing) existing.remove();
   if (!userSubscription) return;
@@ -14086,12 +14143,25 @@ function urlBase64ToUint8Array(base64String) {
    never hidden behind them. */
 function updateCoachTabsOffset() {
   try {
-    var banner = document.getElementById('trialBanner');
     var coach = document.getElementById('panel-coach');
     if (!coach) return;
-    var visible = !!banner && banner.offsetParent !== null && banner.offsetHeight > 0;
-    var h = visible ? banner.offsetHeight : 0;
-    coach.style.top = h > 0 ? ('calc(54px + var(--safe-top) + ' + h + 'px)') : '';
+    // The streak widget + trial banner are flex children inserted above .panels; the
+    // fixed coach panel must start at the bottom edge of whichever sits lowest so the
+    // Chat/History tabs aren't hidden behind them. getBoundingClientRect().bottom is
+    // viewport-relative — exactly what position:fixed `top` needs — and self-corrects
+    // for the topbar height, safe-area inset, and the widgets' own margins. Order in the
+    // array is DOM order (streak above banner), so the last visible one is the lowest.
+    var lowest = null;
+    ['streakWidget', 'trialBanner'].forEach(id => {
+      var el = document.getElementById(id);
+      if (el && el.offsetParent !== null && el.offsetHeight > 0) lowest = el;
+    });
+    if (lowest) {
+      var b = lowest.getBoundingClientRect().bottom;
+      coach.style.top = b > 0 ? (b + 'px') : '';
+    } else {
+      coach.style.top = '';
+    }
   } catch (e) {}
 }
 if (typeof renderTrialBanner === 'function' && !renderTrialBanner._coachOffsetWrapped) {
