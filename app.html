@@ -49,22 +49,30 @@
   --surface2: #141414;
   --border: #222222;
   --border-subtle: #1c1c1c;
+  --border-muted: #161616;
   --accent: #e8ff3d;
   --accent2: #ff6b35;
   --text: #f0f0f0;
   --muted: #777777;
+  --dim: #555555;
+  --inactive: #444444;
   --red: #ff4444;
-  --green: #39d98a;
+  --green: #44ff88;
+  --amber: #ffaa44;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --accent-pressed: #d4eb1e;
-  --carb-color: var(--carb-color);
+  --carb-color: #4d9fff;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
 }
 
 /* ── THEMES ── */
 [data-theme="dark-yellow"] {
-  --bg:#0a0a0a; --surface:#111111; --surface2:#141414; --border:#222222; --border-subtle:#1c1c1c;
+  --bg:#0a0a0a; --surface:#111111; --surface2:#141414; --border:#222222; --border-subtle:#1c1c1c; --border-muted:#161616;
   --accent:#e8ff3d; --accent2:#ff6b35; --text:#f0f0f0; --muted:#777777;
+  --dim:#555555; --inactive:#444444; --green:#44ff88; --amber:#ffaa44; --carb-color:#4d9fff;
 }
 [data-theme="dark-blue"] {
   --bg:#090d1a; --surface:#0f1628; --surface2:#162035; --border:#1e2d4a;
@@ -196,8 +204,8 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .field-label {
   font-family:'DM Mono',monospace;
   font-size:10px;
-  letter-spacing:2px;
-  color:var(--muted);
+  letter-spacing:1px;
+  color:var(--dim);
   text-transform:uppercase;
   margin-bottom:6px;
 }
@@ -287,9 +295,9 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * .panel, and #panel-coach's bottom offset, so the floor propagates to all of them. */
 .app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 34px); --nav-h: calc(48px + var(--nav-safe)); }
 body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 34px); }
-.topbar { background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
-.logo { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:4px; color:var(--accent); }
-.logo-sub { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border-muted); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
+.logo { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:2px; color:var(--accent); }
+.logo-sub { font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:3px; text-transform:uppercase; margin-top:2px; }
 .user-menu { display:flex; align-items:center; gap:10px; }
 .user-avatar { width:32px; height:32px; background:var(--accent); color:var(--bg); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; cursor:pointer; flex-shrink:0; }
 .panels { flex:1; overflow:hidden; position:relative; max-width:100%; }
@@ -349,7 +357,7 @@ nav.bottom-nav, .bottom-nav {
 .panel-header { padding:20px 18px 14px; border-bottom:1px solid var(--border); }
 .panel-title { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; color:var(--accent); }
 .panel-sub { color:var(--muted); font-size:12px; margin-top:2px; font-family:'DM Mono',monospace; }
-.section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; padding:16px 18px 8px; }
+.section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; padding:16px 18px 8px; }
 .action-btn { background:var(--accent); color:var(--bg); border:none; border-radius:8px; padding:8px 14px; font-weight:700; font-size:12px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
 .action-btn:active { transform:scale(0.96); background:#d4eb1e; }
 .empty-state { text-align:center; color:var(--muted); font-family:'DM Mono',monospace; font-size:12px; padding:32px 24px; line-height:1.8; }
@@ -359,11 +367,11 @@ nav.bottom-nav, .bottom-nav {
 .checkin-btn:active { transform:scale(0.96); }
 
 /* ── CHAT TABS ── */
-.chat-tabs { display:flex; align-items:center; background:var(--surface); border-bottom:1px solid var(--border); padding:0 14px; flex-shrink:0; gap:4px; }
-.chat-tab { display:flex; align-items:center; gap:6px; padding:12px 14px; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
-.chat-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.chat-tabs { display:flex; align-items:center; background:var(--surface); border-bottom:1px solid var(--border-muted); padding:0 20px; flex-shrink:0; gap:4px; }
+.chat-tab { display:flex; align-items:center; gap:6px; padding:12px 14px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--inactive); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
+.chat-tab.active { color:var(--text); border-bottom-color:#666666; }
 .chat-tab:active { opacity:0.7; }
-.new-chat-btn { margin-left:auto; background:rgba(232,255,61,0.1); border:1px solid rgba(232,255,61,0.2); color:var(--accent); border-radius:8px; padding:6px 12px; font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.new-chat-btn { margin-left:auto; background:transparent; border:1px solid var(--border); color:var(--dim); border-radius:6px; padding:5px 10px; font-size:9px; font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:1px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
 .new-chat-btn:active { background:rgba(232,255,61,0.2); }
 
 /* ── CONVERSATION CARDS ── */
@@ -426,12 +434,12 @@ nav.bottom-nav, .bottom-nav {
 .chat-input-area { background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
 .quick-prompts { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
 .quick-prompts::-webkit-scrollbar{display:none}
-.quick-btn { background:var(--surface2); border:1px solid var(--border); color:var(--muted); padding:5px 11px; border-radius:100px; font-size:11px; cursor:pointer; white-space:nowrap; font-family:'DM Sans',sans-serif; transition:all .15s; }
+.quick-btn { background:var(--surface); border:1px solid #1e1e1e; color:var(--dim); padding:8px 11px; border-radius:8px; font-size:9px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; white-space:nowrap; font-family:'DM Mono',monospace; transition:all .15s; }
 .quick-btn:active{border-color:var(--accent);color:var(--accent)}
 .input-row { display:flex; gap:8px; align-items:flex-end; }
-.chat-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:11px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; resize:none; outline:none; transition:border-color .2s; min-height:44px; max-height:100px; -webkit-appearance:none; }
-.chat-input:focus{border-color:var(--accent)} .chat-input::placeholder{color:var(--muted)}
-.send-btn { background:var(--accent); color:var(--bg); border:none; border-radius:10px; width:44px; height:44px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; transition:all .15s; }
+.chat-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:11px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; resize:none; outline:none; transition:border-color .2s; min-height:56px; max-height:100px; -webkit-appearance:none; }
+.chat-input:focus{border-color:var(--accent)} .chat-input::placeholder{color:var(--inactive)}
+.send-btn { background:var(--accent); color:var(--bg); border:none; border-radius:10px; width:48px; height:48px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; transition:all .15s; }
 .send-btn:active{transform:scale(.94)} .send-btn:disabled{background:var(--border);color:var(--muted)}
 
 /* ── WORKOUT ── */
@@ -532,14 +540,14 @@ nav.bottom-nav, .bottom-nav {
 .food-amt { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); background:var(--surface2); padding:3px 8px; border-radius:5px; }
 
 /* ── STREAK ── */
-.streak-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; display:flex; align-items:center; gap:16px; margin-bottom:12px; }
+.streak-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; align-items:center; gap:16px; margin-bottom:12px; }
 .streak-flame { font-size:40px; line-height:1; flex-shrink:0; }
 .streak-info { flex:1; }
-.streak-count { font-family:'Bebas Neue',sans-serif; font-size:42px; line-height:1; color:var(--accent); letter-spacing:2px; }
-.streak-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:2px; }
+.streak-count { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--text); letter-spacing:2px; }
+.streak-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:2px; margin-top:2px; }
 .streak-best { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:6px; }
 .streak-progress { margin-top:10px; }
-.streak-bar-bg { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.streak-bar-bg { height:5px; background:#1a1a1a; border-radius:3px; overflow:hidden; }
 .streak-bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.6s ease; }
 .streak-bar-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); margin-top:4px; letter-spacing:1px; }
 
@@ -555,9 +563,9 @@ nav.bottom-nav, .bottom-nav {
 
 /* ── PROGRESS ── */
 .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 18px; }
-.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 14px; }
-.stat-lbl { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
-.stat-val { font-family:'Bebas Neue',sans-serif; font-size:38px; color:var(--accent); line-height:1.1; margin-top:4px; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.stat-lbl { font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; }
+.stat-val { font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--text); line-height:1.1; margin-top:4px; }
 .stat-change { font-size:11px; font-family:'DM Mono',monospace; margin-top:4px; color:var(--muted); }
 .stat-change.up{color:var(--green)} .stat-change.down{color:var(--red)}
 .weight-entry-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin:0 18px 12px; }
@@ -703,49 +711,89 @@ nav.bottom-nav, .bottom-nav {
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 
-<style id="forge-design-v2">
+<style id="forge-v2-final">
+/* ════════════════════════════════════════════════════════════════
+   FORGE V2 — FINAL DESIGN OVERRIDE (visual only)
+   Last-resort, high-specificity pass for cross-cutting rules.
+   Replaces the abandoned appended-layer experiment (#forge-design-v2).
+   NO JS / element-ID / onclick / data-testid / structural changes.
+   ════════════════════════════════════════════════════════════════ */
 
-/* NAV BAR */
-.bottom-nav, nav.bottom-nav {
-  background: #0d0d0d !important;
-  border-top: 1px solid #161616 !important;
-  padding-bottom: max(env(safe-area-inset-bottom), 34px) !important;
-}
-
-/* CARDS */
-.card, [class*="card"], .panel-card {
-  background: #111111 !important;
-  border: 1px solid #222222 !important;
+/* ── CARDS: unified surface · 1px border · 14px radius · no shadow ── */
+.exercise-card, .conv-card, .log-card, .session-card, .macro-card, .meal-card,
+.pr-card, .pr-search-card, .review-card, .adherence-card, .bwh-summary-card,
+.bwh-chart-wrap, .weight-entry-card, .mission-row, .badge-item {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 14px !important;
+  box-shadow: none !important;
+}
+/* stat + streak number cards keep the tighter 12px radius */
+.stat-card, .streak-card { border-radius: 12px !important; }
+
+/* ── COACH GREETING CARD (first message bubble only) ── */
+#chatMessages .message:first-child .msg-bubble {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 15px 17px;
+  overflow: hidden;
+}
+#chatMessages .message:first-child .msg-bubble::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: rgba(255,255,255,0.04);
 }
 
-/* PRIMARY BUTTONS */
-.btn-primary, [class*="btn-primary"], button[class*="primary"] {
-  background: #e8ff3d !important;
-  color: #000 !important;
+/* ── BOTTOM NAV ── */
+nav.bottom-nav, .bottom-nav {
+  background: #0d0d0d !important;
+  border-top: 1px solid var(--border-muted) !important;
+}
+.nav-btn { color: var(--dim); }
+.nav-btn.active { color: var(--accent); }
+.nav-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* ── PRIMARY BUTTONS (accent) ── */
+.action-btn, .save-btn, .ob-next, .auth-btn, .send-btn {
   font-family: 'DM Mono', monospace !important;
-  text-transform: uppercase !important;
-  letter-spacing: 1.5px !important;
-  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  border-radius: 10px !important;
+}
+.action-btn, .save-btn, .ob-next, .auth-btn {
+  background: var(--accent) !important;
+  color: var(--bg) !important;
+}
+.action-btn:hover, .save-btn:hover, .ob-next:hover, .auth-btn:hover, .send-btn:hover,
+.action-btn:focus, .save-btn:focus, .ob-next:focus, .auth-btn:focus, .send-btn:focus {
+  box-shadow: 0 4px 20px rgba(232,255,61,0.25);
+}
+.send-btn { letter-spacing: 0; } /* icon glyph — no tracking */
+
+/* ── SECONDARY (GHOST) BUTTONS ── */
+.ob-back, .checkin-btn {
+  background: transparent !important;
+  border: 1px solid #333 !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
 }
 
-/* HEADER */
-#appHeader, .app-header {
-  background: #0a0a0a !important;
-  border-bottom: 1px solid #161616 !important;
+/* ── INPUTS: dark wells · accent focus · #444 placeholder ── */
+.field-input, .log-input, .weight-input, .pr-search-input, .number-input-large {
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
 }
-
-/* INPUTS */
-input, textarea, select {
-  background: #0a0a0a !important;
-  border: 1px solid #222222 !important;
-  color: #f0f0f0 !important;
-}
-input:focus, textarea:focus {
-  border-color: #e8ff3d !important;
-  outline: none !important;
-}
-
+.chat-input { background: var(--bg) !important; border: 1px solid var(--border) !important; } /* 12px radius kept from base */
+.field-input:focus, .chat-input:focus, .log-input:focus, .weight-input:focus,
+.pr-search-input:focus, .number-input-large:focus { border-color: var(--accent) !important; }
+.field-input::placeholder, .chat-input::placeholder, .log-input::placeholder,
+.weight-input::placeholder, .pr-search-input::placeholder, .number-input-large::placeholder { color: var(--inactive); }
+/* fallback so removing the old blanket rule never leaves a white field */
+input, textarea, select { background: var(--bg); color: var(--text); }
+input:focus, textarea:focus, select:focus { outline: none; }
 </style>
 </head>
 <body style="background:#0a0a0a">
