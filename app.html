@@ -4986,50 +4986,47 @@ function initCoach() {
       <div class="msg-inner">
         <div class="msg-tag">AI COACH · NOW</div>
         <div class="msg-bubble">
-          <!-- STATUS STRIP -->
-          <div style="display:flex;justify-content:space-between;margin-bottom:13px;padding-bottom:12px;border-bottom:1px solid #1c1c1c;">
-            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
-              <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Training</span>
-              <span style="font-family:'DM Mono',monospace;font-size:13px;color:#e8ff3d;font-weight:500;" id="greetingTrainingPct">—</span>
+          <!-- HEADLINE (first, per mockup order) -->
+          <strong style="color:#f0f0f0;font-size:16px;">${g1}</strong>
+          <!-- STATUS STRIP (pill cards) -->
+          <div style="display:flex;gap:8px;margin:12px 0;">
+            <div style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Training</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#e8ff3d;line-height:1;" id="greetingTrainingPct">—</div>
             </div>
-            <div style="width:1px;background:#1c1c1c;align-self:stretch;"></div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
-              <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Recovery</span>
-              <span style="font-family:'DM Mono',monospace;font-size:13px;color:#44ff88;font-weight:500;" id="greetingRecovery">—</span>
+            <div style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Recovery</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#44ff88;line-height:1;" id="greetingRecovery">—</div>
             </div>
-            <div style="width:1px;background:#1c1c1c;align-self:stretch;"></div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:3px;">
-              <span style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;">Next Session</span>
-              <span style="font-family:'DM Mono',monospace;font-size:13px;color:#f0f0f0;font-weight:500;" id="greetingNextSession">—</span>
+            <div style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Next Session</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#f0f0f0;line-height:1.2;" id="greetingNextSession">—</div>
             </div>
           </div>
-          <!-- READY FOR TODAY -->
-          <div style="margin-bottom:10px;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#555;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">Ready For Today</div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:9px;">
+          <!-- READY FOR TODAY (bordered card) -->
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Ready For Today</div>
+            <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #222;margin-bottom:8px;">
               <div>
-                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;">Today's Focus</div>
+                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Today's Focus</div>
                 <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#e8ff3d;font-weight:500;" id="greetingTodayFocus">—</div>
               </div>
               <div style="text-align:right;">
-                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;">Rec. Duration</div>
+                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Duration</div>
                 <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#f0f0f0;font-weight:500;" id="greetingDuration">—</div>
               </div>
             </div>
             <div style="display:flex;justify-content:space-between;">
               <div>
-                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;">Recovery</div>
+                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Recovery</div>
                 <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#44ff88;font-weight:500;" id="greetingRecoveryStatus">Good</div>
               </div>
               <div style="text-align:right;">
-                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;">Last Completed</div>
+                <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Last Completed</div>
                 <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:#666;" id="greetingLastSession">—</div>
               </div>
             </div>
           </div>
-          <!-- DIVIDER before existing greeting text -->
-          <div style="border-top:1px solid #1c1c1c;margin-bottom:10px;"></div>
-          <strong style="color:#f0f0f0;">${g1}</strong><br><br>
           ${g2}
         </div>
       </div>
@@ -5430,56 +5427,8 @@ async function renderTrialBanner() {
   // Load promo status so banner copy is accurate
   await loadLaunchPricingStatus();
 
-  // ── STREAK WIDGET (FIX 2) ──────────────────────────────────────────────
-  // Sits directly ABOVE the trial banner. Rendered here, before the early returns
-  // below, so it also shows for paid/exempt users who never get a trial banner.
-  // Built once, repositioned cheaply on each call (the banner, inserted lower down,
-  // lands between this widget and .panels, so the widget always stays on top).
-  const streakAppDiv = document.querySelector('#screen-app .app');
-  if (streakAppDiv) {
-    let streakWidget = document.getElementById('streakWidget');
-    if (!streakWidget) {
-      streakWidget = document.createElement('div');
-      streakWidget.id = 'streakWidget';
-      streakWidget.style.cssText = 'margin:10px 20px 0;background:#111;border:1px solid #222;border-radius:12px;padding:13px 16px;flex-shrink:0;';
-      streakWidget.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;">Current Streak</span>
-          <span style="font-family:'DM Mono',monospace;font-size:9px;color:#555;" id="streakPbText"></span>
-        </div>
-        <div>
-          <span style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0f0f0;line-height:1;" id="streakNumber">—</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555;margin-left:4px;letter-spacing:1px;text-transform:uppercase;">Days</span>
-        </div>
-        <div style="width:100%;height:5px;background:#1a1a1a;border-radius:3px;margin-top:8px;overflow:hidden;">
-          <div style="height:100%;background:#e8ff3d;border-radius:3px;transition:width 0.3s;" id="streakFill"></div>
-        </div>`;
-    }
-    const streakPanelsDiv = streakAppDiv.querySelector('.panels');
-    if (streakPanelsDiv && streakWidget.parentNode !== streakAppDiv) {
-      streakAppDiv.insertBefore(streakWidget, streakPanelsDiv);
-    }
-    // Populate once from /api/stats, which returns { streak, longest_streak, ... }.
-    if (!streakWidget.dataset.loaded) {
-      streakWidget.dataset.loaded = '1';
-      api('/api/stats').then(stats => {
-        if (!stats) { delete streakWidget.dataset.loaded; return; }   // allow retry next render
-        const cur = stats.streak ?? stats.current_streak ?? 0;
-        const best = stats.longest_streak ?? cur ?? 0;
-        const numEl = document.getElementById('streakNumber');
-        const fillEl = document.getElementById('streakFill');
-        const pbEl = document.getElementById('streakPbText');
-        if (numEl) numEl.textContent = cur;
-        if (fillEl) fillEl.style.width = (best > 0 ? Math.min(100, Math.round((cur / best) * 100)) : 0) + '%';
-        if (pbEl) {
-          if (best > cur) pbEl.innerHTML = '<span style="color:#e8ff3d;">+' + (best - cur) + '</span> DAYS TO PERSONAL BEST';
-          else if (best > 0) pbEl.innerHTML = '<span style="color:#e8ff3d;">PERSONAL BEST 🏆</span>';
-          else pbEl.textContent = '';
-        }
-        updateCoachTabsOffset();
-      });
-    }
-  }
+  // Streak widget removed (not in the mockup design) — clear any stale instance.
+  document.getElementById('streakWidget')?.remove();
 
   const existing = document.getElementById('trialBanner');
   if (existing) existing.remove();
@@ -5497,50 +5446,30 @@ async function renderTrialBanner() {
     daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)));
   }
 
-  // Headline reflects subscription state while keeping the v2 dark-card layout
-  let headline;
+  // Bar copy reflects subscription state (mockup shows the trial line)
+  let barText;
   if (status === 'trial' && daysLeft > 0) {
-    headline = daysLeft + ' Day' + (daysLeft === 1 ? '' : 's') + ' Remaining';
+    barText = '🔥 Trial — ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' of full access remaining.';
   } else if (status === 'expired' || (status !== 'trial' && tier === 'iron')) {
-    headline = 'Trial Ended';
+    barText = '🔥 Trial ended — upgrade to keep full access.';
   } else {
-    headline = 'Free Plan';
+    barText = 'Free plan — upgrade for full access.';
   }
 
+  // Compact full-width gradient bar, injected INSIDE #panel-coach at the top of
+  // .chat-container (above .chat-tabs). It therefore only shows on the coach panel
+  // and sizes within the panel's own flex column — no JS offset of the fixed panel.
   const banner = document.createElement('div');
   banner.id = 'trialBanner';
-  banner.style.cssText = `
-    margin:10px 20px 0;
-    background:#111;
-    border:1px solid #222;
-    border-radius:10px;
-    padding:11px 14px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    flex-shrink:0;
-  `;
+  banner.style.cssText = 'background:linear-gradient(135deg,#1a1a0a 0%,#111100 100%);border-bottom:1px solid #333300;padding:8px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;';
   banner.innerHTML = `
-    <div>
-      <div style="font-family:'DM Mono',monospace;font-size:8px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Trial</div>
-      <div style="font-family:'DM Mono',monospace;font-size:11px;color:#f0f0f0;margin-bottom:6px;">${headline}</div>
-      <div style="display:flex;flex-direction:column;gap:2px;">
-        <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:#666;"><span style="color:#44ff88;margin-right:4px;">✓</span>Custom plans</div>
-        <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:#666;"><span style="color:#44ff88;margin-right:4px;">✓</span>Unlimited AI coaching</div>
-        <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:#666;"><span style="color:#44ff88;margin-right:4px;">✓</span>Recovery analysis</div>
-      </div>
-    </div>
-    <button onclick="openUpgradeSheet()" style="background:#e8ff3d;color:#000;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;border:none;border-radius:6px;padding:10px 13px;cursor:pointer;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;">${t('upgrade')}</button>
+    <span style="font-family:'DM Mono',monospace;font-size:10px;color:#999;letter-spacing:1px;">${barText}</span>
+    <button onclick="openUpgradeSheet()" style="background:#e8ff3d;color:#000;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">${t('upgrade')}</button>
   `;
-  // Insert inside the panels container so it pushes content down, not over it
-  // Insert inside .app (flex column) before .panels so it pushes content down
-  const appDiv = document.querySelector('#screen-app .app');
-  const panelsDiv = appDiv?.querySelector('.panels');
-  if (appDiv && panelsDiv) {
-    appDiv.insertBefore(banner, panelsDiv);
-  } else if (appDiv) {
-    appDiv.appendChild(banner);
+  const chatContainer = document.querySelector('#panel-coach .chat-container');
+  if (chatContainer) {
+    const chatTabs = chatContainer.querySelector('.chat-tabs');
+    chatContainer.insertBefore(banner, chatTabs || chatContainer.firstChild);
   }
 }
 
@@ -14142,26 +14071,14 @@ function urlBase64ToUint8Array(base64String) {
    banner height. The message thread already sits below the tabs (flex column), so it is
    never hidden behind them. */
 function updateCoachTabsOffset() {
+  // The trial banner now lives INSIDE #panel-coach (top of .chat-container), so the
+  // fixed coach panel no longer needs a JS offset for banner height — its CSS
+  // `top: calc(54px + var(--safe-top))` is correct on its own. This is kept (and still
+  // called by the renderTrialBanner wrapper / resize listeners) only to clear any stale
+  // inline `top` left over from the previous out-of-panel banner layout. It never adds offset.
   try {
     var coach = document.getElementById('panel-coach');
-    if (!coach) return;
-    // The streak widget + trial banner are flex children inserted above .panels; the
-    // fixed coach panel must start at the bottom edge of whichever sits lowest so the
-    // Chat/History tabs aren't hidden behind them. getBoundingClientRect().bottom is
-    // viewport-relative — exactly what position:fixed `top` needs — and self-corrects
-    // for the topbar height, safe-area inset, and the widgets' own margins. Order in the
-    // array is DOM order (streak above banner), so the last visible one is the lowest.
-    var lowest = null;
-    ['streakWidget', 'trialBanner'].forEach(id => {
-      var el = document.getElementById(id);
-      if (el && el.offsetParent !== null && el.offsetHeight > 0) lowest = el;
-    });
-    if (lowest) {
-      var b = lowest.getBoundingClientRect().bottom;
-      coach.style.top = b > 0 ? (b + 'px') : '';
-    } else {
-      coach.style.top = '';
-    }
+    if (coach && coach.style.top) coach.style.top = '';
   } catch (e) {}
 }
 if (typeof renderTrialBanner === 'function' && !renderTrialBanner._coachOffsetWrapped) {
