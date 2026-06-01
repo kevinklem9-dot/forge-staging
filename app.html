@@ -532,9 +532,12 @@ nav.bottom-nav, .bottom-nav {
 .meal-name { font-weight:600; font-size:14px; }
 .meal-time { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); }
 .meal-kcal { font-family:'Bebas Neue',sans-serif; font-size:20px; color:var(--accent); }
-.meal-macros-row { display:flex; gap:10px; margin-top:6px; }
-.meal-macro { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); }
+.meal-macros-row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.meal-macro { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); background:var(--surface2); border-radius:6px; padding:4px 8px; }
 .meal-macro strong { color:var(--text); }
+.meal-macros-row .meal-macro:nth-child(1) strong { color:var(--accent2); }
+.meal-macros-row .meal-macro:nth-child(2) strong { color:var(--carb-color); }
+.meal-macros-row .meal-macro:nth-child(3) strong { color:var(--green); }
 .meal-foods { padding:12px 14px; display:flex; flex-direction:column; gap:7px; }
 .food-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; }
 .food-amt { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); background:var(--surface2); padding:3px 8px; border-radius:5px; }
@@ -1120,10 +1123,6 @@ input:focus, textarea:focus, select:focus { outline: none; }
         <!-- STREAK CARD -->
         <div id="streakSection" style="padding:14px 18px 0"></div>
 
-        <!-- BADGES -->
-        <div class="section-label" style="margin-top:4px" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
-        <div id="badgesSection" style="padding:0 18px 4px"></div>
-
         <!-- MISSIONS -->
         <div id="missionsSection" style="display:none">
           <div class="section-label" data-i18n-key="getting_started">GETTING STARTED</div>
@@ -1143,6 +1142,10 @@ input:focus, textarea:focus, select:focus { outline: none; }
         </div>
 
         <div class="stat-grid" id="statGrid"></div>
+
+        <!-- BADGES -->
+        <div class="section-label" style="margin-top:4px" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
+        <div id="badgesSection" style="padding:0 18px 4px"></div>
 
         <!-- PLAN ADHERENCE -->
         <div class="section-label" data-i18n-key="plan_adherence">PLAN ADHERENCE</div>
@@ -3665,7 +3668,7 @@ function renderNutritionPanel() {
   document.getElementById('coachNutritionBanner')?.remove();
   if (n.coach_assigned) {
     const mr = document.getElementById('macroRow');
-    if (mr) mr.insertAdjacentHTML('beforebegin', `<div id="coachNutritionBanner" style="background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:14px;"><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:4px;">FROM YOUR COACH</div><div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml(n.coach_name || 'Your coach')} has set your nutrition plan.</div>${n.coach_notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">${escHtml(n.coach_notes)}</div>` : ''}</div>`);
+    if (mr) mr.insertAdjacentHTML('beforebegin', `<div id="coachNutritionBanner" style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:14px;"><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--amber);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;">FROM YOUR COACH</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">${escHtml(n.coach_name || 'Your coach')} has set your nutrition plan.</div>${n.coach_notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">${escHtml(n.coach_notes)}</div>` : ''}</div>`);
   }
 
   // Macros
@@ -3800,11 +3803,11 @@ function renderCoachShoppingHtml(text, coachName) {
   var safe = (typeof escHtml === "function") ? escHtml(text || "") : (text || "");
   var lines = safe.split("\n").map(function(l){return l.trim();}).filter(Boolean);
   var rows = lines.map(function(l){
-    if (/^[-•*]/.test(l)) return '<div style="font-size:13px;color:var(--text);padding:4px 0 4px 14px;line-height:1.5;">• ' + l.replace(/^[-•*]\s*/, "") + '</div>';
-    return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);margin:14px 0 4px;text-transform:uppercase;">' + l + '</div>';
+    if (/^[-•*]/.test(l)) return '<div style="font-size:13px;color:var(--text);padding:8px 0 8px 14px;line-height:1.5;border-bottom:1px solid var(--border-subtle);">• ' + l.replace(/^[-•*]\s*/, "") + '</div>';
+    return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);margin:14px 0 4px;text-transform:uppercase;">' + l + '</div>';
   }).join("");
   var who = coachName ? (escHtml(coachName) + " built this shopping list from your meal plan.") : "Your coach built this shopping list from your meal plan.";
-  return '<div style="background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:12px;"><div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:4px;">FROM YOUR COACH</div><div style="font-size:12px;color:var(--muted);">' + who + '</div></div><div>' + rows + '</div>';
+  return '<div style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:12px;"><div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--amber);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;">FROM YOUR COACH</div><div style="font-size:12px;color:var(--muted);">' + who + '</div></div><div>' + rows + '</div>';
 }
 
 function renderShoppingList() {
@@ -5679,6 +5682,7 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-btn-ghost { background:var(--surface2);color:var(--text);border:1px solid var(--border); }
       #upgradeSheet .us-close { display:block;width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px;font-family:'DM Sans',sans-serif;transition:all 0.15s; }
       #upgradeSheet .us-close:active { transform:scale(0.98); }
+    .coach-focusable:focus { border-color: var(--accent); outline: none; }
     </style>
     <div class="us-sheet">
       <div class="us-handle"></div>
@@ -6200,16 +6204,28 @@ function renderAccount() {
   const _curLang = (typeof LANGUAGES !== 'undefined' && Array.isArray(LANGUAGES)) ? (LANGUAGES.find(l => l.code === appLanguage) || LANGUAGES[0]) : { flag: '🌐' };
   const langFlag = _curLang ? _curLang.flag : '🌐';
 
+  const _acctInitials = String(profile.name || '').trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   el.innerHTML = `
     <div style="padding:0 18px 24px;">
 
+      <!-- User avatar header -->
+      <div style="display:flex;align-items:center;gap:14px;padding:24px 0 4px;">
+        <div style="width:64px;height:64px;border-radius:16px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;color:var(--bg);line-height:1;">${_acctInitials || '👤'}</span>
+        </div>
+        <div style="min-width:0;">
+          ${profile.name ? `<div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);">${escHtml(profile.name)}</div>` : ''}
+          ${currentUser?.email ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;">${escHtml(currentUser.email)}</div>` : ''}
+        </div>
+      </div>
+
       <!-- Membership Card -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0 16px;">
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">${t('membership')}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:${tierColour[displayTier]}">${tierLabel[displayTier] || 'Iron'}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;">${statusText}</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:${tierColour[displayTier]}">${tierLabel[displayTier] || 'Iron'}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;">${statusText}</div>
           </div>
           <button onclick="openUpgradeSheet()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
             ${displayTier === 'forge' && sub.isExempt ? t('view_plans') : t('upgrade')}
@@ -6308,7 +6324,7 @@ function renderAccount() {
       <!-- Danger zone -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('account_section')}</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
-        <button onclick="signOut()" style="width:100%;padding:12px;background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.25);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <button onclick="signOut()" style="width:100%;padding:14px;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">
           ${t('sign_out')}
         </button>
       </div>
@@ -11897,17 +11913,17 @@ function renderMyCoachThread() {
 
 function renderCoachMessageBubble(m, fromMe) {
   const time = m.created_at ? relTime(m.created_at) : '';
-  const bg = fromMe ? 'var(--accent)' : 'var(--surface)';
+  const bg = fromMe ? 'var(--accent)' : 'var(--surface2)';
   const color = fromMe ? '#000' : 'var(--text)';
   const align = fromMe ? 'flex-end' : 'flex-start';
-  const radius = fromMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+  const radius = fromMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px';
   // A message from the other side that arrived this session and hasn't been read yet
   // gets a 3px accent left border to draw the eye.
   const isUnreadFromOther = !fromMe && !m.read_at;
   const unreadBorder = isUnreadFromOther ? 'border-left:3px solid var(--accent);' : '';
   return `
-    <div style="display:flex;flex-direction:column;align-items:${align};max-width:78%;${fromMe ? 'align-self:flex-end;' : 'align-self:flex-start;'}">
-      <div style="background:${bg};color:${color};padding:10px 13px;border-radius:${radius};font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;${unreadBorder}">${escHtml(m.message_text || '')}</div>
+    <div style="display:flex;flex-direction:column;align-items:${align};max-width:80%;${fromMe ? 'align-self:flex-end;' : 'align-self:flex-start;'}">
+      <div style="background:${bg};color:${color};padding:10px 14px;border-radius:${radius};font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;${unreadBorder}">${escHtml(m.message_text || '')}</div>
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px;margin-top:3px;padding:0 4px;">${escHtml(time.toUpperCase())}</div>
     </div>
   `;
@@ -11959,11 +11975,11 @@ function formatInviteAge(iso) {
 }
 
 function clientStatusDot(lastActiveIso) {
-  if (!lastActiveIso) return { color:'var(--red, #ff4444)', label:'No activity' };
+  if (!lastActiveIso) return { color:'var(--red)', label:'No activity' };
   const days = (Date.now() - new Date(lastActiveIso).getTime()) / 86400000;
-  if (days < 2) return { color:'#39d98a', label:'Active' };
-  if (days < 7) return { color:'#ffa726', label:'Slow' };
-  return { color:'var(--red, #ff4444)', label:'Inactive' };
+  if (days < 2) return { color:'var(--green)', label:'Active' };
+  if (days < 7) return { color:'var(--amber)', label:'Slow' };
+  return { color:'var(--red)', label:'Inactive' };
 }
 
 function initials(name) {
@@ -11981,11 +11997,11 @@ async function renderClientsPanel() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
         <div id="coachSeatIndicator" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;">&nbsp;</div>
         <div style="display:flex;gap:8px;">
-          <button onclick="openAddClientSheet('invite')" style="padding:9px 14px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:9px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">Invite</button>
-          <button onclick="openAddClientSheet('add')" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:9px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Add Client</button>
+          <button onclick="openAddClientSheet('invite')" style="padding:9px 14px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;cursor:pointer;">Invite</button>
+          <button onclick="openAddClientSheet('add')" style="padding:9px 14px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;cursor:pointer;">Add Client</button>
         </div>
       </div>
-      <div id="coachFilterChips" style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;"></div>
+      <div id="coachFilterChips" style="display:flex;gap:18px;margin-bottom:14px;overflow-x:auto;border-bottom:1px solid var(--border-subtle);"></div>
       <div id="coachClientList"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
       <div id="coachPendingList" style="margin-top:24px;"></div>
     </div>
@@ -12027,7 +12043,7 @@ function renderCoachFilterChips() {
     { id: 'needs_attention', label: 'Needs attention' },
   ];
   el.innerHTML = chips.map(c => `
-    <button onclick="setCoachFilter('${c.id}')" style="padding:7px 13px;background:${_coachFilter === c.id ? 'var(--accent)' : 'transparent'};color:${_coachFilter === c.id ? '#000' : 'var(--muted)'};border:1px solid ${_coachFilter === c.id ? 'var(--accent)' : 'var(--border)'};border-radius:20px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;">${c.label}</button>
+    <button onclick="setCoachFilter('${c.id}')" style="padding:8px 4px;background:transparent;color:${_coachFilter === c.id ? 'var(--text)' : 'var(--inactive)'};border:none;border-bottom:2px solid ${_coachFilter === c.id ? 'var(--accent)' : 'transparent'};font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;white-space:nowrap;">${c.label}</button>
   `).join('');
 }
 
@@ -12073,23 +12089,23 @@ function renderCoachClientList() {
       const unreadFromClient = _unreadCounts?.client_messages_by_client?.[c.client_id] || 0;
       const showActivityDot = coachHasNewActivity(c.client_id);
       const cornerMessages = unreadFromClient > 0
-        ? `<span style="position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;background:#ff4444;color:#fff;border-radius:9px;font-size:10px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;border:2px solid var(--bg);">${unreadFromClient > 99 ? '99+' : unreadFromClient}</span>`
+        ? `<span style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:var(--accent);color:#000;border-radius:50%;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;pointer-events:none;border:2px solid var(--bg);">${unreadFromClient > 99 ? '99+' : unreadFromClient}</span>`
         : '';
       const cornerActivity = (!unreadFromClient && showActivityDot)
         ? `<span title="New activity in the last 48h" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);"></span>`
         : '';
       return `
-      <div onclick="openClientDetail('${c.client_id}')" data-testid="client-card" data-client-id="${c.client_id}" style="position:relative;display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;">
+      <div onclick="openClientDetail('${c.client_id}')" data-testid="client-card" data-client-id="${c.client_id}" style="position:relative;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer;">
         ${cornerMessages}${cornerActivity}
         <div style="width:42px;height:42px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);flex-shrink:0;">${initials(name)}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:var(--text);">${escHtml(name)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(goal)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;">${c.last_active ? 'Active ' + relTime(c.last_active) : 'No sessions logged'}</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--text);">${escHtml(name)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--dim);margin-top:3px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escHtml(goal)}</div>
+          <div style="font-size:10px;color:var(--dim);margin-top:3px;font-family:'DM Mono',monospace;">${c.last_active ? 'Active ' + relTime(c.last_active) : 'No sessions logged'}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
           <span style="font-size:9px;font-family:'DM Mono',monospace;background:var(--surface2);color:var(--muted);padding:3px 7px;border-radius:10px;letter-spacing:0.5px;">${tierLabel}</span>
-          <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:${dot.color};"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:${dot.color};flex-shrink:0;"></div><span style="color:var(--muted);font-size:14px;">›</span></div>
         </div>
       </div>`;
     }).join('');
@@ -12100,16 +12116,16 @@ function renderCoachClientList() {
   if (pendEl) {
     if (!pending.length) { pendEl.innerHTML = ''; return; }
     pendEl.innerHTML = `
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PENDING INVITATIONS</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:10px;">PENDING INVITATIONS</div>
       ${pending.map(p => {
         const label = p.profile?.name || p.invited_email || 'Unknown';
         return `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid rgba(255,170,68,0.25);border-radius:14px;margin-bottom:8px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(label)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">Invited ${escHtml(formatInviteAge(p.created_at))}</div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);background:rgba(255,170,68,0.10);border-radius:4px;padding:2px 6px;">PENDING</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(label)}</span></div>
+            <div style="font-size:10px;color:var(--dim);margin-top:3px;font-family:'DM Mono',monospace;">Invited ${escHtml(formatInviteAge(p.created_at))}</div>
           </div>
-          <button onclick="cancelCoachInvite('${p.connection_id}')" style="background:transparent;border:none;color:var(--red, #ff4444);font-size:12px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:0.5px;">Cancel</button>
+          <button onclick="cancelCoachInvite('${p.connection_id}')" style="background:transparent;border:none;color:var(--red);font-size:10px;text-transform:uppercase;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;">Cancel</button>
         </div>`;
       }).join('')}
     `;
@@ -12252,17 +12268,17 @@ async function openClientDetail(clientId) {
   overlay.setAttribute('data-testid', 'client-detail');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
   overlay.innerHTML = `
-    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:1;padding-top:max(env(safe-area-inset-top),44px);">
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border-muted);z-index:1;padding-top:max(env(safe-area-inset-top),44px);">
       <div style="display:flex;align-items:center;gap:12px;padding:16px 18px 10px;">
         <button onclick="closeClientDetail()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">←</button>
         <div id="clientDetailTitle" style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">Client</div>
         <button onclick="openClientMenu()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">⋮</button>
       </div>
       <div data-testid="client-detail-tabs" style="display:flex;gap:0;padding:0 18px;">
-        <button onclick="switchClientTab('overview')" id="clTab-overview" data-testid="client-tab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">OVERVIEW<span id="clTabBadge-overview"></span></button>
-        <button onclick="switchClientTab('programme')" id="clTab-programme" data-testid="client-tab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">PROGRAMME</button>
-        <button onclick="switchClientTab('ai')" id="clTab-ai" data-testid="client-tab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">AI<span id="clTabBadge-ai"></span></button>
-        <button onclick="switchClientTab('messages')" id="clTab-messages" data-testid="client-tab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">MESSAGES<span id="clTabBadge-messages"></span></button>
+        <button onclick="switchClientTab('overview')" id="clTab-overview" data-testid="client-tab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">OVERVIEW<span id="clTabBadge-overview"></span></button>
+        <button onclick="switchClientTab('programme')" id="clTab-programme" data-testid="client-tab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">PROGRAMME</button>
+        <button onclick="switchClientTab('ai')" id="clTab-ai" data-testid="client-tab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">AI<span id="clTabBadge-ai"></span></button>
+        <button onclick="switchClientTab('messages')" id="clTab-messages" data-testid="client-tab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">MESSAGES<span id="clTabBadge-messages"></span></button>
       </div>
     </div>
     <div id="clientDetailBody" style="padding:18px;flex:1;"><div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">Loading…</div></div>
@@ -12331,7 +12347,7 @@ function switchClientTab(tab) {
       el.style.color = 'var(--text)';
       el.style.borderBottomColor = 'var(--accent)';
     } else {
-      el.style.color = 'var(--muted)';
+      el.style.color = 'var(--inactive)';
       el.style.borderBottomColor = 'transparent';
     }
   });
@@ -12372,14 +12388,14 @@ function formatDateSession(dateStr) {
 
 function renderClientSummaryCard(ov) {
   if (ov && ov.summary) {
-    return `<div id="clientSummaryCard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">CLIENT OVERVIEW</span>
-          <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Regenerate</button>
-        </div>
-        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);">${escHtml(ov.summary).replace(/\n/g,'<br>')}</div>
+    return `<details id="clientSummaryCard" open style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
+        <summary style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;">
+          <span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;">CLIENT OVERVIEW</span>
+          <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">Regenerate</button>
+        </summary>
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);margin-top:10px;">${escHtml(ov.summary).replace(/\n/g,'<br>')}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:'DM Mono',monospace;">Generated ${ov.summary_generated_at ? relTime(ov.summary_generated_at) : 'just now'}</div>
-      </div>`;
+      </details>`;
   }
   return `<div id="clientSummaryCard" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
       <div id="clientSummaryPending" style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;color:var(--muted);animation:forge-pulse 1.4s ease-in-out infinite;">Generating client overview…</div>
@@ -12443,11 +12459,11 @@ function renderClientOverviewTab(body) {
       ${statCard('PRs this month', ov.prs_this_month ?? 0)}
     </div>
     ${chart ? `
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">WEIGHT — LAST 30 DAYS</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">WEIGHT — LAST 30 DAYS</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">${chart}</div>
     ` : ''}
     ${ov.upcoming_sessions?.length ? `
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">UPCOMING SESSIONS</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">UPCOMING SESSIONS</div>
     <div style="margin-bottom:18px;">
       ${ov.upcoming_sessions.slice(0,3).map((s, i) => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
@@ -12458,22 +12474,22 @@ function renderClientOverviewTab(body) {
           <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${escHtml(s.day || ('Day ' + (i + 1)))}</div>
         </div>`).join('')}
     </div>` : ''}
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">THIS WEEK'S SESSIONS</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">THIS WEEK'S SESSIONS</div>
     <div style="margin-bottom:18px;">
       ${recent.length ? recent.map((s, i) => renderClientSessionCard(s, i)).join('') : `<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;text-align:center;">No sessions logged this week.</div>`}
     </div>
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">COACH NOTES</div>
-    <textarea id="coachNotesField" data-testid="coach-notes-textarea" data-focus="notes" rows="3" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight, 160)+'px';" style="width:100%;min-height:72px;max-height:160px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;resize:none;overflow-y:auto;box-sizing:border-box;">${escHtml(notes?.content || '')}</textarea>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">COACH NOTES</div>
+    <textarea id="coachNotesField" data-testid="coach-notes-textarea" data-focus="notes" rows="3" placeholder="Private notes — only you see these." onblur="saveCoachNotes(this.value)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight, 160)+'px';" class="coach-focusable" style="width:100%;min-height:72px;max-height:160px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;resize:none;overflow-y:auto;box-sizing:border-box;">${escHtml(notes?.content || '')}</textarea>
     <div id="coachNotesStatus" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace;">${notes?.updated_at ? 'Last saved ' + relTime(notes.updated_at) : ''}</div>
 
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:22px 0 8px;">SESSION FEEDBACK</div>
-    <textarea id="coachFeedbackField" data-testid="session-feedback-textarea" placeholder="Write feedback for this client — they will not see this unless you choose to share it." maxlength="1000" style="width:100%;min-height:90px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;"></textarea>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:22px 0 8px;">SESSION FEEDBACK</div>
+    <textarea id="coachFeedbackField" data-testid="session-feedback-textarea" placeholder="Write feedback for this client — they will not see this unless you choose to share it." maxlength="1000" class="coach-focusable" style="width:100%;min-height:90px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;line-height:1.5;box-sizing:border-box;resize:vertical;"></textarea>
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
       <input type="checkbox" id="coachFeedbackShare"> Share with client
     </label>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button onclick="submitCoachFeedback(true, null)" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">General note</button>
-      <button onclick="submitCoachFeedback(false, ${lastSessionId ? `'${lastSessionId}'` : 'null'})" ${lastSessionId ? '' : 'disabled'} style="flex:1;padding:11px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:${lastSessionId ? 'pointer' : 'not-allowed'};opacity:${lastSessionId ? '1' : '0.5'};font-family:'DM Sans',sans-serif;">Attach to last session</button>
+      <button onclick="submitCoachFeedback(true, null)" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:9px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">General note</button>
+      <button onclick="submitCoachFeedback(false, ${lastSessionId ? `'${lastSessionId}'` : 'null'})" ${lastSessionId ? '' : 'disabled'} style="flex:1;padding:11px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:9px;text-transform:uppercase;letter-spacing:1px;cursor:${lastSessionId ? 'pointer' : 'not-allowed'};opacity:${lastSessionId ? '1' : '0.5'};font-family:'DM Mono',monospace;">Attach to last session</button>
     </div>
     <div id="coachFeedbackList" style="margin-top:14px;">
       ${renderCoachFeedbackList(feedback, recent, ov.last_session)}
@@ -12612,8 +12628,8 @@ async function deleteCoachFeedback(id) {
 
 function statCard(label, value) {
   return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-bottom:6px;">${label.toUpperCase()}</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--accent);">${value}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:0.5px;margin-bottom:6px;">${label.toUpperCase()}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--accent);">${value}</div>
   </div>`;
 }
 
@@ -12673,7 +12689,7 @@ async function renderClientProgrammeTab(body) {
           <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--accent);">${escHtml(assigned.name)}</div>
           <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">ASSIGNED ${assigned.assigned_at ? relTime(assigned.assigned_at).toUpperCase() : ''}</div>
         </div>
-        <button onclick="openProgrammeBuilder('${assigned.id}')" style="padding:8px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Edit</button>
+        <button onclick="openProgrammeBuilder('${assigned.id}')" style="padding:8px 14px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Edit</button>
       </div>
       ${sessions.map(s => programmeSessionPreview(s)).join('')}
       <button onclick="if(confirm('Reset to AI programme? The custom programme will be removed.')) deleteAssignedProgramme('${assigned.id}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Reset to AI programme</button>
@@ -12681,16 +12697,16 @@ async function renderClientProgrammeTab(body) {
   } else {
     body.innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">CURRENT — AI GENERATED</div>
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:6px;">CURRENT — AI GENERATED</div>
         <div style="font-size:13px;color:var(--text);line-height:1.5;">This client is following the AI-generated plan. You can assign a custom programme to override it.</div>
       </div>
-      <button onclick="openProgrammeBuilder()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Assign custom programme</button>
+      <button onclick="openProgrammeBuilder()" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Assign custom programme</button>
       ${templates.length ? `
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:18px 0 8px;">TEMPLATE LIBRARY</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:18px 0 8px;">TEMPLATE LIBRARY</div>
       ${templates.map(t => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
           <div><div style="font-size:13px;color:var(--text);">${escHtml(t.name)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${(t.programme_data?.sessions || []).length} SESSIONS</div></div>
-          <button onclick="assignFromTemplate('${t.id}')" style="padding:7px 12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Assign</button>
+          <button onclick="assignFromTemplate('${t.id}')" style="padding:7px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Assign</button>
         </div>`).join('')}
       ` : ''}
     `;
@@ -12707,23 +12723,23 @@ function renderCoachNutritionSection(np) {
   const f = (np && (np.fat_g ?? np.fat)) || 0;
   const meals = (np && (np.meals || []).length) || 0;
   const cid = _currentClientDetail.clientId;
-  let h = `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:26px 0 8px;">NUTRITION PLAN</div>`;
+  let h = `<div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:26px 0 8px;">NUTRITION PLAN</div>`;
   h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;">
       <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text);letter-spacing:0.3px;">${cals} KCAL · ${p}P / ${c}C / ${f}F</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;letter-spacing:0.3px;">${meals} MEAL${meals === 1 ? '' : 'S'} · ${coachAssigned ? 'CUSTOM' : 'AI GENERATED'}</div>
     </div>`;
   if (coachAssigned) {
-    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Edit nutrition plan</button>`;
+    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Edit nutrition plan</button>`;
     h += `<button onclick="if(confirm('Reset to AI nutrition plan? Your custom plan will be removed.')) resetClientNutrition('${cid}')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Reset to AI plan</button>`;
   } else {
-    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Assign custom nutrition plan</button>`;
+    h += `<button onclick="openNutritionBuilder('${cid}')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Assign custom nutrition plan</button>`;
     h += `<button onclick="openNutritionBuilder('${cid}', true)" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Edit AI nutrition plan</button>`;
   }
   return h;
 }
 
 function programmeSessionPreview(s) {
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
     <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">${escHtml(s.name || 'Session')}</div>
     ${s.note ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${escHtml(s.note)}</div>` : ''}
     ${(s.exercises || []).map(e => `<div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px;">• ${escHtml(e.name)} — ${escHtml(e.sets || '')}×${escHtml(e.reps || '')}${e.rpe ? ' @ ' + escHtml(e.rpe) : ''}</div>`).join('')}
@@ -12774,12 +12790,12 @@ function openNutritionBuilder(clientId) {
   overlay.id = 'nutritionBuilderOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:10002;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;';
   overlay.innerHTML = `
-    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:max(env(safe-area-inset-top),44px) 18px 14px;display:flex;align-items:center;gap:12px;z-index:2;">
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border-muted);padding:max(env(safe-area-inset-top),44px) 18px 14px;display:flex;align-items:center;gap:12px;z-index:2;">
       <button onclick="closeNutritionBuilder()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;line-height:1;">←</button>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);">Build nutrition plan for ${escHtml(clientName)}</div>
     </div>
     <div style="padding:18px;flex:1;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">DAILY TARGETS</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">DAILY TARGETS</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;">
         ${nbField('Daily calories','nbCalories')}
         ${nbField('Protein (g)','nbProtein')}
@@ -12788,11 +12804,11 @@ function openNutritionBuilder(clientId) {
       </div>
       <div id="nbCalcLine" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:18px;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">MEALS</span>
-        <button onclick="addNutritionMeal()" style="padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Add meal</button>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;">MEALS</span>
+        <button onclick="addNutritionMeal()" style="padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">+ Add meal</button>
       </div>
       <div id="nbMealList"></div>
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin:18px 0 8px;">NOTES FOR CLIENT</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:18px 0 8px;">NOTES FOR CLIENT</div>
       <textarea id="nbCoachNotes" rows="3" placeholder="Notes for client about this nutrition plan" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;line-height:1.5;resize:vertical;box-sizing:border-box;">${escHtml(np.coach_notes || '')}</textarea>
       <label style="display:flex;align-items:center;gap:8px;margin:14px 0;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
         <input type="checkbox" id="nbTemplateToggle"> Save as template
@@ -12804,7 +12820,7 @@ function openNutritionBuilder(clientId) {
           <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">AI generates a shopping list from the meals above</span>
         </span>
       </label>
-      <button onclick="saveNutritionPlan()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Save and assign to ${escHtml(clientName)}</button>
+      <button onclick="saveNutritionPlan()" style="width:100%;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">Save and assign to ${escHtml(clientName)}</button>
       <button onclick="closeNutritionBuilder()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
     </div>`;
   document.body.appendChild(overlay);
@@ -12934,7 +12950,7 @@ function renderProgrammeBuilder() {
   overlay.setAttribute('data-testid', 'programme-builder');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
   overlay.innerHTML = `
-    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:max(env(safe-area-inset-top),44px) 18px 14px;display:flex;align-items:center;gap:10px;z-index:1;">
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border-muted);padding:max(env(safe-area-inset-top),44px) 18px 14px;display:flex;align-items:center;gap:10px;z-index:1;">
       <button onclick="if(confirm('Discard changes?')) closeProgrammeBuilder()" style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
       <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">PROGRAMME BUILDER</div>
     </div>
@@ -12949,7 +12965,7 @@ function renderProgrammeBuilder() {
     <div style="position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:14px 18px;display:flex;gap:8px;">
       <button onclick="closeProgrammeBuilder()" style="padding:12px 16px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
       <button onclick="saveBuilderProgramme(true)" style="flex:1;padding:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save as draft</button>
-      <button onclick="saveBuilderProgramme(false)" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Save & assign</button>
+      <button onclick="saveBuilderProgramme(false)" style="flex:1;padding:12px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Save & assign</button>
     </div>`;
   document.body.appendChild(overlay);
   renderBuilderSessions();
@@ -13065,7 +13081,7 @@ async function renderClientAITab(body) {
   body.innerHTML = `
     ${ironNotice}
     ${banner}
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">REVIEW SETTINGS</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">REVIEW SETTINGS</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px 14px;margin-bottom:18px;">
       ${reviewToggle('Post-workout check-in', 'post_workout_checkin_enabled', settings.post_workout_checkin_enabled !== false)}
       ${reviewToggle('Weekly review', 'weekly_review_enabled', settings.weekly_review_enabled !== false)}
@@ -13073,10 +13089,10 @@ async function renderClientAITab(body) {
       ${reviewToggle('Monthly review', 'monthly_review_enabled', settings.monthly_review_enabled !== false)}
       ${monthlyOff ? `<button onclick="openManualReviewModal('monthly')" style="width:100%;padding:9px;margin:6px 0 10px;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;">Write monthly review</button>` : ''}
     </div>
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">CONVERSATIONS (READ-ONLY)</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">CONVERSATIONS (READ-ONLY)</div>
     <div style="margin-bottom:18px;">
       ${convs.length ? convs.slice(0, 15).map((cv, ci) => `
-        <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+        <details style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;">
           <summary style="padding:10px 12px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
             <div>
               <div style="font-size:13px;color:var(--text);">${escHtml(cv.title || 'Conversation')}</div>
@@ -13203,9 +13219,9 @@ async function renderClientMessagesTab(body) {
     <div id="coachMsgThread" style="display:flex;flex-direction:column;gap:10px;padding-bottom:14px;">
       ${msgs.length ? msgs.map(m => renderCoachMessageBubble(m, m.sender_role === 'coach')).join('') : `<div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;">No messages yet.</div>`}
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--bg);padding-bottom:6px;">
-      <textarea id="coachMsgInput" data-testid="coach-message-input" rows="1" placeholder="Reply to your client…" style="flex:1;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
-      <button onclick="sendCoachMessage()" id="coachMsgSendBtn" data-testid="message-send-btn" style="padding:10px 18px;background:var(--accent);color:#000;border:none;border-radius:18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
+    <div style="display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--border-muted);position:sticky;bottom:0;background:var(--bg);padding-bottom:6px;">
+      <textarea id="coachMsgInput" data-testid="coach-message-input" rows="1" placeholder="Reply to your client…" class="coach-focusable" style="flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;resize:none;max-height:120px;line-height:1.4;box-sizing:border-box;"></textarea>
+      <button onclick="sendCoachMessage()" id="coachMsgSendBtn" data-testid="message-send-btn" style="padding:10px 18px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Send</button>
     </div>
   `;
   // Scroll to bottom
