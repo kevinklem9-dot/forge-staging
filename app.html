@@ -285,15 +285,15 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * Both the fixed .bottom-nav and every .panel's bottom padding read these, so the
  * panel content box always ends EXACTLY at the nav top — no var(--bg) gap, no
  * content hidden behind the nav. PWA standalone mode raises the safe-area floor
- * (see body.pwa-mode .app below). 48px = nav padding-top(6) + icon(22) + gap(3) +
- * label(~13) + button padding-bottom(4). If nav button sizing changes, recompute
- * the 48px here only — #panel-coach's bottom offset reads it too. */
+ * (see body.pwa-mode .app below). 44px = nav padding-top(4) + icon(22) + gap(3) +
+ * label(~13) + button padding-bottom(2). If nav button sizing changes, recompute
+ * the 44px here only — #panel-coach's bottom offset reads it too. */
 /* FIX 3: hardcoded 34px fallback for the iPhone home indicator. env(safe-area-inset-bottom)
  * fails to resolve on some iPhones (e.g. 15 Plus in browser tab), leaving the nav too high.
  * max(env(...), 34px) uses env() where it works and 34px (the 15 Plus home-indicator height)
  * everywhere else. --nav-safe is the single source of truth read by .bottom-nav, every
  * .panel, and #panel-coach's bottom offset, so the floor propagates to all of them. */
-.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 34px); --nav-h: calc(48px + var(--nav-safe)); }
+.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 34px); --nav-h: calc(44px + var(--nav-safe)); }
 body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 34px); }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border-muted); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:2px; color:var(--accent); }
@@ -318,7 +318,7 @@ nav.bottom-nav, .bottom-nav {
   border-top: 0.5px solid var(--border, #222);
   display: flex;
   align-items: flex-end;
-  padding-top: 6px;
+  padding-top: 4px;
   padding-bottom: var(--nav-safe);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -331,7 +331,7 @@ nav.bottom-nav, .bottom-nav {
   justify-content: flex-end;
   gap: 3px;
   flex: 1;
-  padding: 0 0 4px;
+  padding: 0 0 2px;
   margin: 0;
   background: transparent;
   border: none;
@@ -431,7 +431,7 @@ nav.bottom-nav, .bottom-nav {
  * flex-shrink:0 so it never collapses; flex column + gap stacks chips above the
  * input with no margin gaps. Background matches the thread (var(--bg)) so the
  * border-top is the only visible seam between thread and input. */
-.chat-input-area { background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
+.chat-input-area { position:sticky; bottom:0; background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
 .quick-prompts { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
 .quick-prompts::-webkit-scrollbar{display:none}
 .quick-btn { background:var(--surface); border:1px solid #1e1e1e; color:var(--dim); padding:8px 11px; border-radius:8px; font-size:9px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; white-space:nowrap; font-family:'DM Mono',monospace; transition:all .15s; }
@@ -645,7 +645,12 @@ nav.bottom-nav, .bottom-nav {
 .review-chevron { color:var(--muted); font-size:14px; transition:transform 0.2s ease; flex-shrink:0; font-family:'DM Mono',monospace; }
 .review-details[open] .review-chevron { transform:rotate(90deg); }
 .review-details-body { padding:0 16px 14px; border-top:1px solid var(--border-subtle); }
-.review-details-text { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); line-height:1.65; padding-top:12px; white-space:pre-line; }
+.review-details-text { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--accent); line-height:1.65; padding-top:12px; white-space:pre-line; }
+/* ── NOTIFICATION PILL TOGGLE (account settings) — class-based so updateNotifToggle() can flip it ── */
+.notif-toggle { width:44px; height:26px; border-radius:13px; background:var(--border); position:relative; flex-shrink:0; transition:background .2s; cursor:pointer; }
+.notif-toggle.on { background:var(--accent); }
+.notif-toggle::after { content:''; width:20px; height:20px; border-radius:50%; background:var(--muted); position:absolute; top:3px; left:3px; transition:left .2s, background .2s; }
+.notif-toggle.on::after { left:21px; background:#000; }
 
 /* ── ADHERENCE ── */
 .adherence-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; }
@@ -1026,11 +1031,11 @@ input:focus, textarea:focus, select:focus { outline: none; }
             </div>
             <div class="chat-input-area">
               <div class="quick-prompts">
-                <button class="quick-btn" onclick="sendQuick('When should I increase weight?')">When to add weight</button>
-                <button class="quick-btn" onclick="sendQuick('Should I eat before training?')">Pre-workout food</button>
-                <button class="quick-btn" onclick="sendQuick('My chest feels like it never grows. Why?')">Lagging muscle</button>
-                <button class="quick-btn" onclick="sendQuick('How much sleep do I need to build muscle?')">Sleep & recovery</button>
-                <button class="quick-btn" onclick="sendQuick('Is creatine worth taking?')">Creatine?</button>
+                <button class="quick-btn" data-i18n-key="chip_next_session" onclick="sendQuick('What is my next training session and what should I focus on?')">Next session</button>
+                <button class="quick-btn" data-i18n-key="chip_today_recovery" onclick="sendQuick('How should I manage my recovery today?')">Today's recovery</button>
+                <button class="quick-btn" data-i18n-key="chip_program_overview" onclick="sendQuick('Give me an overview of my current programme.')">Program overview</button>
+                <button class="quick-btn" data-i18n-key="chip_progress_check" onclick="sendQuick('How is my progress looking so far?')">Progress check</button>
+                <button class="quick-btn" data-i18n-key="chip_technique_help" onclick="sendQuick('I need help with my exercise technique.')">Technique help</button>
               </div>
               <div class="input-row">
                 <textarea class="chat-input" id="chatInput" placeholder="${t('ask_coach')}" rows="1" onkeydown="handleKey(event)"></textarea>
@@ -1138,40 +1143,56 @@ input:focus, textarea:focus, select:focus { outline: none; }
           <div id="missionsList" style="padding:0 18px 4px;display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
-        <!-- 1. STAT CARDS (2x2) + bodyweight card + goals card — populated by renderStatGrid() -->
+        <!-- 1. STAT CARDS (2x2) — Sessions / Streak / Last session / PRs — renderStatGrid() -->
         <div class="stat-grid" id="statGrid"></div>
 
-        <!-- 4. MONTHLY BADGES -->
-        <div class="section-label" style="margin-top:4px" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
-        <div id="badgesSection" style="padding:0 18px 4px"></div>
+        <!-- 2. BODYWEIGHT HISTORY CARD (tappable, opens overlay) — renderStatGrid() -->
+        <div id="bwHistoryCard" style="padding:0 18px 10px"></div>
+
+        <!-- 3. BODYWEIGHT LOG CARD (log today's weight) -->
+        <div class="section-label" data-i18n-key="log_bodyweight">LOG BODYWEIGHT</div>
+        <div class="weight-entry-card">
+          <div class="weight-entry-title">Today's Weight</div>
+          <div class="weight-input-row">
+            <input class="weight-input" id="weightInput" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="e.g. 75.5">
+            <button class="action-btn" onclick="saveWeight()">Save</button>
+          </div>
+        </div>
+
+        <!-- 4. GOALS CARD — renderStatGrid() -->
+        <div id="goalsCard" style="padding:0 18px 10px"></div>
 
         <!-- 5. PLAN ADHERENCE -->
         <div class="section-label" data-i18n-key="plan_adherence">PLAN ADHERENCE</div>
         <div id="adherenceSection" style="padding:0 18px 12px"></div>
 
-        <!-- 6. AI WEEKLY REVIEW (collapsible) -->
+        <!-- 6. MONTHLY BADGES -->
+        <div class="section-label" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
+        <div id="badgesSection" style="padding:0 18px 4px"></div>
+
+        <!-- 7. AI WEEKLY REVIEW (collapsible) -->
         <div id="weeklyReviewSection" style="display:none">
           <div class="section-label" data-i18n-key="weekly_review">WEEKLY REVIEW</div>
           <div id="weeklyReviewCard" style="margin:0 18px 4px"></div>
         </div>
 
-        <!-- 6. AI MONTHLY REVIEW (collapsible) -->
+        <!-- 7. AI MONTHLY REVIEW (collapsible) -->
         <div id="monthlyReviewSection" style="display:none">
           <div class="section-label">MONTHLY DEEP-DIVE</div>
           <div id="monthlyReviewCard" style="margin:0 18px 4px"></div>
         </div>
 
-        <!-- 7. SESSION HISTORY (collapsible) -->
+        <!-- 8. SESSION HISTORY (collapsible) -->
         <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
         <div id="sessionHistory" style="padding:0 18px;"></div>
 
-        <!-- 8. OVERLOAD TRACKER (collapsible) -->
+        <!-- 9. OVERLOAD TRACKER (collapsible) -->
         <div class="section-label" data-i18n-key="overload_tracker">OVERLOAD TRACKER</div>
           <!-- Export history: removed pending proper CSV implementation -->
           <button onclick="openProgrammes()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
         <div id="overloadTracker"></div>
 
-        <!-- 9. PR SEARCH -->
+        <!-- 10. PR SEARCH -->
         <div class="section-label">SEARCH PRS</div>
         <div style="padding:0 18px;">
           <div class="pr-search-row">
@@ -1203,15 +1224,6 @@ input:focus, textarea:focus, select:focus { outline: none; }
               <button class="action-btn" onclick="saveMetrics()" style="width:100%">Save Measurements</button>
             </div>
             <div id="metricsHistory" style="padding:12px 14px"></div>
-          </div>
-        </div>
-
-        <div class="section-label" data-i18n-key="log_bodyweight">LOG BODYWEIGHT</div>
-        <div class="weight-entry-card">
-          <div class="weight-entry-title">Today's Weight</div>
-          <div class="weight-input-row">
-            <input class="weight-input" id="weightInput" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="e.g. 75.5">
-            <button class="action-btn" onclick="saveWeight()">Save</button>
           </div>
         </div>
       </div>
@@ -1361,6 +1373,39 @@ let currentUser = null;
 let userProfile = null;
 let userPlan = null;
 let userSubscription = null; // { tier, accessTier, status, isExempt, trialDaysLeft, coachUsage, coachLimit, hasUnlimitedCoach }
+
+// ── UNITS (kg / lbs) ───────────────────────────────────
+// Weight is ALWAYS stored in kg in the database. Conversion happens only at the
+// display/input layer — never at storage. getUserUnits() reads the profile first,
+// then a localStorage cache (so it works before the profile loads), default 'kg'.
+function kgToLbs(kg) { return Math.round(parseFloat(kg) * 2.2046 * 10) / 10; }
+function lbsToKg(lbs) { return Math.round(parseFloat(lbs) / 2.2046 * 10) / 10; }
+function getUserUnits() {
+  return userProfile?.units || localStorage.getItem('forge-units') || 'kg';
+}
+function displayWeightUnit() { return getUserUnits() === 'lbs' ? 'lbs' : 'kg'; }
+function displayWeightValue(kg) {
+  // Number only, no unit label. '—' when not a number.
+  if (kg === null || kg === undefined || kg === '' || isNaN(parseFloat(kg))) return '—';
+  const n = parseFloat(kg);
+  return getUserUnits() === 'lbs' ? kgToLbs(n) : n;
+}
+function displayWeight(kg) {
+  // Number + unit label, e.g. "82.5 kg" / "182 lbs". '—' when not a number.
+  const v = displayWeightValue(kg);
+  return v === '—' ? '—' : v + ' ' + displayWeightUnit();
+}
+function inputToKg(value) {
+  // Convert a user-entered weight (in their display units) to kg for storage.
+  const num = parseFloat(String(value).replace(',', '.'));
+  if (isNaN(num)) return null;
+  return getUserUnits() === 'lbs' ? lbsToKg(num) : num;
+}
+function refreshWeightDisplays() {
+  // Re-render currently visible weight values without a full reload — at minimum the
+  // progress panel (stat cards, bodyweight, history, PRs, sessions, overload).
+  if (document.getElementById('panel-progress')?.classList.contains('active') && typeof renderProgress === 'function') renderProgress();
+}
 
 // Frontend feature access check — uses accessTier from server (single source of truth)
 function canAccess(feature) {
@@ -3363,10 +3408,10 @@ function renderSetRow(exIdx, setIdx, setData, totalSets) {
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);width:24px;text-align:center;flex-shrink:0;letter-spacing:1px;">S${setIdx + 1}</div>
       ${isBw
         ? `<div class="log-input" style="flex:1;min-width:0;text-align:center;color:var(--accent);font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:1px;">Bodyweight</div>`
-        : `<input class="log-input" id="lw-${exIdx}-${setIdx}" type="text" inputmode="decimal" placeholder="kg" value="${setData.weight || ''}" style="flex:1;min-width:0;font-size:13px;padding:8px 10px;"
+        : `<input class="log-input" id="lw-${exIdx}-${setIdx}" type="text" inputmode="decimal" placeholder="${displayWeightUnit()}" value="${setData.weight ? displayWeightValue(setData.weight) : ''}" style="flex:1;min-width:0;font-size:13px;padding:8px 10px;"
             oninput="this.value=this.value.replace(',','.')"
-            onchange="updateSetData(${exIdx}, ${setIdx}, 'weight', this.value); autoSaveLog();">
-          <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;width:22px;text-align:center;flex-shrink:0;">kg</div>`}
+            onchange="updateSetData(${exIdx}, ${setIdx}, 'weight', inputToKg(this.value)); autoSaveLog();">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;width:22px;text-align:center;flex-shrink:0;">${displayWeightUnit()}</div>`}
       <input class="log-input" id="lr-${exIdx}-${setIdx}" type="number" inputmode="numeric" placeholder="reps" value="${setData.reps || ''}" style="flex:1;min-width:0;font-size:13px;padding:8px 10px;"
         onchange="updateSetData(${exIdx}, ${setIdx}, 'reps', this.value); autoSaveLog();">
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;width:30px;text-align:center;flex-shrink:0;">reps</div>
@@ -3589,7 +3634,7 @@ async function saveLog(btn) {
 
     // Build session summary for check-in
     const summary = exercises.map(ex => {
-      const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'Bodyweight' : (s.weight + 'kg')} × ${s.reps}`).join(', ');
+      const setsStr = ex.sets_data.map((s, i) => `Set ${i+1}: ${s.is_bw ? 'Bodyweight' : displayWeight(s.weight)} × ${s.reps}`).join(', ');
       return `${ex.name} — ${setsStr}`;
     }).join('\n');
 
@@ -3622,14 +3667,14 @@ function getOverloadAdvice(exercise, sessions) {
 
   if (stalled && repsDropping && recent.length >= 4) {
     const deload = Math.round(last.weight_kg * 0.85 * 2) / 2;
-    return { type: 'deload', headline: `⬇ Deload — ${exercise.name}`, detail: `Stuck at ${last.weight_kg}kg and reps are falling. Drop to ${deload}kg next session, reset, and rebuild.` };
+    return { type: 'deload', headline: `⬇ Deload — ${exercise.name}`, detail: `Stuck at ${displayWeight(last.weight_kg)} and reps are falling. Drop to ${displayWeight(deload)} next session, reset, and rebuild.` };
   }
   if (hitTopReps && hitTargetSets) {
     const inc = isCompound ? 2.5 : 1.25;
-    return { type: 'up', headline: `↑ Add weight — ${exercise.name}`, detail: `${last.sets}×${last.reps} @ ${last.weight_kg}kg — top of range hit. Next session: ${last.weight_kg + inc}kg. Start at ${repMin} reps.` };
+    return { type: 'up', headline: `↑ Add weight — ${exercise.name}`, detail: `${last.sets}×${last.reps} @ ${displayWeight(last.weight_kg)} — top of range hit. Next session: ${displayWeight(last.weight_kg + inc)}. Start at ${repMin} reps.` };
   }
   if (hitTopReps && !hitTargetSets) {
-    return { type: 'up', headline: `↑ Add a set — ${exercise.name}`, detail: `Reps are there but only ${last.sets} sets. Add one more set at ${last.weight_kg}kg. Hit ${targetSets}×${repMax} before going heavier.` };
+    return { type: 'up', headline: `↑ Add a set — ${exercise.name}`, detail: `Reps are there but only ${last.sets} sets. Add one more set at ${displayWeight(last.weight_kg)}. Hit ${targetSets}×${repMax} before going heavier.` };
   }
   if (stalled && !repsDropping) {
     return { type: 'hold', headline: `→ Push reps — ${exercise.name}`, detail: `Same weight for ${recent.length} sessions. You hit ${last.reps} — push for ${Math.min(last.reps + 1, repMax)} next time.` };
@@ -3639,7 +3684,7 @@ function getOverloadAdvice(exercise, sessions) {
     return { type: 'hold', headline: `→ Progressing — ${exercise.name}`, detail: `Up ${last.reps - prev.reps} rep${last.reps - prev.reps > 1 ? 's' : ''} from last session. ${left > 0 ? `${left} more to go before adding weight.` : 'Hit the target — add weight next session.'}` };
   }
   const left = repMax - last.reps;
-  return { type: 'hold', headline: `→ Stay the course — ${exercise.name}`, detail: `${last.sets}×${last.reps} @ ${last.weight_kg}kg. ${left > 0 ? `${left} more rep${left > 1 ? 's' : ''} before going heavier.` : 'Ready to add weight.'}` };
+  return { type: 'hold', headline: `→ Stay the course — ${exercise.name}`, detail: `${last.sets}×${last.reps} @ ${displayWeight(last.weight_kg)}. ${left > 0 ? `${left} more rep${left > 1 ? 's' : ''} before going heavier.` : 'Ready to add weight.'}` };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4089,20 +4134,7 @@ async function renderStatGrid() {
   const curMonth = new Date().toISOString().substring(0, 7);
   const prsThisMonth = prs.filter(p => String(p.achieved_at || '').substring(0, 7) === curMonth).length;
 
-  // Bodyweight card — sort ascending so current = newest, start = oldest, regardless
-  // of the order the API returns rows in.
-  const tsOf = e => e?.recorded_at || e?.logged_at || e?.created_at || '';
-  const weights = (bwRes?.history || []).slice().sort((a, b) => String(tsOf(a)).localeCompare(String(tsOf(b))));
-  const current = weights.length ? weights[weights.length - 1].weight_kg : (userProfile?.weight_kg || '—');
-  const startW = weights.length ? weights[0].weight_kg : (userProfile?.weight_kg || null);
-  const diff = (startW && weights.length > 1) ? (current - startW).toFixed(1) : null;
-
-  // Goals card
-  const goalKeyMap = { muscle:'ob_goal_muscle', fat_loss:'ob_goal_fat_loss', strength:'ob_goal_strength', endurance:'ob_goal_endurance', sport:'ob_goal_sport' };
-  const goalStr = Array.isArray(userProfile?.goal)
-    ? userProfile.goal.map(g => t(goalKeyMap[g] || 'ob_goal_muscle')).join(' + ').toUpperCase()
-    : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
-
+  // ── 1. The 2x2 stat grid (Sessions / Streak / Last session / PRs) ──
   grid.innerHTML = `
     <div class="stat-card">
       <div class="stat-lbl">SESSIONS THIS WEEK</div>
@@ -4122,18 +4154,49 @@ async function renderStatGrid() {
       <div class="stat-lbl">PRS THIS MONTH</div>
       <div class="stat-val">${prsThisMonth}</div>
     </div>
-    <div class="stat-card tappable" data-metric="bodyweight" onclick="openBodyweightHistory()" style="grid-column:1 / -1">
-      <div class="stat-lbl">${t('log_bodyweight')}</div>
-      <div class="stat-val" id="bodyweightVal">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
-      ${diff !== null ? `<div class="stat-change ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}kg</div>` : ''}
-      <div class="stat-card-hint">View history ›</div>
-    </div>
-    <div class="stat-card" style="grid-column:1 / -1">
-      <div class="stat-lbl">${t('ob_goal_title')}</div>
-      <div class="stat-val" style="font-size:18px;margin-top:8px">${goalStr}</div>
-      <div class="stat-change">${userProfile?.experience || ''} · ${userProfile?.days_per_week || ''} ${t('stat_days_wk')}</div>
-    </div>
   `;
+
+  // ── 2. Bodyweight history card (tappable). Weight is stored in kg; shown in the
+  // user's units. Keeps data-metric/#bodyweightVal hooks so saveWeight can patch it. ──
+  const bwEl = document.getElementById('bwHistoryCard');
+  if (bwEl) {
+    const tsOf = e => e?.recorded_at || e?.logged_at || e?.created_at || '';
+    const weights = (bwRes?.history || []).slice().sort((a, b) => String(tsOf(a)).localeCompare(String(tsOf(b))));
+    const currentKg = weights.length ? weights[weights.length - 1].weight_kg : (userProfile?.weight_kg ?? null);
+    const startKg = weights.length ? weights[0].weight_kg : null;
+    const diffKg = (startKg != null && weights.length > 1) ? (currentKg - startKg) : null;
+    const bwVal = displayWeightValue(currentKg);
+    const bwHtml = bwVal === '—' ? '—' : `${bwVal}<span style="font-size:18px;color:var(--muted)"> ${displayWeightUnit()}</span>`;
+    const diffMag = diffKg != null ? displayWeightValue(Math.abs(diffKg)) : null;
+    bwEl.innerHTML = `
+      <div class="stat-card tappable" data-metric="bodyweight" onclick="openBodyweightHistory()">
+        <div class="stat-lbl">${t('log_bodyweight')}</div>
+        <div class="stat-val" id="bodyweightVal">${bwHtml}</div>
+        ${diffKg !== null ? `<div class="stat-change ${diffKg >= 0 ? 'up' : 'down'}">${diffKg >= 0 ? '↑' : '↓'} ${diffMag}${displayWeightUnit()}</div>` : ''}
+        <div class="stat-card-hint">View history ›</div>
+      </div>
+    `;
+  }
+
+  // ── 4. Goals card ──
+  const goalEl = document.getElementById('goalsCard');
+  if (goalEl) {
+    const goalKeyMap = { muscle:'ob_goal_muscle', fat_loss:'ob_goal_fat_loss', strength:'ob_goal_strength', endurance:'ob_goal_endurance', sport:'ob_goal_sport' };
+    const goalStr = Array.isArray(userProfile?.goal)
+      ? userProfile.goal.map(g => t(goalKeyMap[g] || 'ob_goal_muscle')).join(' + ').toUpperCase()
+      : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
+    goalEl.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-lbl">${t('ob_goal_title')}</div>
+        <div class="stat-val" style="font-size:18px;margin-top:8px">${goalStr}</div>
+        <div class="stat-change">${userProfile?.experience || ''} · ${userProfile?.days_per_week || ''} ${t('stat_days_wk')}</div>
+      </div>
+    `;
+  }
+
+  // Bodyweight log input placeholder reflects the user's current units.
+  const wInput = document.getElementById('weightInput');
+  if (wInput) wInput.placeholder = 'e.g. ' + (getUserUnits() === 'lbs' ? '165' : '75') + ' ' + displayWeightUnit();
 }
 
 // ── SESSION HISTORY ──
@@ -4182,7 +4245,7 @@ async function renderSessionHistory() {
 function formatSetWeight(s) {
   if (s?.is_bw === true) return 'Bodyweight';
   if (s?.weight === 'bodyweight' || s?.weight === null || s?.weight === undefined) return 'Bodyweight';
-  return `${s.weight}kg`;
+  return displayWeight(s.weight); // stored in kg; shown in the user's units
 }
 
 // One-line "top set" summary for the overload tracker prev→now row. Picks the
@@ -4323,9 +4386,9 @@ async function renderProgress() {
           <div>
             <div class="pr-name">${p.exercise_name}</div>
             <div class="pr-date">${p.achieved_at} · ${p.sets}×${p.reps}</div>
-            <div class="pr-badge">${t('pr_badge')} · ${p.est_1rm}kg e1RM</div>
+            <div class="pr-badge">${t('pr_badge')} · ${displayWeightValue(p.est_1rm)}${displayWeightUnit()} e1RM</div>
           </div>
-          <div class="pr-val">${p.weight_kg}<span style="font-size:14px;color:var(--muted)">kg</span></div>
+          <div class="pr-val">${displayWeightValue(p.weight_kg)}<span style="font-size:14px;color:var(--muted)">${displayWeightUnit()}</span></div>
         </div>
       `).join('')
     : `<div class="empty-state">${t('pr_no_records')}</div>`;
@@ -4336,12 +4399,18 @@ async function saveWeight() {
   // Normalise comma → period for locales that use comma as the decimal separator,
   // then parseFloat. The input is type=text so iOS Safari won't pre-validate and
   // block decimals before this runs.
+  // The user enters weight in THEIR units; validate against the unit range, then
+  // convert to kg for storage (the DB always stores kg).
   const raw = input?.value?.replace(',', '.') || '';
-  const w = parseFloat(raw);
-  if (isNaN(w) || w < 20 || w > 400) {
-    showToast('Enter a weight between 20 and 400 kg');
+  const entered = parseFloat(raw);
+  const units = getUserUnits();
+  const lo = units === 'lbs' ? 44 : 20;
+  const hi = units === 'lbs' ? 880 : 400;
+  if (isNaN(entered) || entered < lo || entered > hi) {
+    showToast(`Enter a weight between ${lo} and ${hi} ${units}`);
     return;
   }
+  const w = inputToKg(raw); // kg for storage
 
   const res = await api('/api/bodyweight', 'POST', { weight_kg: w });
   console.log('[saveWeight] response:', res);
@@ -4352,9 +4421,10 @@ async function saveWeight() {
 
   // Prefer the value the server actually persisted (POST may return the saved
   // entry as { id, weight_kg, recorded_at } or { entry: {...} }); fall back to
-  // the value we sent so the display still updates if the response is bare.
+  // the value we sent so the display still updates if the response is bare. Stored
+  // in kg → shown in the user's units.
   const saved = res.entry?.weight_kg ?? res.weight_kg ?? res.bodyweight ?? w;
-  const html = `${saved}<span style="font-size:18px;color:var(--muted)"> kg</span>`;
+  const html = `${displayWeightValue(saved)}<span style="font-size:18px;color:var(--muted)"> ${displayWeightUnit()}</span>`;
 
   // Snappy in-place update of EVERY element that shows current bodyweight, before
   // the heavier renderProgress() refresh runs. Covers the progress stat-card hook
@@ -4452,8 +4522,8 @@ async function runPrSearch(q) {
       <div class="pr-search-name">${escHtml(name)}</div>
       ${groups[name].map(p => `
         <div class="pr-search-entry">
-          <span class="pr-search-lift">${p.weight_kg}kg × ${p.reps}</span>
-          <span class="pr-search-meta">Est. 1RM: ${p.est_1rm}kg · ${formatFullDate(p.achieved_at)}</span>
+          <span class="pr-search-lift">${displayWeightValue(p.weight_kg)}${displayWeightUnit()} × ${p.reps}</span>
+          <span class="pr-search-meta">Est. 1RM: ${displayWeightValue(p.est_1rm)}${displayWeightUnit()} · ${formatFullDate(p.achieved_at)}</span>
         </div>`).join('')}
     </div>`).join('');
 }
@@ -4495,15 +4565,15 @@ async function openBodyweightHistory() {
     <div class="bwh-summary-grid">
       <div class="bwh-summary-card">
         <div class="bwh-summary-lbl">Current</div>
-        <div class="bwh-summary-val">${res.current_weight} kg</div>
+        <div class="bwh-summary-val">${displayWeightValue(res.current_weight)} ${displayWeightUnit()}</div>
       </div>
       <div class="bwh-summary-card">
         <div class="bwh-summary-lbl">Starting</div>
-        <div class="bwh-summary-val">${res.starting_weight} kg</div>
+        <div class="bwh-summary-val">${displayWeightValue(res.starting_weight)} ${displayWeightUnit()}</div>
       </div>
       <div class="bwh-summary-card">
         <div class="bwh-summary-lbl">Change</div>
-        <div class="bwh-summary-val ${changeClass}">${res.total_change} kg</div>
+        <div class="bwh-summary-val ${changeClass}">${displayWeightValue(res.total_change)} ${displayWeightUnit()}</div>
       </div>
       <div class="bwh-summary-card">
         <div class="bwh-summary-lbl">Logged</div>
@@ -4527,7 +4597,7 @@ function buildBodyweightChart(history) {
       <svg viewBox="0 0 320 200" width="100%" height="200" preserveAspectRatio="none">
         <circle cx="160" cy="100" r="4" fill="var(--accent)" />
       </svg>
-      <div style="text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;">${w} kg · Log more entries to see your progression</div>`;
+      <div style="text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;">${displayWeightValue(w)} ${displayWeightUnit()} · Log more entries to see your progression</div>`;
   }
 
   const W = 320, H = 200, padL = 38, padR = 12, padT = 14, padB = 26;
@@ -4551,7 +4621,7 @@ function buildBodyweightChart(history) {
     const val = minW + (g / gridLines) * (maxW - minW);
     const gy = y(val);
     grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="0.5" />`;
-    grid += `<text x="${padL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${val.toFixed(0)}</text>`;
+    grid += `<text x="${padL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${Math.round(getUserUnits() === 'lbs' ? kgToLbs(val) : val)}</text>`;
   }
 
   // X-axis labels: first, middle, last — "MMM YY"
@@ -4590,14 +4660,14 @@ function buildBodyweightList(history) {
       const d = cur - prev;
       const cls = d > 0 ? 'up' : (d < 0 ? 'down' : '');
       const sign = d > 0 ? '+' : (d < 0 ? '−' : '');
-      if (d !== 0) delta = `<span class="bwh-row-delta ${cls}">${sign}${Math.abs(d).toFixed(1)} kg</span>`;
+      if (d !== 0) delta = `<span class="bwh-row-delta ${cls}">${sign}${displayWeightValue(Math.abs(d))} ${displayWeightUnit()}</span>`;
     }
     return { html: `
       <div class="bwh-row">
         <div class="bwh-row-date">${formatFullDate(h.recorded_at)}</div>
         <div class="bwh-row-right">
           ${delta}
-          <div class="bwh-row-weight">${h.weight_kg} kg</div>
+          <div class="bwh-row-weight">${displayWeightValue(h.weight_kg)} ${displayWeightUnit()}</div>
         </div>
       </div>` };
   });
@@ -6316,6 +6386,8 @@ function renderAccount() {
   const _langLabel = _curLang ? _curLang.label : 'English';
   // Notifications toggle reflects the live browser permission.
   const _notifGranted = (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+  // Units segmented control (KG / LBS) — current selection.
+  const _units = getUserUnits();
   // Coach-plan row only shows for coach accounts.
   const _isCoachAcct = (profile.account_type === 'coach');
   const _coachPlanName = (typeof COACH_PLAN_LABEL !== 'undefined' ? (COACH_PLAN_LABEL[profile.coach_plan] || 'Starter') : 'Starter');
@@ -6398,13 +6470,13 @@ function renderAccount() {
       <!-- SECTION 3 — Settings rows -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">SETTINGS</div>
 
-      <!-- Row 1 — Notifications (wired to the existing push-permission flow) -->
-      <div onclick="if(typeof Notification!=='undefined'){initPushNotifications().then(()=>renderAccount());}" style="${_rowStyle}">
+      <!-- Row 1 — Notifications (iOS permission flow: request / deep-link to Settings) -->
+      <div onclick="handleNotifTap()" style="${_rowStyle}">
         <div style="min-width:0;">
           <div style="${_rowLabel}">Notifications</div>
           <div style="${_rowSub}">Workout reminders and updates</div>
         </div>
-        ${_toggle(_notifGranted)}
+        <div class="notif-toggle ${_notifGranted ? 'on' : ''}" id="notifToggle"></div>
       </div>
 
       <!-- Row 2 — Dark mode (toggles current dark theme ↔ light; remembers last dark variant) -->
@@ -6438,6 +6510,18 @@ function renderAccount() {
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);">${escHtml(_langLabel)}</span>
           ${_chev}
+        </div>
+      </div>
+
+      <!-- Row — Units (kg / lbs) segmented control -->
+      <div style="${_rowStyle}cursor:default;">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Units</div>
+          <div style="${_rowSub}">Weight measurement system</div>
+        </div>
+        <div style="display:flex;background:var(--surface2);border-radius:8px;padding:2px;gap:2px;flex-shrink:0;">
+          <button id="unitsKg" onclick="setUnits('kg')" style="padding:4px 10px;border-radius:6px;border:none;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;background:${_units === 'kg' ? 'var(--accent)' : 'transparent'};color:${_units === 'kg' ? '#000' : 'var(--muted)'};">KG</button>
+          <button id="unitsLbs" onclick="setUnits('lbs')" style="padding:4px 10px;border-radius:6px;border:none;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;background:${_units === 'lbs' ? 'var(--accent)' : 'transparent'};color:${_units === 'lbs' ? '#000' : 'var(--muted)'};">LBS</button>
         </div>
       </div>
 
@@ -6478,14 +6562,16 @@ function renderAccount() {
         </button>
       </div>
 
-      <!-- SECTION 4 — Sign out -->
-      <button onclick="signOut()" style="width:100%;background:transparent;border:1px solid var(--red);color:var(--red);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;border-radius:10px;padding:14px;margin-top:24px;cursor:pointer;">${t('sign_out')}</button>
-
       <!-- Coach sections (My Coach, Become a Coach, Coach Plan, Pending Request) -->
-      <div id="coachAccountSections"></div>
+      <!-- FIX 4: coach sections render ABOVE sign-out so the coach plan card (which has
+           its own margin-bottom:16px) sits clearly above the sign-out button. -->
+      <div id="coachAccountSections" style="margin-top:8px;"></div>
 
       <!-- Referral Programme -->
       <div id="referralSection"></div>
+
+      <!-- SECTION 4 — Sign out (last element, with breathing room above) -->
+      <button onclick="signOut()" style="width:100%;background:transparent;border:1px solid var(--red);color:var(--red);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;border-radius:10px;padding:14px;margin-top:24px;cursor:pointer;">${t('sign_out')}</button>
 
     </div>
   `;
@@ -7168,6 +7254,7 @@ const LANGUAGES = [
 // Full UI translation strings
 const STRINGS = {
   en: {
+    chip_next_session: "Next session", chip_today_recovery: "Today's recovery", chip_program_overview: "Program overview", chip_progress_check: "Progress check", chip_technique_help: "Technique help",
     nav_coach: 'Coach',
     nav_plan: 'Plan',
     nav_log: 'Log',
@@ -7541,6 +7628,7 @@ const STRINGS = {
     expired_sub: 'Your plan and progress are saved. Pick a plan to continue.',
 },
   es: {
+    chip_next_session: "Próxima sesión", chip_today_recovery: "Recuperación de hoy", chip_program_overview: "Resumen del programa", chip_progress_check: "Control de progreso", chip_technique_help: "Ayuda técnica",
     nav_coach: 'Coach',
     nav_plan: 'Plan',
     nav_log: 'Registro',
@@ -7914,6 +8002,7 @@ const STRINGS = {
     expired_sub: 'Tu plan y progreso están guardados. Elige un plan para continuar.',
 },
   fr: {
+    chip_next_session: "Prochaine séance", chip_today_recovery: "Récupération du jour", chip_program_overview: "Aperçu du programme", chip_progress_check: "Bilan de progression", chip_technique_help: "Aide technique",
     nav_coach: 'Coach',
     nav_plan: 'Plan',
     nav_log: 'Journal',
@@ -8287,6 +8376,7 @@ const STRINGS = {
     expired_sub: 'Ton programme et tes progrès sont sauvegardés. Choisis un plan pour continuer.',
 },
   de: {
+    chip_next_session: "Nächste Einheit", chip_today_recovery: "Heutige Erholung", chip_program_overview: "Programmübersicht", chip_progress_check: "Fortschrittskontrolle", chip_technique_help: "Technische Hilfe",
     nav_coach: 'Coach',
     nav_plan: 'Plan',
     nav_log: 'Protokoll',
@@ -8660,6 +8750,7 @@ const STRINGS = {
     expired_sub: 'Dein Plan und dein Fortschritt sind gespeichert. Wähle einen Plan, um weiterzumachen.',
 },
   it: {
+    chip_next_session: "Prossima sessione", chip_today_recovery: "Recupero di oggi", chip_program_overview: "Panoramica programma", chip_progress_check: "Controllo progressi", chip_technique_help: "Assistenza tecnica",
     nav_coach: 'Coach',
     nav_plan: 'Piano',
     nav_log: 'Registro',
@@ -9033,6 +9124,7 @@ const STRINGS = {
     expired_sub: 'Il tuo piano e i progressi sono salvati. Scegli un piano per continuare.',
 },
   pt: {
+    chip_next_session: "Próxima sessão", chip_today_recovery: "Recuperação de hoje", chip_program_overview: "Visão do programa", chip_progress_check: "Verificação de progresso", chip_technique_help: "Ajuda técnica",
     nav_coach: 'Coach',
     nav_plan: 'Plano',
     nav_log: 'Registo',
@@ -9406,6 +9498,7 @@ const STRINGS = {
     expired_sub: 'O seu plano e progresso estão guardados. Escolha um plano para continuar.',
 },
   nl: {
+    chip_next_session: "Volgende sessie", chip_today_recovery: "Herstel vandaag", chip_program_overview: "Programmaoverzicht", chip_progress_check: "Voortgangscheck", chip_technique_help: "Technische hulp",
     nav_coach: 'Coach',
     nav_plan: 'Plan',
     nav_log: 'Logboek',
@@ -9779,6 +9872,7 @@ const STRINGS = {
     expired_sub: 'Je plan en voortgang zijn opgeslagen. Kies een abonnement om verder te gaan.',
 },
   uk: {
+    chip_next_session: "Наступне тренування", chip_today_recovery: "Відновлення сьогодні", chip_program_overview: "Огляд програми", chip_progress_check: "Перевірка прогресу", chip_technique_help: "Допомога з технікою",
     nav_coach: 'Тренер',
     nav_plan: 'План',
     nav_log: 'Журнал',
@@ -10152,6 +10246,7 @@ const STRINGS = {
     expired_sub: 'Ваш план і прогрес збережені. Оберіть план для продовження.',
 },
   fi: {
+    chip_next_session: "Seuraava treeni", chip_today_recovery: "Palautuminen tänään", chip_program_overview: "Ohjelman yleiskatsaus", chip_progress_check: "Edistymisen tarkistus", chip_technique_help: "Tekniikka-apu",
     nav_coach: 'Valmentaja',
     nav_plan: 'Suunnitelma',
     nav_log: 'Kirjaus',
@@ -10525,6 +10620,7 @@ const STRINGS = {
     expired_sub: 'Suunnitelmasi ja edistymisesi on tallennettu. Valitse suunnitelma jatkaaksesi.',
 },
   ar: {
+    chip_next_session: "الجلسة التالية", chip_today_recovery: "التعافي اليوم", chip_program_overview: "نظرة عامة على البرنامج", chip_progress_check: "فحص التقدم", chip_technique_help: "المساعدة التقنية",
     nav_coach: 'المدرب',
     nav_plan: 'الخطة',
     nav_log: 'السجل',
@@ -10898,6 +10994,7 @@ const STRINGS = {
     expired_sub: 'تم حفظ خطتك وتقدمك. اختر خطة للمتابعة.',
 },
   zh: {
+    chip_next_session: "下次训练", chip_today_recovery: "今日恢复", chip_program_overview: "计划概览", chip_progress_check: "进度检查", chip_technique_help: "技术帮助",
     nav_coach: '教练',
     nav_plan: '计划',
     nav_log: '记录',
@@ -11271,6 +11368,7 @@ const STRINGS = {
     expired_sub: '您的计划和进度已保存。请选择一个方案继续。',
 },
   ja: {
+    chip_next_session: "次のセッション", chip_today_recovery: "今日の回復", chip_program_overview: "プログラム概要", chip_progress_check: "進捗確認", chip_technique_help: "テクニック支援",
     nav_coach: 'コーチ',
     nav_plan: 'プラン',
     nav_log: '記録',
@@ -14028,6 +14126,42 @@ setTimeout(() => {
     card.insertBefore(msg, card.firstChild);
   }
 })();
+
+// ── NOTIFICATION TOGGLE (account settings) ──────
+// On render the toggle reflects Notification.permission: 'granted' → ON, else OFF.
+function updateNotifToggle(granted) {
+  const el = document.getElementById('notifToggle');
+  if (el) el.classList.toggle('on', !!granted);
+}
+// Tapping requests permission the first time; once granted/denied a web app can't
+// flip it programmatically (esp. iOS), so we explain and deep-link to Settings.
+function handleNotifTap() {
+  if (typeof Notification === 'undefined') { showToast('Notifications are not supported on this device'); return; }
+  const perm = Notification.permission;
+  if (perm === 'default') {
+    Notification.requestPermission().then(result => {
+      updateNotifToggle(result === 'granted');
+      if (result === 'granted') initPushNotifications();
+    });
+  } else if (perm === 'granted') {
+    showToast('To disable notifications, go to Settings → FORGE → Notifications');
+    window.location.href = 'app-settings:';
+  } else { // denied
+    showToast('Notifications are blocked. Enable them in your device Settings.');
+    window.location.href = 'app-settings:';
+  }
+}
+
+// Units (kg/lbs) — persists to profile + localStorage, then refreshes visible weights.
+function setUnits(u) {
+  if (u !== 'kg' && u !== 'lbs') return;
+  if (userProfile) userProfile.units = u;
+  try { localStorage.setItem('forge-units', u); } catch(e) {}
+  try { if (userProfile) localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile)); } catch(e) {}
+  api('/api/profile', 'PATCH', { units: u }).catch(() => {});
+  if (typeof renderAccount === 'function') renderAccount(); // re-highlight the KG/LBS control
+  refreshWeightDisplays();
+}
 
 // ── SERVICE WORKER + PUSH SUBSCRIPTION ──────────
 async function initPushNotifications() {
