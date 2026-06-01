@@ -637,6 +637,15 @@ nav.bottom-nav, .bottom-nav {
 .review-stat { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); }
 .review-stat span { color:var(--accent); }
 .review-body { padding:14px 16px; font-size:13px; line-height:1.7; color:var(--text); white-space:pre-line; }
+/* ── COLLAPSIBLE AI REVIEW CARDS (progress panel) ── */
+.review-details { background:var(--surface); border:1px solid var(--border); border-radius:14px; margin-bottom:10px; overflow:hidden; }
+.review-details > summary { list-style:none; display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; outline:none; }
+.review-details > summary::-webkit-details-marker { display:none; }
+.review-details > summary:active { background:var(--surface2); }
+.review-chevron { color:var(--muted); font-size:14px; transition:transform 0.2s ease; flex-shrink:0; font-family:'DM Mono',monospace; }
+.review-details[open] .review-chevron { transform:rotate(90deg); }
+.review-details-body { padding:0 16px 14px; border-top:1px solid var(--border-subtle); }
+.review-details-text { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); line-height:1.65; padding-top:12px; white-space:pre-line; }
 
 /* ── ADHERENCE ── */
 .adherence-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; }
@@ -1120,8 +1129,8 @@ input:focus, textarea:focus, select:focus { outline: none; }
           </div>
         </div>
 
-        <!-- STREAK CARD -->
-        <div id="streakSection" style="padding:14px 18px 0"></div>
+        <!-- STREAK CARD (folded into stat grid below; kept hidden so renderStreak's badge render still runs) -->
+        <div id="streakSection" style="display:none"></div>
 
         <!-- MISSIONS -->
         <div id="missionsSection" style="display:none">
@@ -1129,29 +1138,52 @@ input:focus, textarea:focus, select:focus { outline: none; }
           <div id="missionsList" style="padding:0 18px 4px;display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
-        <!-- WEEKLY REVIEW -->
+        <!-- 1. STAT CARDS (2x2) + bodyweight card + goals card — populated by renderStatGrid() -->
+        <div class="stat-grid" id="statGrid"></div>
+
+        <!-- 4. MONTHLY BADGES -->
+        <div class="section-label" style="margin-top:4px" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
+        <div id="badgesSection" style="padding:0 18px 4px"></div>
+
+        <!-- 5. PLAN ADHERENCE -->
+        <div class="section-label" data-i18n-key="plan_adherence">PLAN ADHERENCE</div>
+        <div id="adherenceSection" style="padding:0 18px 12px"></div>
+
+        <!-- 6. AI WEEKLY REVIEW (collapsible) -->
         <div id="weeklyReviewSection" style="display:none">
           <div class="section-label" data-i18n-key="weekly_review">WEEKLY REVIEW</div>
           <div id="weeklyReviewCard" style="margin:0 18px 4px"></div>
         </div>
 
-        <!-- MONTHLY REVIEW -->
+        <!-- 6. AI MONTHLY REVIEW (collapsible) -->
         <div id="monthlyReviewSection" style="display:none">
           <div class="section-label">MONTHLY DEEP-DIVE</div>
           <div id="monthlyReviewCard" style="margin:0 18px 4px"></div>
         </div>
 
-        <div class="stat-grid" id="statGrid"></div>
+        <!-- 7. SESSION HISTORY (collapsible) -->
+        <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
+        <div id="sessionHistory" style="padding:0 18px;"></div>
 
-        <!-- BADGES -->
-        <div class="section-label" style="margin-top:4px" data-i18n-key="monthly_badges">MONTHLY BADGES</div>
-        <div id="badgesSection" style="padding:0 18px 4px"></div>
+        <!-- 8. OVERLOAD TRACKER (collapsible) -->
+        <div class="section-label" data-i18n-key="overload_tracker">OVERLOAD TRACKER</div>
+          <!-- Export history: removed pending proper CSV implementation -->
+          <button onclick="openProgrammes()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
+        <div id="overloadTracker"></div>
 
-        <!-- PLAN ADHERENCE -->
-        <div class="section-label" data-i18n-key="plan_adherence">PLAN ADHERENCE</div>
-        <div id="adherenceSection" style="padding:0 18px 12px"></div>
+        <!-- 9. PR SEARCH -->
+        <div class="section-label">SEARCH PRS</div>
+        <div style="padding:0 18px;">
+          <div class="pr-search-row">
+            <input id="prSearchInput" class="pr-search-input" type="text" autocomplete="off" placeholder="Search an exercise..." oninput="onPrSearchInput(this.value)">
+            <button id="prSearchClear" class="pr-search-clear" type="button" onclick="clearPrSearch()">×</button>
+          </div>
+          <div id="prSearchResults" class="pr-search-results"></div>
+        </div>
+        <div class="section-label" data-i18n-key="personal_records">PERSONAL RECORDS</div>
+        <div class="pr-list" id="prList"></div>
 
-        <!-- BODY METRICS -->
+        <!-- BODY METRICS (kept — functional measurement logging) -->
         <div class="section-label" data-i18n-key="body_metrics">BODY METRICS</div>
         <div style="padding:0 18px 8px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
@@ -1182,22 +1214,6 @@ input:focus, textarea:focus, select:focus { outline: none; }
             <button class="action-btn" onclick="saveWeight()">Save</button>
           </div>
         </div>
-        <div class="section-label" data-i18n-key="overload_tracker">OVERLOAD TRACKER</div>
-          <!-- Export history: removed pending proper CSV implementation -->
-          <button onclick="openProgrammes()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;"><span>📋</span> My Programmes</button>
-        <div id="overloadTracker"></div>
-        <div class="section-label" data-i18n-key="session_history">SESSION HISTORY</div>
-        <div id="sessionHistory" style="padding:0 18px;"></div>
-        <div class="section-label">SEARCH PRS</div>
-        <div style="padding:0 18px;">
-          <div class="pr-search-row">
-            <input id="prSearchInput" class="pr-search-input" type="text" autocomplete="off" placeholder="Search an exercise..." oninput="onPrSearchInput(this.value)">
-            <button id="prSearchClear" class="pr-search-clear" type="button" onclick="clearPrSearch()">×</button>
-          </div>
-          <div id="prSearchResults" class="pr-search-results"></div>
-        </div>
-        <div class="section-label" data-i18n-key="personal_records">PERSONAL RECORDS</div>
-        <div class="pr-list" id="prList"></div>
       </div>
 
       <!-- ADMIN (only visible to admin user) -->
@@ -4038,29 +4054,81 @@ async function renderStreak() {
 }
 
 async function renderStatGrid() {
-  const bwRes = await api('/api/bodyweight');
-  // Sort ascending by timestamp so "current" = newest and "start" = oldest,
-  // regardless of the order the API returns rows in. Falls back to array order
-  // if no timestamp field is present.
+  const grid = document.getElementById('statGrid');
+  if (!grid) return;
+
+  // The 2x2 stat grid needs four data sources. Fetch in parallel:
+  //   streak (/api/stats) · sessions this week + last session (/api/sessions) ·
+  //   PRs this month (/api/prs) · current bodyweight (/api/bodyweight).
+  const [statsRes, sessRes, prRes, bwRes] = await Promise.all([
+    api('/api/stats'),
+    api('/api/sessions?limit=50'),
+    api('/api/prs'),
+    api('/api/bodyweight'),
+  ]);
+
+  // 1) Sessions this week — count session_logs from this Mon-based week
+  const sessions = sessRes?.sessions || [];
+  const _now = new Date();
+  let _dow = _now.getDay(); _dow = _dow === 0 ? 6 : _dow - 1;          // 0=Mon..6=Sun
+  const _weekStart = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate() - _dow);
+  let sessionsThisWeek = 0;
+  sessions.forEach(s => { if (s.logged_at && new Date(s.logged_at) >= _weekStart) sessionsThisWeek++; });
+
+  // 2) Current streak
+  const streak = statsRes?.streak ?? 0;
+  const longest = statsRes?.longest_streak ?? 0;
+
+  // 3) Last session — sessions are newest-first
+  const last = sessions[0] || null;
+  const lastLabel = (last && last.logged_at) ? formatSessionDate(last.logged_at) : '—';
+  const lastDay = last?.day_label || '';
+
+  // 4) PRs this month — personal_records achieved in the current calendar month
+  const prs = prRes?.prs || [];
+  const curMonth = new Date().toISOString().substring(0, 7);
+  const prsThisMonth = prs.filter(p => String(p.achieved_at || '').substring(0, 7) === curMonth).length;
+
+  // Bodyweight card — sort ascending so current = newest, start = oldest, regardless
+  // of the order the API returns rows in.
   const tsOf = e => e?.recorded_at || e?.logged_at || e?.created_at || '';
   const weights = (bwRes?.history || []).slice().sort((a, b) => String(tsOf(a)).localeCompare(String(tsOf(b))));
   const current = weights.length ? weights[weights.length - 1].weight_kg : (userProfile?.weight_kg || '—');
-  const start = weights.length ? weights[0].weight_kg : (userProfile?.weight_kg || null);
-  const diff = (start && weights.length > 1) ? (current - start).toFixed(1) : null;
+  const startW = weights.length ? weights[0].weight_kg : (userProfile?.weight_kg || null);
+  const diff = (startW && weights.length > 1) ? (current - startW).toFixed(1) : null;
 
+  // Goals card
   const goalKeyMap = { muscle:'ob_goal_muscle', fat_loss:'ob_goal_fat_loss', strength:'ob_goal_strength', endurance:'ob_goal_endurance', sport:'ob_goal_sport' };
   const goalStr = Array.isArray(userProfile?.goal)
     ? userProfile.goal.map(g => t(goalKeyMap[g] || 'ob_goal_muscle')).join(' + ').toUpperCase()
     : t(goalKeyMap[userProfile?.goal] || 'ob_goal_muscle').toUpperCase();
 
-  document.getElementById('statGrid').innerHTML = `
-    <div class="stat-card tappable" data-metric="bodyweight" onclick="openBodyweightHistory()">
-      <div class="stat-lbl">${t('log_bodyweight')}</div>
-      <div class="stat-val" id="bodyweightVal">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
-      ${diff !== null ? `<div class="stat-change ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}kg</div>` : '<div class="stat-change">' + t('log_bodyweight') + '</div>'}
-      <div class="stat-card-hint">View history ›</div>
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-lbl">SESSIONS THIS WEEK</div>
+      <div class="stat-val">${sessionsThisWeek}</div>
     </div>
     <div class="stat-card">
+      <div class="stat-lbl">CURRENT STREAK</div>
+      <div class="stat-val">${streak}<span style="font-size:14px;color:var(--muted)"> ${streak === 1 ? 'day' : 'days'}</span></div>
+      ${longest ? `<div class="stat-change">best ${longest}</div>` : ''}
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">LAST SESSION</div>
+      <div class="stat-val" style="font-size:20px;line-height:1.2">${escHtml(lastLabel)}</div>
+      ${lastDay ? `<div class="stat-change">${escHtml(lastDay)}</div>` : ''}
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">PRS THIS MONTH</div>
+      <div class="stat-val">${prsThisMonth}</div>
+    </div>
+    <div class="stat-card tappable" data-metric="bodyweight" onclick="openBodyweightHistory()" style="grid-column:1 / -1">
+      <div class="stat-lbl">${t('log_bodyweight')}</div>
+      <div class="stat-val" id="bodyweightVal">${current}<span style="font-size:18px;color:var(--muted)"> kg</span></div>
+      ${diff !== null ? `<div class="stat-change ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff)}kg</div>` : ''}
+      <div class="stat-card-hint">View history ›</div>
+    </div>
+    <div class="stat-card" style="grid-column:1 / -1">
       <div class="stat-lbl">${t('ob_goal_title')}</div>
       <div class="stat-val" style="font-size:18px;margin-top:8px">${goalStr}</div>
       <div class="stat-change">${userProfile?.experience || ''} · ${userProfile?.days_per_week || ''} ${t('stat_days_wk')}</div>
@@ -4632,13 +4700,18 @@ function appendCoachReviewBlock(card, coachReviews) {
     markSeen('coach_review');
   }
   const html = coachReviews.map(r => `
-    <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;">FROM YOUR COACH</span>
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;">${escHtml((r.review_period || new Date(r.created_at).toLocaleDateString('en-GB')).toUpperCase())}</span>
+    <details class="review-details" style="border-color:var(--accent);">
+      <summary>
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">FROM YOUR COACH</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);">${escHtml((r.review_period || new Date(r.created_at).toLocaleDateString('en-GB')).toUpperCase())}</div>
+        </div>
+        <span class="review-chevron">›</span>
+      </summary>
+      <div class="review-details-body">
+        <div class="review-details-text">${escHtml(r.review_content || '')}</div>
       </div>
-      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${escHtml(r.review_content || '')}</div>
-    </div>
+    </details>
   `).join('');
   card.insertAdjacentHTML('beforeend', html);
 }
@@ -4650,18 +4723,25 @@ function renderWeeklyReviewData(review) {
   section.style.display = '';
   const weekDate = new Date(review.week_start || review.created_at || Date.now());
   const weekLabel = weekDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const statsLine = [
+    review.workouts_completed !== undefined ? `<span style="color:var(--accent)">${review.workouts_completed}</span>${review.workouts_planned ? '/'+review.workouts_planned : ''} ${t('review_sessions')}` : '',
+    review.prs_hit !== undefined ? `<span style="color:var(--accent)">${review.prs_hit}</span> ${t('review_prs')}` : ''
+  ].filter(Boolean).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
   card.innerHTML = `
-    <div class="review-card">
-      <div class="review-card-header">
-        <div class="review-week">${t('review_week_of')} ${weekLabel.toUpperCase()}</div>
-        <div class="review-stats">
-          ${review.workouts_completed !== undefined ? `<div class="review-stat"><span>${review.workouts_completed}</span>${review.workouts_planned ? '/'+review.workouts_planned : ''} ${t('review_sessions')}</div>` : ''}
-          ${review.prs_hit !== undefined ? `<div class="review-stat"><span>${review.prs_hit}</span> ${t('review_prs')}</div>` : ''}
+    <details class="review-details">
+      <summary>
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${t('weekly_review')}</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);">${t('review_week_of')} ${escHtml(weekLabel.toUpperCase())}</div>
         </div>
+        <span class="review-chevron">›</span>
+      </summary>
+      <div class="review-details-body">
+        ${statsLine ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;padding-top:12px;">${statsLine}</div>` : ''}
+        <div class="review-details-text">${escHtml(review.summary || review.ai_insights || '')}</div>
+        <button onclick="generateWeeklyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review').toUpperCase()}</button>
       </div>
-      <div class="review-body">${review.summary || review.ai_insights || ''}</div>
-      <button onclick="generateWeeklyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review').toUpperCase()}</button>
-    </div>
+    </details>
   `;
 }
 
@@ -4720,17 +4800,27 @@ async function renderMonthlyReview() {
   if (review) {
     const monthDate = new Date(review.month_start || review.created_at);
     const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const mStatBox = (val, lbl) => `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${val}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${lbl}</div></div>`;
+    const mStats = [
+      review.workouts_completed !== undefined ? mStatBox(review.workouts_completed, t('review_sessions').toUpperCase()) : '',
+      review.prs_hit !== undefined ? mStatBox(review.prs_hit, t('review_prs_hit').toUpperCase()) : '',
+      review.adherence_pct !== undefined ? mStatBox(review.adherence_pct + '%', t('review_adherence').toUpperCase()) : ''
+    ].filter(Boolean).join('');
     card.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
-        <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-          ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
-          ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
-          ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
+      <details class="review-details">
+        <summary>
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${t('monthly_review_label')}</div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);">${escHtml(monthLabel.toUpperCase())}</div>
+          </div>
+          <span class="review-chevron">›</span>
+        </summary>
+        <div class="review-details-body">
+          ${mStats ? `<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:12px;">${mStats}</div>` : ''}
+          <div class="review-details-text">${escHtml(review.summary || review.ai_insights || '')}</div>
+          <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
         </div>
-        <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.ai_insights || ''}</div>
-        <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
-      </div>`;
+      </details>`;
   }
   if (coachMonthly.length) appendCoachReviewBlock(card, coachMonthly);
 }
@@ -4755,17 +4845,27 @@ function renderMonthlyReviewData(review) {
   section.style.display = '';
   const monthDate = new Date(review.month_start || review.created_at || Date.now());
   const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const statBox = (val, lbl) => `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${val}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${lbl}</div></div>`;
+  const stats = [
+    review.workouts_completed !== undefined ? statBox(review.workouts_completed, t('review_sessions').toUpperCase()) : '',
+    review.prs_hit !== undefined ? statBox(review.prs_hit, t('review_prs_hit').toUpperCase()) : '',
+    review.adherence_pct !== undefined ? statBox(review.adherence_pct + '%', t('review_adherence').toUpperCase()) : ''
+  ].filter(Boolean).join('');
   card.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:0 0 8px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">${t('monthly_review_label')} · ${monthLabel.toUpperCase()}</div>
-      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        ${review.workouts_completed !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.workouts_completed}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_sessions').toUpperCase()}</div></div>` : ''}
-        ${review.prs_hit !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.prs_hit}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_prs_hit').toUpperCase()}</div></div>` : ''}
-        ${review.adherence_pct !== undefined ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">${review.adherence_pct}%</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px">${t('review_adherence').toUpperCase()}</div></div>` : ''}
+    <details class="review-details">
+      <summary>
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${t('monthly_review_label')}</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);">${escHtml(monthLabel.toUpperCase())}</div>
+        </div>
+        <span class="review-chevron">›</span>
+      </summary>
+      <div class="review-details-body">
+        ${stats ? `<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:12px;">${stats}</div>` : ''}
+        <div class="review-details-text">${escHtml(review.summary || review.review_content || '')}</div>
+        <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
       </div>
-      <div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;">${review.summary || review.review_content || ''}</div>
-      <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
-    </div>`;
+    </details>`;
 }
 
 // ── PLAN ADHERENCE ────────────────────────────────
@@ -6195,42 +6295,60 @@ function renderAccount() {
 
   const sub = userSubscription || {};
   const profile = userProfile || {};
-  const tierLabel = { iron: '⚙️ Iron', steel: '🔩 Steel', forge: '🔥 Forge' };
+  const tierLabel = { iron: 'Iron', steel: 'Steel', forge: 'Forge' };
   const tierColour = { iron: 'var(--muted)', steel: 'var(--steel, #7eb8f7)', forge: 'var(--accent)' };
   const displayTier = sub.isExempt ? 'forge' : (sub.tier || 'iron');
   const trialDays = sub.trialEndsAt ? Math.max(0, Math.ceil((new Date(sub.trialEndsAt) - new Date()) / (1000*60*60*24))) : (sub.trialDaysLeft || 0);
   const statusText = sub.isExempt ? t('exempt_free') : (sub.status === 'trial' ? t('trial_days_left', {n: trialDays}) : (sub.status || 'Trial'));
-  // Current language flag for the Preferences > Language control (kept in sync by setLanguage/loadLanguage)
-  const _curLang = (typeof LANGUAGES !== 'undefined' && Array.isArray(LANGUAGES)) ? (LANGUAGES.find(l => l.code === appLanguage) || LANGUAGES[0]) : { flag: '🌐' };
-  const langFlag = _curLang ? _curLang.flag : '🌐';
+  const isTrial = sub.status === 'trial';
+  const planBadge = sub.isExempt ? 'FREE' : (sub.status === 'lifetime' ? 'LIFETIME' : (sub.status === 'active' ? 'ACTIVE' : 'TRIAL'));
 
   const _acctInitials = String(profile.name || '').trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+  // ── Settings-row values (no emoji) ──
+  // Theme → swatch + friendly name; dark-mode toggle = any non-light theme.
+  const _curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('forge_theme') || 'dark-yellow';
+  const _themeNames = { 'dark-yellow':'Default', 'dark-blue':'Ocean', 'dark-green':'Forest', 'midnight':'Midnight', 'light':'Light' };
+  const _themeName = _themeNames[_curTheme] || 'Default';
+  const _isDark = _curTheme !== 'light';
+  // Language → its display name (the picker drawer renders 2-letter codes, not flags).
+  const _curLang = (typeof LANGUAGES !== 'undefined' && Array.isArray(LANGUAGES)) ? (LANGUAGES.find(l => l.code === appLanguage) || LANGUAGES[0]) : { label: 'English' };
+  const _langLabel = _curLang ? _curLang.label : 'English';
+  // Notifications toggle reflects the live browser permission.
+  const _notifGranted = (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+  // Coach-plan row only shows for coach accounts.
+  const _isCoachAcct = (profile.account_type === 'coach');
+  const _coachPlanName = (typeof COACH_PLAN_LABEL !== 'undefined' ? (COACH_PLAN_LABEL[profile.coach_plan] || 'Starter') : 'Starter');
+
+  // Shared inline styles for settings rows (plain strings — not functions)
+  const _rowStyle = "background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:8px;cursor:pointer;";
+  const _rowLabel = "font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);";
+  const _rowSub = "font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px;";
+  const _chev = `<span style="color:var(--muted);font-size:16px;flex-shrink:0;">›</span>`;
+  const _toggle = on => `<div style="width:44px;height:26px;border-radius:13px;background:${on ? 'var(--accent)' : 'var(--border)'};position:relative;flex-shrink:0;transition:background .2s;"><div style="width:20px;height:20px;border-radius:50%;background:${on ? '#000' : 'var(--muted)'};position:absolute;top:3px;left:${on ? '21px' : '3px'};transition:left .2s;"></div></div>`;
+
   el.innerHTML = `
     <div style="padding:0 18px 24px;">
 
-      <!-- User avatar header -->
-      <div style="display:flex;align-items:center;gap:14px;padding:24px 0 4px;">
-        <div style="width:64px;height:64px;border-radius:16px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;color:var(--bg);line-height:1;">${_acctInitials || '👤'}</span>
+      <!-- SECTION 1 — User info (avatar circle, centred) -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding:24px 20px 20px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--surface2);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--accent);line-height:1;">${_acctInitials || '?'}</span>
         </div>
-        <div style="min-width:0;">
-          ${profile.name ? `<div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);">${escHtml(profile.name)}</div>` : ''}
-          ${currentUser?.email ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;">${escHtml(currentUser.email)}</div>` : ''}
-        </div>
+        ${profile.name ? `<div style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:600;color:var(--text);margin-top:12px;text-align:center;">${escHtml(profile.name)}</div>` : ''}
+        ${currentUser?.email ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;text-align:center;">${escHtml(currentUser.email)}</div>` : ''}
       </div>
 
-      <!-- Membership Card -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0 16px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">${t('membership')}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:${tierColour[displayTier]}">${tierLabel[displayTier] || 'Iron'}</div>
-            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;">${statusText}</div>
+      <!-- SECTION 2 — Membership card -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;min-width:0;">
+            <span style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--text);">${tierLabel[displayTier] || 'Iron'}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:9px;color:#000;background:var(--accent);border-radius:6px;padding:3px 8px;text-transform:uppercase;letter-spacing:0.5px;margin-left:8px;">${planBadge}</span>
           </div>
-          <button onclick="openUpgradeSheet()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
-            ${displayTier === 'forge' && sub.isExempt ? t('view_plans') : t('upgrade')}
-          </button>
         </div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px;">${statusText}</div>
+        ${isTrial ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);margin-top:8px;">${trialDays} ${trialDays === 1 ? 'day' : 'days'} remaining</div>` : ''}
 
         ${sub.status === 'active' && sub.renewalDate ? `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -6256,6 +6374,8 @@ function renderAccount() {
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:6px;">${t('resets_monthly')}</div>
         </div>` : ''}
+
+        <button onclick="openUpgradeSheet()" style="width:100%;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;border-radius:10px;padding:14px;margin-top:12px;border:none;cursor:pointer;">${displayTier === 'forge' && sub.isExempt ? t('view_plans') : t('upgrade')}</button>
       </div>
 
       ${sub.status === 'active' && sub.stripe_subscription_id ? `
@@ -6275,6 +6395,65 @@ function renderAccount() {
         </button>
       </div>` : ''}
 
+      <!-- SECTION 3 — Settings rows -->
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">SETTINGS</div>
+
+      <!-- Row 1 — Notifications (wired to the existing push-permission flow) -->
+      <div onclick="if(typeof Notification!=='undefined'){initPushNotifications().then(()=>renderAccount());}" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Notifications</div>
+          <div style="${_rowSub}">Workout reminders and updates</div>
+        </div>
+        ${_toggle(_notifGranted)}
+      </div>
+
+      <!-- Row 2 — Dark mode (toggles current dark theme ↔ light; remembers last dark variant) -->
+      <div onclick="(()=>{const h=document.documentElement;const c=h.getAttribute('data-theme')||'dark-yellow';if(c==='light'){setTheme(localStorage.getItem('forge_last_dark')||'dark-yellow');}else{localStorage.setItem('forge_last_dark',c);setTheme('light');}renderAccount();})()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Dark mode</div>
+          <div style="${_rowSub}">Use dark theme</div>
+        </div>
+        ${_toggle(_isDark)}
+      </div>
+
+      <!-- Row 3 — Colour theme (swatch + name, no emoji) -->
+      <div onclick="toggleThemeDrawer()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Colour theme</div>
+          <div style="${_rowSub}">Choose your accent colour</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div style="width:16px;height:16px;background:var(--accent);border-radius:4px;"></div>
+          <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);">${_themeName}</span>
+          ${_chev}
+        </div>
+      </div>
+
+      <!-- Row 4 — Language (name, no flag) -->
+      <div onclick="toggleLangDrawer()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Language</div>
+          <div style="${_rowSub}">App display language</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);">${escHtml(_langLabel)}</span>
+          ${_chev}
+        </div>
+      </div>
+
+      ${_isCoachAcct ? `
+      <!-- Row 5 — Coach plan (coach accounts only) -->
+      <div onclick="openCoachPlanUpgrade()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Coach plan</div>
+          <div style="${_rowSub}">Manage your coaching subscription</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);">${escHtml(_coachPlanName)}</span>
+          ${_chev}
+        </div>
+      </div>` : ''}
+
       <!-- Profile Info -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('profile')}</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
@@ -6291,28 +6470,6 @@ function renderAccount() {
         </button>
       </div>
 
-      <!-- Preferences (Language + Colour theme) — moved here from the header -->
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">PREFERENCES</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
-        <!-- Language -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
-          <div style="min-width:0;">
-            <div style="font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);font-weight:600;">Language</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif;">App display language</div>
-          </div>
-          <button id="langBtn" class="theme-btn" onclick="toggleLangDrawer()" title="Change language" style="font-size:20px">${langFlag}</button>
-        </div>
-        <div style="height:1px;background:var(--border);margin:16px 0;"></div>
-        <!-- Colour theme -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
-          <div style="min-width:0;">
-            <div style="font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);font-weight:600;">Colour theme</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif;">Choose your app theme</div>
-          </div>
-          <button class="theme-btn" onclick="toggleThemeDrawer()" title="Change theme">🎨</button>
-        </div>
-      </div>
-
       <!-- Password -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('security')}</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
@@ -6321,13 +6478,8 @@ function renderAccount() {
         </button>
       </div>
 
-      <!-- Danger zone -->
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">${t('account_section')}</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;">
-        <button onclick="signOut()" style="width:100%;padding:14px;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">
-          ${t('sign_out')}
-        </button>
-      </div>
+      <!-- SECTION 4 — Sign out -->
+      <button onclick="signOut()" style="width:100%;background:transparent;border:1px solid var(--red);color:var(--red);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;border-radius:10px;padding:14px;margin-top:24px;cursor:pointer;">${t('sign_out')}</button>
 
       <!-- Coach sections (My Coach, Become a Coach, Coach Plan, Pending Request) -->
       <div id="coachAccountSections"></div>
@@ -11618,7 +11770,7 @@ function loadLanguage() {
       border-radius:10px;cursor:pointer;transition:all 0.15s;
       -webkit-tap-highlight-color:transparent;
     ">
-      <span style="font-size:20px">${l.flag}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:${appLanguage === l.code ? 'var(--accent)' : 'var(--muted)'};background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:3px 5px;min-width:26px;text-align:center;letter-spacing:0.5px;">${(l.code || '').toUpperCase()}</span>
       <span style="font-size:13px;font-family:'DM Sans',sans-serif;color:${appLanguage === l.code ? 'var(--accent)' : 'var(--text)'};font-weight:${appLanguage === l.code ? '600' : '400'}">${l.label}</span>
       ${appLanguage === l.code ? '<span style="margin-left:auto;font-family:\'DM Mono\',monospace;font-size:9px;color:var(--accent)">✓</span>' : ''}
     </div>
@@ -11649,7 +11801,7 @@ function setLanguage(code) {
   if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent();
   if (typeof renderCoachCounter === 'function') renderCoachCounter();
   closeLangDrawer();
-  showToast(`${lang.flag} ${lang.label}`, 'success');
+  showToast(`${(lang.code || '').toUpperCase()} · ${lang.label}`, 'success');
   // Reload plan from server in new language — renders workout + nutrition + shopping after fetch
   if (userPlan) {
     loadPlanInCurrentLanguage();
