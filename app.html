@@ -363,8 +363,8 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * max(env(...), 34px) uses env() where it works and 34px (the 15 Plus home-indicator height)
  * everywhere else. --nav-safe is the single source of truth read by .bottom-nav, every
  * .panel, and #panel-coach's bottom offset, so the floor propagates to all of them. */
-.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 34px); --nav-h: calc(44px + var(--nav-safe)); }
-body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 34px); }
+.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 8px); --nav-h: calc(36px + var(--nav-safe)); }
+body.pwa-mode .app { --nav-safe: max(env(safe-area-inset-bottom), 8px); }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border-muted); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:2px; color:var(--accent); }
 .logo-sub { font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:3px; text-transform:uppercase; margin-top:2px; }
@@ -404,7 +404,7 @@ nav.bottom-nav, .bottom-nav {
   gap: 3px;
   flex: 1;
   /* FIX 2A: no top padding, 6px bottom so labels clear the home indicator. */
-  padding: 0 0 6px;
+  padding: 0 0 4px;
   margin: 0;
   background: transparent;
   border: none;
@@ -509,7 +509,7 @@ nav.bottom-nav, .bottom-nav {
  * message scrolls clear of the overlaid input. */
 #view-chat { position:relative; min-height:0; }
 #chatMessages { padding-bottom:150px; }
-.chat-input-area { position:absolute; bottom:0; left:0; right:0; z-index:10; background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; padding-bottom:max(env(safe-area-inset-bottom), 8px); padding-top:8px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
+.chat-input-area { position:absolute; bottom:0; left:0; right:0; z-index:10; background:var(--bg); border-top:0.5px solid var(--border); padding:8px 12px; padding-bottom:max(env(safe-area-inset-bottom), 4px); padding-top:8px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
 .quick-prompts { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
 .quick-prompts::-webkit-scrollbar{display:none}
 .quick-btn { background:var(--surface); border:1px solid #1e1e1e; color:var(--dim); padding:8px 11px; border-radius:8px; font-size:9px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; white-space:nowrap; font-family:'DM Mono',monospace; transition:all .15s; }
