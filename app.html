@@ -1199,6 +1199,7 @@ input:focus, textarea:focus, select:focus { outline: none; }
           <div class="panel-title">LOG</div>
           <div class="panel-sub">Record sets, reps, weight. Overload tracked automatically.</div>
         </div>
+        <div id="logProgrammeLabel" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;padding:12px 18px 0;display:none;"></div>
         <div class="log-day-bar" id="logDayBar"></div>
         <div class="log-exercise-list" id="logExerciseList"></div>
         <div class="log-actions"><button class="save-btn" onclick="saveLog(this)" data-i18n="log_save">Save Session</button></div>
@@ -3787,21 +3788,102 @@ function renderExercises() {
 // Track per-exercise sets state: { exIndex: [{weight, reps}, ...] }
 let logSetsState = {};
 
+// ── ACTIVE PROGRAMME RESOLUTION (Log panel) ──────────────
+// The Log panel logs against whichever programme is currently active. An active
+// custom programme (programmes table, is_active && !is_archived) takes priority;
+// otherwise the AI plan (userPlan.workout_plan); otherwise null ("no programme yet").
+// NOTE: in this codebase the AI workout days live at userPlan.workout_plan.days.
+// The custom programme's days live at plan_data.workout.days (the shape saved by
+// saveCurrentProgramme). Result is cached in window._logProgrammeCache and cleared
+// on programme switch / save / plan reload so the panel doesn't refetch on every open.
+window._logProgrammeCache = window._logProgrammeCache || null;
+
+async function getActiveProgramme() {
+  if (window._logProgrammeCache) return window._logProgrammeCache;
+
+  let result = null;
+
+  // 1) Active custom programme takes priority (shown even when AI plans are disabled).
+  const res = await api('/api/programmes?active=true');
+  if (res?.programmes?.length) {
+    const active = res.programmes.find(p => p.is_active && !p.is_archived);
+    if (active && active.plan_data?.workout?.days?.length) {
+      result = { type: 'custom', name: active.name || 'Custom Programme', days: active.plan_data.workout.days };
+    }
+  }
+
+  // 2) Fall back to the AI plan.
+  if (!result && userPlan?.workout_plan?.days?.length) {
+    result = { type: 'ai', name: 'AI Programme', days: userPlan.workout_plan.days };
+  }
+
+  // 3) null = no programme at all.
+  window._logProgrammeCache = result;
+  return result;
+}
+
 async function renderLog() {
-  const days = userPlan?.workout_plan?.days;
-  if (!days) return;
+  const active = await getActiveProgramme();
+
+  const bar = document.getElementById('logDayBar');
+  const el = document.getElementById('logExerciseList');
+  const label = document.getElementById('logProgrammeLabel');
+  const actions = document.querySelector('#panel-log .log-actions');
+  const feedback = document.getElementById('logFeedback');
+  if (feedback) feedback.innerHTML = '';
+
+  // CASE 2 — no programme at all (no active custom programme AND no AI plan).
+  if (!active || !active.days?.length) {
+    if (label) { label.style.display = 'none'; label.textContent = ''; }
+    if (bar) bar.innerHTML = '';
+    if (actions) actions.style.display = 'none';
+    if (el) el.innerHTML = `<div style="display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 24px;text-align:center;">
+  <svg width="48" height="48" viewBox="0 0 24 24"
+    fill="none" stroke="var(--muted)" stroke-width="1.5"
+    style="margin-bottom:16px;">
+    <path d="M12 20V10M18 20V4M6 20v-4"/>
+  </svg>
+  <div style="font-family:'DM Sans',sans-serif;
+    font-size:15px;color:var(--text);font-weight:600;
+    margin-bottom:8px;">No programme yet</div>
+  <div style="font-family:'DM Sans',sans-serif;
+    font-size:13px;color:var(--muted);line-height:1.6;
+    margin-bottom:20px;">
+    Build a programme first so you have something
+    to log against.</div>
+  <button onclick="openProgrammes()" style="
+    background:var(--accent);color:#000;
+    font-family:'DM Mono',monospace;font-size:11px;
+    font-weight:700;letter-spacing:1.5px;
+    text-transform:uppercase;border:none;
+    border-radius:10px;padding:14px 24px;
+    cursor:pointer;">
+    Build a programme</button>
+</div>`;
+    return;
+  }
+
+  // CASE 1 / 3 — active programme exists (custom or AI). Show its days.
+  if (actions) actions.style.display = '';
+  const days = active.days;
+
+  // Programme name label above the day selector — e.g. "BULK PHASE — CUSTOM" / "AI PROGRAMME".
+  if (label) {
+    label.textContent = ((active.name || '') + (active.type === 'custom' ? ' — Custom' : '')).toUpperCase();
+    label.style.display = '';
+  }
 
   const DAYS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
-  document.getElementById('logDayBar').innerHTML = days.filter(d => d.exercises?.length > 0).map((d, i) => `
+  if (bar) bar.innerHTML = days.filter(d => d.exercises?.length > 0).map((d, i) => `
     <div class="log-chip ${i === logDay ? 'active' : ''}" onclick="selectLogDay(${i})">${DAYS[i]} — ${d.label}</div>
   `).join('');
 
   const day = days[logDay];
-  const el = document.getElementById('logExerciseList');
-  document.getElementById('logFeedback').innerHTML = '';
 
   if (!day?.exercises?.length) {
-    el.innerHTML = `<div class="empty-state">${t('rest_day').replace('. ','.<br>')}</div>`;
+    if (el) el.innerHTML = `<div class="empty-state">${t('rest_day').replace('. ','.<br>')}</div>`;
     return;
   }
 
@@ -5835,6 +5917,7 @@ async function sendMessage() {
 // PLAN RELOAD + UPDATE BADGE
 // ═══════════════════════════════════════════════════════
 async function reloadPlan() {
+  window._logProgrammeCache = null; // active programme may have changed — Log panel refetches
   localStorage.removeItem('forge-cached-plan');
   await loadPlanInCurrentLanguage();
 }
@@ -6724,6 +6807,7 @@ async function saveCurrentProgramme() {
   });
   if (res?.programme) {
     document.getElementById('newProgModal')?.remove();
+    window._logProgrammeCache = null; // a newly saved programme may be relevant to the Log panel
     showToast('Programme saved', 'success');
     renderProgrammes();
   } else if (res?.error === 'upgrade_required') {
@@ -6783,6 +6867,9 @@ async function switchProgramme(id) {
   const res = await api(`/api/programmes/${id}/activate`, 'POST');
   if (res?.ok) {
     await reloadPlan();
+    // Log panel immediately reflects the newly active programme.
+    window._logProgrammeCache = null;
+    if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
     renderProgrammes();
     showToast(`Switched to ${name}`, 'success');
   } else {
@@ -15401,6 +15488,9 @@ async function activateNewProgramme() {
   if (res && res.ok) {
     closeNewProgramme();
     if (typeof reloadPlan === 'function') await reloadPlan();
+    // Log panel immediately reflects the newly active programme.
+    window._logProgrammeCache = null;
+    if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
     showPanel('workout');
     showToast('Switched to ' + _npLastName, 'success');
   } else {
