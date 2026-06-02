@@ -2138,15 +2138,10 @@ function persistEnabledFeatures(arr) {
 function applyFeatureNav() {
   const f = getEnabledFeatures();
   const setVis = (id, on) => { const b = document.getElementById(id); if (b) b.style.display = on ? '' : 'none'; };
-  setVis('nav-workout', f.includes('plans')); // AI Plans — Coach chat stays visible regardless
+  setVis('nav-workout', true); // Plan nav always visible — panel shows a disabled-state message when AI plans is off
   setVis('nav-log', f.includes('logging'));
   setVis('nav-nutrition', f.includes('nutrition'));
   setVis('nav-progress', f.includes('progress'));
-  // If AI Plans was just switched off while sitting on the Plan panel, fall back to Coach.
-  if (!f.includes('plans')) {
-    const planPanel = document.getElementById('panel-workout');
-    if (planPanel && planPanel.classList.contains('active')) showPanel('coach');
-  }
 }
 
 // Onboarding feature-card toggle (multi-select, stored on obData.enabled_features).
@@ -3176,10 +3171,6 @@ function showPanel(name) {
     openExpiredPaywall();
     return;
   }
-  // AI Plans gating — Plan panel is hidden when 'plans' is off; Coach stays available.
-  if (name === 'workout' && !getEnabledFeatures().includes('plans')) {
-    name = 'coach';
-  }
   // Hide ALL panels completely first
   ALL_PANELS.forEach(p => {
     const el = document.getElementById('panel-' + p);
@@ -3207,6 +3198,7 @@ function showPanel(name) {
     renderProgress();
     api('/api/missions/check_stats/complete', 'POST').catch(() => {});
   }
+  if (name === 'workout') renderWorkoutPanel(); // reflect current AI-plans state (days vs disabled message)
   if (name === 'log') renderLog();
   if (name === 'admin') renderAdmin();
   if (name === 'programmes') renderProgrammes();
@@ -3703,6 +3695,21 @@ function checkDay4FoundingNotification() {
   }
 }
 function renderWorkoutPanel() {
+  // AI Plans disabled — don't show AI-generated days. Show a message instead.
+  // My Programmes (custom builder) stays accessible via the button above.
+  if (!isFeatureEnabled('plans')) {
+    const sub = document.getElementById('workout-sub');
+    if (sub) sub.textContent = '';
+    const scroll = document.getElementById('dayScroll');
+    if (scroll) scroll.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px;margin-bottom:16px;text-align:center;">
+  <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">AI PLAN DISABLED</div>
+  <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);margin-bottom:12px;">Build your own programme or enable AI plans in your Account settings.</div>
+  <button onclick="showPanel('account')" style="background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Go to Settings</button>
+</div>`;
+    const exList = document.getElementById('exerciseList');
+    if (exList) exList.innerHTML = '';
+    return;
+  }
   if (!userPlan?.workout_plan) return;
   const plan = userPlan.workout_plan;
   document.getElementById('workout-sub').textContent = (plan.split_name || '') + (plan.split_description ? ' — ' + plan.split_description : '');
