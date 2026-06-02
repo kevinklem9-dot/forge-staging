@@ -288,8 +288,13 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .ob-icon { width:36px; height:36px; background:var(--surface2); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; stroke:var(--muted); font-size:16px; line-height:1; }
 .ob-option.selected .ob-icon { background:var(--accent); stroke:#000; }
 .ob-icon svg { width:18px; height:18px; stroke:inherit; fill:none; stroke-width:1.5; }
+/* New-programme wizard option icons (npOptionCard) — same stroke SVGs, no circle. */
+.np-ico { display:flex; align-items:center; justify-content:center; flex-shrink:0; stroke:var(--muted); }
+.np-ico svg { width:24px; height:24px; stroke:inherit; fill:none; stroke-width:1.5; }
 
 .ob-option-label { font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; color:var(--text); }
+/* Long option labels (>25 chars) shrink one notch so they don't overflow / look cramped in the card. */
+.ob-option-label.ob-label-sm { font-size:12px; line-height:1.3; }
 .ob-option-sub { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px; letter-spacing:0.5px; }
 .ob-option.selected .ob-option-label { color:var(--text); }
 
@@ -492,7 +497,7 @@ nav.bottom-nav, .bottom-nav {
   overflow: hidden;
 }
 body.pwa-mode #panel-coach {
-  bottom: var(--nav-h);
+  bottom: calc(var(--nav-h) + 8px);
 }
 .chat-container { display:flex; flex-direction:column; flex:1; min-height:0; }
 .chat-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--bg); }
@@ -2199,15 +2204,40 @@ const OB_SVG = {
     full_gym: '<line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="10" width="3" height="4" rx="1"/><rect x="19" y="10" width="3" height="4" rx="1"/><rect x="4" y="9" width="2" height="6" rx="1"/><rect x="18" y="9" width="2" height="6" rx="1"/>',
     home_gym: '<rect x="2" y="10" width="3" height="4" rx="1"/><line x1="5" y1="12" x2="8" y2="12"/><rect x="8" y="10" width="3" height="4" rx="1"/><rect x="13" y="10" width="3" height="4" rx="1"/><line x1="16" y1="12" x2="19" y2="12"/><rect x="19" y="10" width="3" height="4" rx="1"/>',
     minimal: '<path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/>'
+  },
+  // Day-count selector — 7 ticks, the first N lit (rest dimmed) reads as "N days / week".
+  days_per_week: {
+    1: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17" opacity="0.3"/><line x1="9" y1="7" x2="9" y2="17" opacity="0.3"/><line x1="12" y1="7" x2="12" y2="17" opacity="0.3"/><line x1="15" y1="7" x2="15" y2="17" opacity="0.3"/><line x1="18" y1="7" x2="18" y2="17" opacity="0.3"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>',
+    2: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17"/><line x1="9" y1="7" x2="9" y2="17" opacity="0.3"/><line x1="12" y1="7" x2="12" y2="17" opacity="0.3"/><line x1="15" y1="7" x2="15" y2="17" opacity="0.3"/><line x1="18" y1="7" x2="18" y2="17" opacity="0.3"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>',
+    3: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="12" y1="7" x2="12" y2="17" opacity="0.3"/><line x1="15" y1="7" x2="15" y2="17" opacity="0.3"/><line x1="18" y1="7" x2="18" y2="17" opacity="0.3"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>',
+    4: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="15" y1="7" x2="15" y2="17" opacity="0.3"/><line x1="18" y1="7" x2="18" y2="17" opacity="0.3"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>',
+    5: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="15" y1="7" x2="15" y2="17"/><line x1="18" y1="7" x2="18" y2="17" opacity="0.3"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>',
+    6: '<line x1="3" y1="7" x2="3" y2="17"/><line x1="6" y1="7" x2="6" y2="17"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="15" y1="7" x2="15" y2="17"/><line x1="18" y1="7" x2="18" y2="17"/><line x1="21" y1="7" x2="21" y2="17" opacity="0.3"/>'
+  },
+  // Diet style — fork & knife (everything) / leaf (vegetarian) / sprout (vegan) / avocado (keto).
+  diet_style: {
+    anything: '<path d="M7 2v6a2 2 0 0 0 4 0V2"/><line x1="9" y1="8" x2="9" y2="22"/><path d="M16 2c-1.5 1.5-1.5 6 0 8"/><line x1="16" y1="10" x2="16" y2="22"/>',
+    vegetarian: '<path d="M4 20c0-8 6-14 16-16C18 12 12 18 4 20z"/><line x1="4" y1="20" x2="14" y2="10"/>',
+    vegan: '<path d="M12 22v-8"/><path d="M12 14c0-3-2-5-6-5 0 3 2 6 6 6z"/><path d="M12 13c0-3 2-6 6-6 0 4-3 6-6 6z"/>',
+    keto: '<path d="M12 3c-3 0-5 3-5 7s2 8 5 8 5-4 5-8-2-7-5-7z"/><circle cx="12" cy="14" r="2.5"/>'
+  },
+  // Sport level — ascending skill bars, first N lit (recreational→elite).
+  sport_level: {
+    recreational: '<line x1="5" y1="15" x2="5" y2="19"/><line x1="10" y1="12" x2="10" y2="19" opacity="0.3"/><line x1="15" y1="9" x2="15" y2="19" opacity="0.3"/><line x1="20" y1="6" x2="20" y2="19" opacity="0.3"/>',
+    amateur: '<line x1="5" y1="15" x2="5" y2="19"/><line x1="10" y1="12" x2="10" y2="19"/><line x1="15" y1="9" x2="15" y2="19" opacity="0.3"/><line x1="20" y1="6" x2="20" y2="19" opacity="0.3"/>',
+    competitive: '<line x1="5" y1="15" x2="5" y2="19"/><line x1="10" y1="12" x2="10" y2="19"/><line x1="15" y1="9" x2="15" y2="19"/><line x1="20" y1="6" x2="20" y2="19" opacity="0.3"/>',
+    elite: '<line x1="5" y1="15" x2="5" y2="19"/><line x1="10" y1="12" x2="10" y2="19"/><line x1="15" y1="9" x2="15" y2="19"/><line x1="20" y1="6" x2="20" y2="19"/>'
   }
 };
-// Returns an inline SVG for fields that have one, else the emoji fallback so
-// every option card shows an icon inside the .ob-icon circle. Arrow const (not
-// a `function` declaration) so the named-function count stays constant.
+// Returns an inline SVG for every option card. Fields with a specific icon use
+// it; anything unlisted falls back to a generic activity glyph (a bolt) so an
+// emoji is NEVER rendered inside the .ob-icon circle. The `emoji` arg is kept
+// for call-site compatibility but no longer displayed. Arrow const (not a
+// `function` declaration) so the named-function count stays constant.
 const obIconHtml = (field, value, emoji) => {
   const svg = OB_SVG[field] && OB_SVG[field][value];
   if (svg) return '<svg viewBox="0 0 24 24" aria-hidden="true">' + svg + '</svg>';
-  return emoji || '';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
 };
 
 function renderObStep() {
@@ -2240,8 +2270,9 @@ function renderObStep() {
   // name in accent. All other steps use the real copy verbatim.
   const obTitleEl = document.getElementById('ob-title');
   const obFirstName = (((userProfile && userProfile.name) || obData.name || '').trim().split(/\s+/)[0]) || '';
-  if (obStep === 0 && obFirstName) {
-    obTitleEl.innerHTML = escHtml(stepTitle) + ', <span class="ob-name">' + escHtml(obFirstName) + '</span>';
+  if (obStep === 0) {
+    // First step (goals): "What are your goals, <name>?" — name wrapped in an accent span.
+    obTitleEl.innerHTML = 'What are your goals' + (obFirstName ? ', <span class="ob-name" style="color:var(--accent)">' + escHtml(obFirstName) + '</span>' : '') + '?';
   } else {
     obTitleEl.textContent = stepTitle;
   }
@@ -2264,7 +2295,7 @@ function renderObStep() {
       <div class="ob-option ${obData[step.field] == o.value ? 'selected' : ''}" data-field="${step.field}" data-value="${o.value}">
         <div class="ob-icon">${obIconHtml(step.field, o.value, o.icon)}</div>
         <div class="ob-option-txt">
-          <div class="ob-option-label">${o.label}</div>
+          <div class="ob-option-label${o.label && o.label.length > 25 ? ' ob-label-sm' : ''}">${o.label}</div>
           <div class="ob-option-sub">${o.sub}</div>
         </div>
       </div>
@@ -2289,7 +2320,7 @@ function renderObStep() {
       <div class="ob-option ${selected.includes(o.value) ? 'selected' : ''}" data-field="${step.field}" data-value="${o.value}">
         <div class="ob-icon">${obIconHtml(step.field, o.value, o.icon)}</div>
         <div class="ob-option-txt">
-          <div class="ob-option-label">${o.label}</div>
+          <div class="ob-option-label${o.label && o.label.length > 25 ? ' ob-label-sm' : ''}">${o.label}</div>
           <div class="ob-option-sub">${o.sub}</div>
         </div>
       </div>
@@ -2320,8 +2351,8 @@ function renderObStep() {
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_sex')}</div>
         <div class="ob-options" style="padding:0">
-          <div class="ob-option ${obData.sex==='male'?'selected':''}" data-field="sex" data-value="male"><div class="ob-icon">♂️</div><div class="ob-option-txt"><div class="ob-option-label">${t('ob_stats_male')}</div></div></div>
-          <div class="ob-option ${obData.sex==='female'?'selected':''}" data-field="sex" data-value="female"><div class="ob-icon">♀️</div><div class="ob-option-txt"><div class="ob-option-label">${t('ob_stats_female')}</div></div></div>
+          <div class="ob-option ${obData.sex==='male'?'selected':''}" data-field="sex" data-value="male"><div class="ob-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="14" r="6"/><line x1="14.5" y1="9.5" x2="20" y2="4"/><polyline points="15 4 20 4 20 9"/></svg></div><div class="ob-option-txt"><div class="ob-option-label">${t('ob_stats_male')}</div></div></div>
+          <div class="ob-option ${obData.sex==='female'?'selected':''}" data-field="sex" data-value="female"><div class="ob-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="6"/><line x1="12" y1="14" x2="12" y2="22"/><line x1="9" y1="19" x2="15" y2="19"/></svg></div><div class="ob-option-txt"><div class="ob-option-label">${t('ob_stats_female')}</div></div></div>
         </div>
       </div>
     `;
@@ -2519,11 +2550,11 @@ function renderObStep() {
         <div class="ob-input-label">${t('ob_sport_sameday_label')}</div>
         <div class="ob-options" style="padding:0">
           <div class="ob-option ${obData.gym_same_day==='yes'?'selected':''}" onclick="selectSportSessions(this, 'gym_same_yes')">
-            <div class="ob-icon">✅</div>
+            <div class="ob-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 13 10 18 19 6"/></svg></div>
             <div class="ob-option-txt"><div class="ob-option-label">${t('ob_yes')}</div><div class="ob-option-sub">${t('ob_sport_sameday_yes_sub')}</div></div>
           </div>
           <div class="ob-option ${obData.gym_same_day==='no'?'selected':''}" onclick="selectSportSessions(this, 'gym_same_no')">
-            <div class="ob-icon">❌</div>
+            <div class="ob-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
             <div class="ob-option-txt"><div class="ob-option-label">${t('ob_no')}</div><div class="ob-option-sub">${t('ob_sport_sameday_no_sub')}</div></div>
           </div>
         </div>
@@ -3454,6 +3485,12 @@ function selectDay(idx) {
   selectedDay = idx;
   document.querySelectorAll('.day-chip').forEach((c, i) => c.classList.toggle('active', i === idx));
   renderExercises();
+  // After the day's exercises render, smooth-scroll the list into view. The 150ms
+  // delay lets the freshly-rendered exercise cards paint before we scroll to them.
+  setTimeout(() => {
+    const exerciseList = document.getElementById('exerciseList');
+    if (exerciseList) exerciseList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 150);
 }
 
 function renderExercises() {
@@ -6678,6 +6715,18 @@ function renderAccount() {
         </div>
       </div>
 
+      <!-- Row — Add to home screen (PWA install instructions, OS-specific) -->
+      <div onclick="showAddToHomeScreen()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">Add to home screen</div>
+          <div style="${_rowSub}">Install FORGE as an app on your phone</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          ${_chev}
+        </div>
+      </div>
+
       ${_isCoachAcct ? `
       <!-- Row 5 — Coach plan (coach accounts only) -->
       <div onclick="openCoachPlanUpgrade()" style="${_rowStyle}">
@@ -6736,6 +6785,91 @@ function renderAccount() {
   // catches invites sent after this client last loaded the app.
   if (typeof checkPendingCoachRequests === 'function') checkPendingCoachRequests();
 }
+
+// ── Add-to-home-screen instructions sheet ──────────────
+// Arrow const on window (NOT a `function` declaration) so the named-function count
+// stays constant. Shows OS-specific PWA-install steps in the app's existing
+// .theme-overlay / .theme-drawer bottom-sheet (same pattern as the theme picker).
+window.showAddToHomeScreen = () => {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+
+  let instructions = '';
+  if (isIOS) {
+    instructions = `
+      <div style="text-align:center; padding:8px 0 20px;">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--accent); letter-spacing:2px; margin-bottom:16px;">FORGE</div>
+        <div style="font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:24px;">Add to home screen</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="width:32px; height:32px; background:var(--surface2); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap the Share button</div>
+            <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px;">At the bottom of Safari</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="width:32px; height:32px; background:var(--surface2); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'DM Mono',monospace; font-size:18px; color:var(--accent);">+</div>
+          <div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap "Add to Home Screen"</div>
+            <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px;">Scroll down in the share menu</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="width:32px; height:32px; background:var(--surface2); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'DM Mono',monospace; font-size:18px; color:var(--accent);">✓</div>
+          <div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap "Add"</div>
+            <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px;">FORGE appears on your home screen</div>
+          </div>
+        </div>
+      </div>`;
+  } else if (isAndroid) {
+    instructions = `
+      <div style="text-align:center; padding:8px 0 20px;">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:var(--accent); letter-spacing:2px; margin-bottom:16px;">FORGE</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap the menu (⋮) in Chrome</div>
+        </div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap "Add to Home screen"</div>
+        </div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;">
+          <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); font-weight:500;">Tap "Add"</div>
+        </div>
+      </div>`;
+  } else {
+    instructions = `<div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); text-align:center; padding:20px;">Open FORGE in Safari on your iPhone to add it to your home screen.</div>`;
+  }
+
+  // Present in a bottom sheet reusing the app's existing drawer pattern.
+  document.getElementById('a2hsOverlay')?.remove();
+  document.getElementById('a2hsSheet')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'theme-overlay';
+  overlay.id = 'a2hsOverlay';
+  const sheet = document.createElement('div');
+  sheet.className = 'theme-drawer';
+  sheet.id = 'a2hsSheet';
+  sheet.style.maxHeight = '85vh';
+  sheet.style.overflowY = 'auto';
+  sheet.innerHTML = '<div class="theme-drawer-handle"></div>' + instructions;
+  const closeA2HS = () => {
+    overlay.classList.remove('open');
+    sheet.classList.remove('open');
+    setTimeout(() => { overlay.remove(); sheet.remove(); }, 260);
+  };
+  overlay.addEventListener('click', closeA2HS);
+  document.body.appendChild(overlay);
+  document.body.appendChild(sheet);
+  void sheet.offsetHeight; // force reflow so the slide-up transition animates
+  overlay.classList.add('open');
+  sheet.classList.add('open');
+};
 
 async function checkPendingCoachRequests() {
   const res = await api('/api/my-pending-coach-request');
@@ -14820,7 +14954,7 @@ function closeNewProgramme() { var e = document.getElementById('newProgOnb'); if
 function npOptionCard(field, o, selected, multi) {
   var handler = multi ? `npToggleMulti('${field}','${o.value}')` : `npSelect('${field}','${o.value}')`;
   return `<div onclick="${handler}" style="background:var(--surface);border:2px solid ${selected ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:12px;">
-      <div style="font-size:24px;flex-shrink:0;">${o.icon || ''}</div>
+      <div class="np-ico">${obIconHtml(field, o.value, o.icon)}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:15px;font-weight:600;color:${selected ? 'var(--accent)' : 'var(--text)'};">${escHtml(o.label || '')}</div>
         ${o.sub ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${escHtml(o.sub)}</div>` : ''}
