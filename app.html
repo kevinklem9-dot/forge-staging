@@ -2096,10 +2096,12 @@ const obData = {};
 // Which app features the user has switched on. Chosen in onboarding, editable in
 // Account → Features. Mirrored to localStorage('forge-enabled-features') for instant
 // reads and to profiles.enabled_features (jsonb) for cross-device persistence.
-// AI Coach chat AND AI-Generated Plans ('plans') are ALWAYS on and locked (see
-// decisions.md). The DB column default is all-on, so existing users are unaffected.
+// AI Coach chat is ALWAYS visible. AI-Generated Plans ('plans') is now toggleable:
+// turning it off hides the Plan nav item and Plan panel for users who only want to
+// follow a custom programme they've built. The DB column default is all-on, so
+// existing users are unaffected.
 const FORGE_FEATURES = [
-  { key:'plans',     emoji:'⚡', label:'AI-Generated Plans', sub:'Custom workout programme built around you',         locked:true,  default:true  },
+  { key:'plans',     emoji:'⚡', label:'AI-Generated Plans', sub:"Unselect this if you only want to use a custom programme you've already built", locked:false, default:true  },
   { key:'nutrition', emoji:'🥗', label:'Nutrition Tracking', sub:'Personalised meal plans and macro targets',         locked:false, default:true  },
   { key:'progress',  emoji:'📈', label:'Progress Tracking',  sub:'Sessions, streaks, PRs and body metrics',           locked:false, default:true  },
   { key:'prs',       emoji:'🏆', label:'Personal Records',    sub:'Track and search your exercise PRs',                locked:false, default:true  },
@@ -2110,12 +2112,11 @@ const FORGE_FEATURES = [
 const FORGE_DEFAULT_FEATURES = ['plans','nutrition','progress','prs','coach','logging'];
 
 // Resolve the active feature set: profile → localStorage → all-on default.
-// 'plans' is force-included (AI plans can never be switched off).
+// 'plans' is no longer force-included — users can switch AI plans off.
 function getEnabledFeatures() {
   let f = (userProfile && Array.isArray(userProfile.enabled_features)) ? userProfile.enabled_features.slice() : null;
   if (!f) { try { f = JSON.parse(localStorage.getItem('forge-enabled-features') || 'null'); } catch(e) { f = null; } }
   if (!Array.isArray(f) || !f.length) f = FORGE_DEFAULT_FEATURES.slice();
-  if (!f.includes('plans')) f.push('plans');
   return f;
 }
 function isFeatureEnabled(key) { return getEnabledFeatures().includes(key); }
@@ -2123,7 +2124,6 @@ function isFeatureEnabled(key) { return getEnabledFeatures().includes(key); }
 // Persist a feature set everywhere. Returns the PATCH promise so callers can await it.
 function persistEnabledFeatures(arr) {
   const clean = Array.from(new Set(arr));
-  if (!clean.includes('plans')) clean.push('plans');
   try { localStorage.setItem('forge-enabled-features', JSON.stringify(clean)); } catch(e) { /* quota */ }
   if (userProfile) {
     userProfile.enabled_features = clean;
@@ -2138,9 +2138,15 @@ function persistEnabledFeatures(arr) {
 function applyFeatureNav() {
   const f = getEnabledFeatures();
   const setVis = (id, on) => { const b = document.getElementById(id); if (b) b.style.display = on ? '' : 'none'; };
+  setVis('nav-workout', f.includes('plans')); // AI Plans — Coach chat stays visible regardless
   setVis('nav-log', f.includes('logging'));
   setVis('nav-nutrition', f.includes('nutrition'));
   setVis('nav-progress', f.includes('progress'));
+  // If AI Plans was just switched off while sitting on the Plan panel, fall back to Coach.
+  if (!f.includes('plans')) {
+    const planPanel = document.getElementById('panel-workout');
+    if (planPanel && planPanel.classList.contains('active')) showPanel('coach');
+  }
 }
 
 // Onboarding feature-card toggle (multi-select, stored on obData.enabled_features).
@@ -2157,7 +2163,7 @@ let _featuresDraft = null; // working copy while the user toggles, before "Apply
 function featuresSectionInner() {
   const draft = Array.isArray(_featuresDraft) ? _featuresDraft : getEnabledFeatures();
   const saved = getEnabledFeatures();
-  const norm = a => Array.from(new Set(a)).filter(x => x !== 'plans').sort().join(',');
+  const norm = a => Array.from(new Set(a)).sort().join(',');
   const changed = norm(draft) !== norm(saved);
   const rowStyle = "background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:8px;";
   const rows = FORGE_FEATURES.map(f => {
@@ -2165,7 +2171,7 @@ function featuresSectionInner() {
     const emoji = `<span style="font-size:18px;line-height:1;flex-shrink:0;filter:${on ? 'grayscale(0) brightness(1)' : 'grayscale(1) brightness(0.6)'};">${f.emoji}</span>`;
     const right = f.locked
       ? `<span title="Always on" style="font-size:13px;opacity:0.7;flex-shrink:0;">🔒</span>`
-      : `<div class="notif-toggle ${on ? 'on' : ''}" onclick="toggleAccountFeature('${f.key}')"></div>`;
+      : `<div class="notif-toggle ${on ? 'on' : ''}" data-feature="${f.key}" onclick="toggleAccountFeature(this.dataset.feature)"></div>`;
     return `<div style="${rowStyle}${f.locked ? 'cursor:default;' : ''}">
       <div style="display:flex;align-items:center;gap:12px;min-width:0;">
         ${emoji}
@@ -2178,11 +2184,14 @@ function featuresSectionInner() {
     </div>`;
   }).join('');
   const applyBtn = changed
-    ? `<button onclick="applyFeatureChanges()" style="width:100%;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;border-radius:10px;padding:14px;margin:4px 0 16px;border:none;cursor:pointer;">Apply changes</button>`
+    ? `<button id="applyFeaturesBtn" onclick="applyFeatureChanges(this)" style="width:100%;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;border-radius:10px;padding:14px;margin:4px 0 16px;border:none;cursor:pointer;">Apply changes</button>`
     : '<div style="height:8px;"></div>';
   return rows + applyBtn;
 }
 
+// Data-attribute toggle (Option A): the onclick reads the feature key straight off
+// the clicked element's data-feature attribute, so each toggle always targets its
+// own card — no loop-closure risk of the click landing on the wrong feature.
 function toggleAccountFeature(key) {
   const f = FORGE_FEATURES.find(x => x.key === key);
   if (!f || f.locked) return;
@@ -2193,15 +2202,48 @@ function toggleAccountFeature(key) {
   if (host) host.innerHTML = featuresSectionInner();
 }
 
-async function applyFeatureChanges() {
+async function applyFeatureChanges(btn) {
+  if (!btn) btn = document.getElementById('applyFeaturesBtn');
+  // Guard against a double-tap: bail if a save is already running.
+  if (btn && btn.dataset.saving === '1') return;
+  if (btn) {
+    btn.dataset.saving = '1';
+    btn.disabled = true;
+    btn.style.cursor = 'default';
+    btn.textContent = 'Saving...';
+    btn.style.animation = 'forge-pulse 1s ease-in-out infinite';
+  }
   const arr = (Array.isArray(_featuresDraft) ? _featuresDraft : getEnabledFeatures()).slice();
-  await persistEnabledFeatures(arr);
+  const res = await persistEnabledFeatures(arr);
+  const failed = !res || res._status === 0 || (typeof res._status === 'number' && res._status >= 400);
+  if (failed) {
+    // Roll the button back so the user can retry.
+    if (btn) {
+      btn.style.animation = '';
+      btn.dataset.saving = '';
+      btn.disabled = false;
+      btn.style.cursor = 'pointer';
+      btn.textContent = 'Apply changes';
+    }
+    showToast('Could not save. Try again.', 'error');
+    return;
+  }
   _featuresDraft = getEnabledFeatures().slice(); // re-sync so the Apply button hides
   applyFeatureNav();
   if (typeof updateCoachNav === 'function') updateCoachNav();
-  const host = document.getElementById('featuresSection');
-  if (host) host.innerHTML = featuresSectionInner();
   showToast('Features updated', 'success');
+  if (btn) {
+    btn.style.animation = '';
+    btn.textContent = 'Done ✓';
+    // Re-render after a beat — draft now matches saved, so the button drops away.
+    setTimeout(() => {
+      const host = document.getElementById('featuresSection');
+      if (host) host.innerHTML = featuresSectionInner();
+    }, 1500);
+  } else {
+    const host = document.getElementById('featuresSection');
+    if (host) host.innerHTML = featuresSectionInner();
+  }
 }
 
 // Coach-invite gate: enable Human Coach, then drop into the normal accept flow.
@@ -2506,9 +2548,8 @@ function renderObStep() {
     if (!Array.isArray(obData.enabled_features)) {
       obData.enabled_features = FORGE_FEATURES.filter(f => f.default).map(f => f.key);
     }
-    if (!obData.enabled_features.includes('plans')) obData.enabled_features.unshift('plans');
     const sel = obData.enabled_features;
-    body.innerHTML = `<div class="ob-options">${FORGE_FEATURES.map(f => {
+    body.innerHTML = `<div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);padding:0 20px 16px;text-align:center;line-height:1.5;">You can add or remove any of these later in your Account settings.</div><div class="ob-options">${FORGE_FEATURES.map(f => {
       const on = f.locked ? true : sel.includes(f.key);
       return `<div class="ob-option ${on ? 'selected' : ''}" data-feature="${f.key}"${f.locked ? ' data-locked="true"' : ''} style="position:relative;">
         <div class="ob-icon"><span class="ob-icon-emoji">${f.emoji}</span></div>
@@ -2874,7 +2915,6 @@ async function obNext() {
     // PATCH (don't block the generating screen). submitOnboarding() below also sends
     // enabled_features in its awaited PATCH as the reliable cross-device save.
     if (!Array.isArray(obData.enabled_features)) obData.enabled_features = FORGE_FEATURES.filter(f => f.default).map(f => f.key);
-    if (!obData.enabled_features.includes('plans')) obData.enabled_features.unshift('plans');
     try { localStorage.setItem('forge-enabled-features', JSON.stringify(obData.enabled_features)); } catch(e) { /* quota */ }
     api('/api/profile', 'PATCH', { enabled_features: obData.enabled_features });
   }
@@ -3135,6 +3175,10 @@ function showPanel(name) {
   if (userSubscription?.status === 'expired' && name !== 'account') {
     openExpiredPaywall();
     return;
+  }
+  // AI Plans gating — Plan panel is hidden when 'plans' is off; Coach stays available.
+  if (name === 'workout' && !getEnabledFeatures().includes('plans')) {
+    name = 'coach';
   }
   // Hide ALL panels completely first
   ALL_PANELS.forEach(p => {
