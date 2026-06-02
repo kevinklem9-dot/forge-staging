@@ -366,7 +366,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 8px); --nav-h: calc(36px + var(--nav-safe)); }
 body.pwa-mode .app {
   --nav-safe: 0px;
-  --nav-h: 30px;
+  --nav-h: 44px;
 }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border-muted); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:2px; color:var(--accent); }
@@ -478,6 +478,9 @@ nav.bottom-nav, .bottom-nav {
   bottom: var(--nav-h);
   padding-bottom: 0;
   overflow: hidden;
+}
+body.pwa-mode #panel-coach {
+  bottom: calc(var(--nav-h) - 14px);
 }
 .chat-container { display:flex; flex-direction:column; flex:1; min-height:0; }
 .chat-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--bg); }
@@ -853,6 +856,7 @@ nav.bottom-nav, .bottom-nav {
 }
 body.pwa-mode .bottom-nav {
   padding-bottom: 0px !important;
+  transform: translateY(14px);
 }
 .nav-btn { color: var(--dim); }
 .nav-btn.active { color: var(--accent); }
