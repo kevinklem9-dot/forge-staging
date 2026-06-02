@@ -2090,6 +2090,149 @@ let obStep = 0;
 // Stored alongside main profile data
 const obData = {};
 
+// ═══════════════════════════════════════════════════════
+// FEATURE FLAGS (enabled_features)
+// ═══════════════════════════════════════════════════════
+// Which app features the user has switched on. Chosen in onboarding, editable in
+// Account → Features. Mirrored to localStorage('forge-enabled-features') for instant
+// reads and to profiles.enabled_features (jsonb) for cross-device persistence.
+// AI Coach chat AND AI-Generated Plans ('plans') are ALWAYS on and locked (see
+// decisions.md). The DB column default is all-on, so existing users are unaffected.
+const FORGE_FEATURES = [
+  { key:'plans',     emoji:'⚡', label:'AI-Generated Plans', sub:'Custom workout programme built around you',         locked:true,  default:true  },
+  { key:'nutrition', emoji:'🥗', label:'Nutrition Tracking', sub:'Personalised meal plans and macro targets',         locked:false, default:true  },
+  { key:'progress',  emoji:'📈', label:'Progress Tracking',  sub:'Sessions, streaks, PRs and body metrics',           locked:false, default:true  },
+  { key:'prs',       emoji:'🏆', label:'Personal Records',    sub:'Track and search your exercise PRs',                locked:false, default:true  },
+  { key:'coach',     emoji:'👤', label:'Human Coach',         sub:'Connect with a real coach to guide your training',  locked:false, default:false },
+  { key:'logging',   emoji:'📋', label:'Workout Logging',     sub:'Log sets, reps and weight for each session',        locked:false, default:true  },
+];
+// DB column default — keep in sync with the enabled_features migration in server.js.
+const FORGE_DEFAULT_FEATURES = ['plans','nutrition','progress','prs','coach','logging'];
+
+// Resolve the active feature set: profile → localStorage → all-on default.
+// 'plans' is force-included (AI plans can never be switched off).
+function getEnabledFeatures() {
+  let f = (userProfile && Array.isArray(userProfile.enabled_features)) ? userProfile.enabled_features.slice() : null;
+  if (!f) { try { f = JSON.parse(localStorage.getItem('forge-enabled-features') || 'null'); } catch(e) { f = null; } }
+  if (!Array.isArray(f) || !f.length) f = FORGE_DEFAULT_FEATURES.slice();
+  if (!f.includes('plans')) f.push('plans');
+  return f;
+}
+function isFeatureEnabled(key) { return getEnabledFeatures().includes(key); }
+
+// Persist a feature set everywhere. Returns the PATCH promise so callers can await it.
+function persistEnabledFeatures(arr) {
+  const clean = Array.from(new Set(arr));
+  if (!clean.includes('plans')) clean.push('plans');
+  try { localStorage.setItem('forge-enabled-features', JSON.stringify(clean)); } catch(e) { /* quota */ }
+  if (userProfile) {
+    userProfile.enabled_features = clean;
+    try { localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile)); } catch(e) { /* quota */ }
+  }
+  return api('/api/profile', 'PATCH', { enabled_features: clean });
+}
+
+// Show/hide the feature-gated bottom-nav items. Coach (AI chat), Plan, and Account are
+// always visible; Clients / My Coach are handled by updateCoachNav / refreshMyCoachNav.
+// Hidden items are display:none so the remaining flex:1 buttons spread evenly, no gaps.
+function applyFeatureNav() {
+  const f = getEnabledFeatures();
+  const setVis = (id, on) => { const b = document.getElementById(id); if (b) b.style.display = on ? '' : 'none'; };
+  setVis('nav-log', f.includes('logging'));
+  setVis('nav-nutrition', f.includes('nutrition'));
+  setVis('nav-progress', f.includes('progress'));
+}
+
+// Onboarding feature-card toggle (multi-select, stored on obData.enabled_features).
+function obToggleFeature(key, el) {
+  if (!Array.isArray(obData.enabled_features)) obData.enabled_features = [];
+  const i = obData.enabled_features.indexOf(key);
+  if (i >= 0) { obData.enabled_features.splice(i, 1); el.classList.remove('selected'); }
+  else { obData.enabled_features.push(key); el.classList.add('selected'); }
+}
+
+// ── Account → Features section ────────────────────────
+let _featuresDraft = null; // working copy while the user toggles, before "Apply changes"
+
+function featuresSectionInner() {
+  const draft = Array.isArray(_featuresDraft) ? _featuresDraft : getEnabledFeatures();
+  const saved = getEnabledFeatures();
+  const norm = a => Array.from(new Set(a)).filter(x => x !== 'plans').sort().join(',');
+  const changed = norm(draft) !== norm(saved);
+  const rowStyle = "background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:8px;";
+  const rows = FORGE_FEATURES.map(f => {
+    const on = f.locked ? true : draft.includes(f.key);
+    const emoji = `<span style="font-size:18px;line-height:1;flex-shrink:0;filter:${on ? 'grayscale(0) brightness(1)' : 'grayscale(1) brightness(0.6)'};">${f.emoji}</span>`;
+    const right = f.locked
+      ? `<span title="Always on" style="font-size:13px;opacity:0.7;flex-shrink:0;">🔒</span>`
+      : `<div class="notif-toggle ${on ? 'on' : ''}" onclick="toggleAccountFeature('${f.key}')"></div>`;
+    return `<div style="${rowStyle}${f.locked ? 'cursor:default;' : ''}">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+        ${emoji}
+        <div style="min-width:0;">
+          <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);">${f.label}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px;">${f.sub}</div>
+        </div>
+      </div>
+      ${right}
+    </div>`;
+  }).join('');
+  const applyBtn = changed
+    ? `<button onclick="applyFeatureChanges()" style="width:100%;background:var(--accent);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;border-radius:10px;padding:14px;margin:4px 0 16px;border:none;cursor:pointer;">Apply changes</button>`
+    : '<div style="height:8px;"></div>';
+  return rows + applyBtn;
+}
+
+function toggleAccountFeature(key) {
+  const f = FORGE_FEATURES.find(x => x.key === key);
+  if (!f || f.locked) return;
+  if (!Array.isArray(_featuresDraft)) _featuresDraft = getEnabledFeatures().slice();
+  const i = _featuresDraft.indexOf(key);
+  if (i >= 0) _featuresDraft.splice(i, 1); else _featuresDraft.push(key);
+  const host = document.getElementById('featuresSection');
+  if (host) host.innerHTML = featuresSectionInner();
+}
+
+async function applyFeatureChanges() {
+  const arr = (Array.isArray(_featuresDraft) ? _featuresDraft : getEnabledFeatures()).slice();
+  await persistEnabledFeatures(arr);
+  _featuresDraft = getEnabledFeatures().slice(); // re-sync so the Apply button hides
+  applyFeatureNav();
+  if (typeof updateCoachNav === 'function') updateCoachNav();
+  const host = document.getElementById('featuresSection');
+  if (host) host.innerHTML = featuresSectionInner();
+  showToast('Features updated', 'success');
+}
+
+// Coach-invite gate: enable Human Coach, then drop into the normal accept flow.
+async function enableHumanCoachThenAccept(connectionId) {
+  const arr = getEnabledFeatures();
+  if (!arr.includes('coach')) arr.push('coach');
+  await persistEnabledFeatures(arr);
+  applyFeatureNav();
+  if (typeof updateCoachNav === 'function') updateCoachNav();
+  document.getElementById('coachRequestOverlay')?.remove();
+  openCoachRequestScreen(connectionId);
+}
+
+function showEnableCoachGate(connectionId) {
+  document.getElementById('coachRequestOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coachRequestOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9700;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="padding:max(env(safe-area-inset-top),44px) 18px 14px;border-bottom:1px solid var(--border);">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">COACH CONNECTION REQUEST</div>
+    </div>
+    <div style="padding:22px 20px;flex:1;">
+      <div style="font-size:15px;color:var(--text);line-height:1.6;margin-bottom:20px;">A coach wants to connect with you. Enable the Human Coach feature to accept.</div>
+      <button onclick="enableHumanCoachThenAccept('${escHtml(connectionId || '')}')" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Enable Human Coach</button>
+      <button onclick="document.getElementById('coachRequestOverlay').remove()" style="width:100%;padding:13px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Not now</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
 // Sport steps injected dynamically after goals if 'sport' is selected
 function getSportSteps() {
   return [
@@ -2191,6 +2334,13 @@ function getObStepsBase() {
     {
       title: t('ob_restrictions_title'), sub: t('ob_restrictions_sub'), field: 'restrictions',
       type: 'text'
+    },
+    {
+      // Feature selection — the final question before plan generation. Lets the user
+      // choose which parts of the app to switch on (AI plans always on/locked).
+      // Title is name-personalised in renderObStep; see FORGE_FEATURES for the cards.
+      title: 'What would you like to use?', sub: 'You can always change this later in settings.',
+      field: 'enabled_features', type: 'features'
     }
   ];
 }
@@ -2284,6 +2434,9 @@ function renderObStep() {
   if (obStep === 0) {
     // First step (goals): "What are your goals, <name>?" — name wrapped in an accent span.
     obTitleEl.innerHTML = 'What are your goals' + (obFirstName ? ', <span class="ob-name" style="color:var(--accent)">' + escHtml(obFirstName) + '</span>' : '') + '?';
+  } else if (step.type === 'features') {
+    // Feature-selection step: "What would you like to use, <name>?" — name in accent.
+    obTitleEl.innerHTML = 'What would you like to use' + (obFirstName ? ', <span class="ob-name" style="color:var(--accent)">' + escHtml(obFirstName) + '</span>' : '') + '?';
   } else {
     obTitleEl.textContent = stepTitle;
   }
@@ -2291,6 +2444,8 @@ function renderObStep() {
   document.getElementById('ob-bar').style.width = pct + '%';
   document.getElementById('ob-back').style.visibility = obStep > 0 ? 'visible' : 'hidden';
   document.getElementById('ob-next').textContent = obStep === getObSteps().length - 1 ? t('build_plan') : t('next');
+  // The feature-selection step is the final question — its CTA is "Set up my app →".
+  if (step.type === 'features') document.getElementById('ob-next').textContent = 'Set up my app →';
   // Reset button style for all steps
   const nextBtn = document.getElementById('ob-next');
   nextBtn.style.opacity = '';
@@ -2343,6 +2498,35 @@ function renderObStep() {
       });
     });
     document.getElementById('ob-next').disabled = selected.length === 0;
+  }
+
+  if (step.type === 'features') {
+    // Toggleable feature cards. Returning to the step keeps the prior selection;
+    // first visit seeds the defaults (Human Coach off, everything else on).
+    if (!Array.isArray(obData.enabled_features)) {
+      obData.enabled_features = FORGE_FEATURES.filter(f => f.default).map(f => f.key);
+    }
+    if (!obData.enabled_features.includes('plans')) obData.enabled_features.unshift('plans');
+    const sel = obData.enabled_features;
+    body.innerHTML = `<div class="ob-options">${FORGE_FEATURES.map(f => {
+      const on = f.locked ? true : sel.includes(f.key);
+      return `<div class="ob-option ${on ? 'selected' : ''}" data-feature="${f.key}"${f.locked ? ' data-locked="true"' : ''} style="position:relative;">
+        <div class="ob-icon"><span class="ob-icon-emoji">${f.emoji}</span></div>
+        <div class="ob-option-txt">
+          <div class="ob-option-label">${f.label}</div>
+          <div class="ob-option-sub">${f.sub}</div>
+        </div>
+        ${f.locked ? '<span aria-label="Always on" style="position:absolute;top:10px;right:12px;font-size:13px;opacity:0.75;">🔒</span>' : ''}
+      </div>`;
+    }).join('')}</div>`;
+    body.querySelectorAll('.ob-option').forEach(el => {
+      el.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        if (this.dataset.locked) return; // AI Plans card can't be deselected
+        obToggleFeature(this.dataset.feature, this);
+      });
+    });
+    document.getElementById('ob-next').disabled = false;
   }
 
   if (step.type === 'stats') {
@@ -2685,6 +2869,16 @@ async function obNext() {
     obData.sport_notes = '';
   }
 
+  if (step.type === 'features') {
+    // On continue: save to localStorage now (instant) + a fire-and-forget profile
+    // PATCH (don't block the generating screen). submitOnboarding() below also sends
+    // enabled_features in its awaited PATCH as the reliable cross-device save.
+    if (!Array.isArray(obData.enabled_features)) obData.enabled_features = FORGE_FEATURES.filter(f => f.default).map(f => f.key);
+    if (!obData.enabled_features.includes('plans')) obData.enabled_features.unshift('plans');
+    try { localStorage.setItem('forge-enabled-features', JSON.stringify(obData.enabled_features)); } catch(e) { /* quota */ }
+    api('/api/profile', 'PATCH', { enabled_features: obData.enabled_features });
+  }
+
   if (obStep < getObSteps().length - 1) {
     obStep++;
     renderObStep(); // getObSteps() re-evaluated here — sport steps injected if needed
@@ -2738,7 +2932,10 @@ async function submitOnboarding() {
       equipment: toStr(obData.equipment),
       diet_style: obData.diet_style,
       diet_restrictions: obData.diet_restrictions || 'none',
-      injuries: injuriesField
+      injuries: injuriesField,
+      enabled_features: (Array.isArray(obData.enabled_features) && obData.enabled_features.length)
+        ? obData.enabled_features
+        : FORGE_DEFAULT_FEATURES
     });
 
     if (profileRes?.profile) {
@@ -6564,6 +6761,10 @@ function renderAccount() {
   const el = document.getElementById('accountPanel');
   if (!el) return;
 
+  // Reset the Features draft to the saved set each time the panel (re)opens, so the
+  // "Apply changes" button only appears after an actual change this session.
+  _featuresDraft = getEnabledFeatures().slice();
+
   const sub = userSubscription || {};
   const profile = userProfile || {};
   const tierLabel = { iron: 'Iron', steel: 'Steel', forge: 'Forge' };
@@ -6667,6 +6868,10 @@ function renderAccount() {
           ↻ Sync subscription
         </button>
       </div>` : ''}
+
+      <!-- FEATURES — user-toggleable app features (above Settings) -->
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;">FEATURES</div>
+      <div id="featuresSection">${featuresSectionInner()}</div>
 
       <!-- SECTION 3 — Settings rows -->
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">SETTINGS</div>
@@ -12265,6 +12470,7 @@ function isCoachAccount() {
 function updateCoachNav() {
   const btn = document.getElementById('nav-clients');
   if (btn) btn.style.display = isCoachAccount() ? '' : 'none';
+  applyFeatureNav(); // hide Log / Food / Progress per enabled_features
   refreshMyCoachNav();
 }
 
@@ -13978,6 +14184,9 @@ function showCoachSetupConfirmation() {
 
 // ── COACH REQUEST CONSENT SCREEN (client side) ────────
 async function openCoachRequestScreen(connectionId) {
+  // Coach-invite gate — the Human Coach feature must be enabled before the client can
+  // accept. If it's off, show the enable prompt instead of the accept flow.
+  if (!isFeatureEnabled('coach')) { showEnableCoachGate(connectionId); return; }
   document.getElementById('coachRequestOverlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'coachRequestOverlay';
