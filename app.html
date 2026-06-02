@@ -288,6 +288,18 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .ob-icon { width:36px; height:36px; background:var(--surface2); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; stroke:var(--muted); font-size:16px; line-height:1; }
 .ob-option.selected .ob-icon { background:var(--accent); stroke:#000; }
 .ob-icon svg { width:18px; height:18px; stroke:inherit; fill:none; stroke-width:1.5; }
+/* Emoji option icons — greyscale + muted by default, full colour as a reward when selected. */
+.ob-icon-emoji {
+  filter: grayscale(1) brightness(0.6);
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+.ob-option.selected .ob-icon-emoji { filter: grayscale(0) brightness(1); }
 /* New-programme wizard option icons (npOptionCard) — same stroke SVGs, no circle. */
 .np-ico { display:flex; align-items:center; justify-content:center; flex-shrink:0; stroke:var(--muted); }
 .np-ico svg { width:24px; height:24px; stroke:inherit; fill:none; stroke-width:1.5; }
@@ -497,7 +509,7 @@ nav.bottom-nav, .bottom-nav {
   overflow: hidden;
 }
 body.pwa-mode #panel-coach {
-  bottom: calc(var(--nav-h) + 8px);
+  bottom: calc(var(--nav-h) + 18px);
 }
 .chat-container { display:flex; flex-direction:column; flex:1; min-height:0; }
 .chat-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--bg); }
@@ -2229,15 +2241,14 @@ const OB_SVG = {
     elite: '<line x1="5" y1="15" x2="5" y2="19"/><line x1="10" y1="12" x2="10" y2="19"/><line x1="15" y1="9" x2="15" y2="19"/><line x1="20" y1="6" x2="20" y2="19"/>'
   }
 };
-// Returns an inline SVG for every option card. Fields with a specific icon use
-// it; anything unlisted falls back to a generic activity glyph (a bolt) so an
-// emoji is NEVER rendered inside the .ob-icon circle. The `emoji` arg is kept
-// for call-site compatibility but no longer displayed. Arrow const (not a
+// Renders the option's emoji (the `emoji` arg, sourced from each step's o.icon)
+// inside a .ob-icon-emoji span. The span is greyscale + muted by default and
+// flips to full colour when its .ob-option is selected (CSS reward state).
+// Anything without an emoji falls back to a bolt glyph. Arrow const (not a
 // `function` declaration) so the named-function count stays constant.
+// (OB_SVG above is retained for reference but no longer rendered.)
 const obIconHtml = (field, value, emoji) => {
-  const svg = OB_SVG[field] && OB_SVG[field][value];
-  if (svg) return '<svg viewBox="0 0 24 24" aria-hidden="true">' + svg + '</svg>';
-  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+  return '<span class="ob-icon-emoji">' + (emoji || '⚡') + '</span>';
 };
 
 function renderObStep() {
@@ -7736,7 +7747,7 @@ const STRINGS = {
     generating_workout: 'GENERATING YOUR WORKOUT PLAN',
     building_meals: 'BUILDING YOUR MEAL PLAN',
     coach_greeting_1: 'Hey {name}. Let\'s get to work.',
-    coach_greeting_2: 'Your programme is built and personalised to you. I know your goal, your training history, and your nutrition plan. Ask me anything - form, food, recovery, when to go heavier. I\'m here.',
+    coach_greeting_2: 'Your programme is built around you. Ask me anything — form, recovery, when to go heavier, what to eat before training. I can adjust your workout plan, swap exercises, update your nutrition targets, or rebuild your programme entirely if your goals change. Just tell me what you need.',
     upgrade_sub: '',
     upgrade_monthly: 'Monthly',
     upgrade_annual: 'Annual',
