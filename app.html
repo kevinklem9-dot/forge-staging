@@ -366,7 +366,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 8px); --nav-h: calc(36px + var(--nav-safe)); }
 body.pwa-mode .app {
   --nav-safe: 0px;
-  --nav-h: 44px;
+  --nav-h: 30px;
 }
 .topbar { background:var(--bg); border-bottom:1px solid var(--border-muted); display:flex; align-items:center; justify-content:space-between; padding:0 18px; padding-top:var(--safe-top); height:calc(54px + var(--safe-top)); flex-shrink:0; z-index:20; }
 .logo { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:2px; color:var(--accent); }
@@ -418,9 +418,21 @@ nav.bottom-nav, .bottom-nav {
 }
 .nav-btn.active { color:var(--accent); }
 .nav-btn:active { transform:scale(0.92); }
-.nav-icon { font-size:22px; line-height:1; margin:0; padding:0; display:flex; align-items:center; justify-content:center; }
+.nav-icon { font-size:24px; line-height:1; margin:0; padding:0; display:flex; align-items:center; justify-content:center; }
 .nav-icon svg { display:block; }
-.nav-label { font-family:'DM Mono',monospace; font-size:9px; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
+.nav-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.nav-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  margin-top: 2px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: block !important;
+  opacity: 1 !important;
+}
 
 /* PWA standalone mode: the only adjustment needed is the larger safe-area floor,
  * which is handled centrally by `body.pwa-mode .app { --nav-safe: ... }`. Both the
@@ -480,7 +492,7 @@ nav.bottom-nav, .bottom-nav {
   overflow: hidden;
 }
 body.pwa-mode #panel-coach {
-  bottom: calc(var(--nav-h) - 14px);
+  bottom: var(--nav-h);
 }
 .chat-container { display:flex; flex-direction:column; flex:1; min-height:0; }
 .chat-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--bg); }
@@ -856,7 +868,6 @@ nav.bottom-nav, .bottom-nav {
 }
 body.pwa-mode .bottom-nav {
   padding-bottom: 0px !important;
-  transform: translateY(14px);
 }
 .nav-btn { color: var(--dim); }
 .nav-btn.active { color: var(--accent); }
