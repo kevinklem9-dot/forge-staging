@@ -2479,6 +2479,19 @@ function getObSteps() {
   if (Array.isArray(obData.goal) && obData.goal.includes('sport')) {
     base.splice(1, 0, ...getSportSteps());
   }
+  // STEP B — per-day session duration. Only when "Varies by day" was picked on STEP A.
+  // Injected AFTER preferred_days (located by field, so the sport-step offset doesn't
+  // matter) because it lists the exact days the user just selected.
+  if (obData.session_duration === 'varies') {
+    const pdIdx = base.findIndex(s => s.field === 'preferred_days');
+    if (pdIdx >= 0) {
+      base.splice(pdIdx + 1, 0, {
+        title: 'How long per day, roughly?',
+        sub: 'Approximate is fine — your coach will adjust the volume accordingly.',
+        field: 'session_duration_by_day', type: 'session_by_day'
+      });
+    }
+  }
   return base;
 }
 
@@ -2514,6 +2527,23 @@ function getObStepsBase() {
         { value: 4, icon: '4️⃣', label: '4 ' + t('ob_days'), sub: t('ob_days_4_sub') },
         { value: 5, icon: '5️⃣', label: '5 ' + t('ob_days'), sub: t('ob_days_5_sub') },
         { value: 6, icon: '6️⃣', label: '6 ' + t('ob_days'), sub: t('ob_days_6_sub') },
+      ]
+    },
+    {
+      // STEP A — Session duration. Inserted after "days per week" and before "preferred
+      // days". English strings hardcoded (consistent with the features step). Single-select
+      // grid; picking "Varies by day" injects the per-day step (STEP B) after preferred_days
+      // — see getObSteps(), which needs the selected days to exist first.
+      title: 'How long do you have per session?',
+      sub: 'Your coach will build each workout to fit your schedule.',
+      field: 'session_duration', type: 'grid',
+      options: [
+        { value: 30,       icon: '⏱️', label: '30 min',        sub: 'Quick and focused' },
+        { value: 45,       icon: '⏱️', label: '45 min',        sub: 'Short but effective' },
+        { value: 60,       icon: '⏱️', label: '60 min',        sub: 'Standard session' },
+        { value: 75,       icon: '⏱️', label: '75 min',        sub: 'Good amount of time' },
+        { value: 90,       icon: '⏱️', label: '90 min+',       sub: 'Full training session' },
+        { value: 'varies', icon: '📅', label: 'Varies by day', sub: 'Different each session' },
       ]
     },
     {
@@ -2870,6 +2900,48 @@ function renderObStep() {
     syncDaysUI();
   }
 
+  if (step.type === 'session_by_day') {
+    // One row per selected training day, each with duration chips. Stored as a lowercase
+    // day-name → minutes object, e.g. { monday: 60, wednesday: 45 }. Default 60/day.
+    const order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const sel = Array.isArray(obData.preferred_days) ? obData.preferred_days : [];
+    const sbdDays = order.filter(d => sel.includes(d));
+    if (!obData.session_duration_by_day || typeof obData.session_duration_by_day !== 'object') obData.session_duration_by_day = {};
+    // Seed 60 for any selected day not yet set; drop days no longer selected.
+    const sdbd = {};
+    sbdDays.forEach(d => { const k = d.toLowerCase(); sdbd[k] = parseInt(obData.session_duration_by_day[k]) || 60; });
+    obData.session_duration_by_day = sdbd;
+
+    const chipVals = [30, 45, 60, 75, 90];
+    if (!sbdDays.length) {
+      body.innerHTML = '<div class="ob-pad"><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);line-height:1.6">Pick your training days first, then set a duration for each.</div></div>';
+    } else {
+      const rows = sbdDays.map(function(d) {
+        const k = d.toLowerCase();
+        const cur = obData.session_duration_by_day[k];
+        const dayLabel = (typeof t === 'function' ? t('day_' + k) : '') || d;
+        const chips = chipVals.map(function(v) {
+          const on = cur === v;
+          const txt = v === 90 ? '90+' : String(v);
+          return '<button type="button" class="sbd-chip" data-day="' + k + '" data-val="' + v + '" style="flex:1;min-width:0;padding:9px 0;border-radius:8px;border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'rgba(232,255,61,0.08)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--muted)') + ';font-family:DM Mono,monospace;font-size:12px;cursor:pointer;">' + txt + '</button>';
+        }).join('');
+        return '<div style="margin-bottom:14px;">'
+          + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">' + escHtml(dayLabel) + '</div>'
+          + '<div style="display:flex;gap:6px;">' + chips + '</div>'
+          + '</div>';
+      }).join('');
+      body.innerHTML = '<div class="ob-pad">' + rows + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-top:2px;">Minutes per session</div></div>';
+      body.querySelectorAll('.sbd-chip').forEach(function(el) {
+        el.addEventListener('pointerdown', function(e) {
+          e.preventDefault();
+          obData.session_duration_by_day[this.dataset.day] = parseInt(this.dataset.val, 10);
+          renderObStep();
+        });
+      });
+    }
+    document.getElementById('ob-next').disabled = false;
+  }
+
   if (step.type === 'text') {
     body.innerHTML = `
       <div class="ob-input-wrap">
@@ -3143,6 +3215,10 @@ async function submitOnboarding() {
       diet_style: obData.diet_style,
       diet_restrictions: obData.diet_restrictions || 'none',
       injuries: injuriesField,
+      // Session duration: a single value in minutes, or per-day when it varies.
+      session_duration_varies: obData.session_duration === 'varies',
+      session_duration_mins: obData.session_duration === 'varies' ? 60 : (parseInt(obData.session_duration, 10) || 60),
+      session_duration_by_day: obData.session_duration === 'varies' ? (obData.session_duration_by_day || null) : null,
       enabled_features: (Array.isArray(obData.enabled_features) && obData.enabled_features.length)
         ? obData.enabled_features
         : FORGE_DEFAULT_FEATURES
@@ -3261,6 +3337,7 @@ async function loadPlanAndLaunch() {
     if (planRes?.plan) {
       userPlan = planRes.plan;
       localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+      window._logProgrammeCache = null; // plan changed — Plan/Log panels rebuild from the new plan
       updated = true;
     }
     if (profileRes?.profile) {
@@ -3869,33 +3946,61 @@ function checkDay4FoundingNotification() {
     api('/api/push/founding-member-notify', 'POST').catch(() => {});
   }
 }
-function renderWorkoutPanel() {
-  // AI Plans disabled — don't show AI-generated days. Show a message instead.
-  // My Programmes (custom builder) stays accessible via the button above.
-  if (!isFeatureEnabled('plans')) {
-    const sub = document.getElementById('workout-sub');
+// Plan-panel day source — the days currently shown in the Plan panel. An active CUSTOM
+// programme's days when one exists (shown even with AI plans off), otherwise the AI
+// plan's days. selectDay() / renderExercises() / showExerciseModal() all read from this
+// so the same day-card + exercise rendering serves both sources.
+window._planPanelDays = window._planPanelDays || null;
+
+async function renderWorkoutPanel() {
+  const sub = document.getElementById('workout-sub');
+  const scroll = document.getElementById('dayScroll');
+  const exList = document.getElementById('exerciseList');
+
+  // 1) An active CUSTOM programme is shown in the Plan panel regardless of the AI-plans
+  //    toggle — a user who turned AI plans off still needs to see and follow the custom
+  //    programme they built. getActiveProgramme() prioritises an active custom programme.
+  const active = await getActiveProgramme();
+  if (active && active.type === 'custom' && active.days && active.days.length) {
     if (sub) sub.textContent = '';
-    const scroll = document.getElementById('dayScroll');
+    renderPlanDays(active.days, active.name || 'Custom Programme');
+    return;
+  }
+
+  // 2) No active custom programme. If AI plans are off, show the disabled message.
+  //    My Programmes (custom builder) stays accessible via the button above.
+  if (!isFeatureEnabled('plans')) {
+    window._planPanelDays = null;
+    if (sub) sub.textContent = '';
     if (scroll) scroll.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px;margin-bottom:16px;text-align:center;">
   <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">AI PLAN DISABLED</div>
   <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);margin-bottom:12px;">Build your own programme or enable AI plans in your Account settings.</div>
   <button onclick="showPanel('account')" style="background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Go to Settings</button>
 </div>`;
-    const exList = document.getElementById('exerciseList');
     if (exList) exList.innerHTML = '';
     return;
   }
-  if (!userPlan?.workout_plan) return;
+
+  // 3) AI plans on — render the AI plan as before.
+  if (!userPlan?.workout_plan) { window._planPanelDays = null; return; }
   const plan = userPlan.workout_plan;
-  document.getElementById('workout-sub').textContent = (plan.split_name || '') + (plan.split_description ? ' — ' + plan.split_description : '');
+  if (sub) sub.textContent = (plan.split_name || '') + (plan.split_description ? ' — ' + plan.split_description : '');
+  renderPlanDays(plan.days, null);
+}
 
-  const days = plan.days;
-
-  // Use actual day_name from plan, not hardcoded position
-  // v2: vertical day cards (mockup Panel 2). Each card keeps the "day-chip" class and its
-  // selectDay(i) click handler, so selectDay()/renderExercises() work unchanged — only the
-  // markup + inline CSS changed. Selected day shows its exercises in the list below.
-  document.getElementById('dayScroll').innerHTML = `<div style="width:100%;display:flex;flex-direction:column;gap:10px;">` + days.map((d, i) => {
+// Renders the Plan-panel day cards from `days` (custom or AI). `customLabel` (the
+// programme name) shows a "[NAME] · CUSTOM" label above the cards — mirrors the Log
+// panel's programme label — and is null for the AI plan. Day cards keep the existing
+// "day-chip" class + selectDay(i) handler + markup, so renderExercises() is unchanged.
+function renderPlanDays(days, customLabel) {
+  window._planPanelDays = days;
+  // A custom programme may have fewer days than the weekday-derived default — clamp.
+  if (typeof selectedDay !== 'number' || selectedDay >= days.length || selectedDay < 0) selectedDay = 0;
+  const scroll = document.getElementById('dayScroll');
+  const labelHtml = customLabel
+    ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;">${escHtml(customLabel)} · CUSTOM</div>`
+    : '';
+  if (scroll) scroll.innerHTML = `<div style="width:100%;display:flex;flex-direction:column;gap:10px;">` + labelHtml + days.map((d, i) => {
     const shortName = (d.day_name || '').slice(0, 3).toUpperCase() || ['MON','TUE','WED','THU','FRI','SAT','SUN'][d.day_index] || '—';
     const isRest = !d.exercises?.length;
     const isActive = i === selectedDay;
@@ -3928,26 +4033,29 @@ function selectDay(idx) {
 }
 
 function renderExercises() {
-  const days = userPlan?.workout_plan?.days;
+  const days = window._planPanelDays || userPlan?.workout_plan?.days;
   if (!days) return;
   const day = days[selectedDay];
   const el = document.getElementById('exerciseList');
+  if (!el) return;
 
   if (!day?.exercises?.length) {
     el.innerHTML = `<div class="empty-state">${t('rest_day').replace('. ','.<br>')}</div>`;
     return;
   }
 
+  // note / rest / rpe are guarded — a custom programme's exercises may carry no note
+  // and a null rpe, which would otherwise render an empty note row or "RPE null".
   el.innerHTML = day.exercises.map((e, i) => `
     <div class="exercise-card" onclick="showExerciseModal(${i})" style="cursor:pointer">
       <div class="ex-num">${i + 1}</div>
       <div class="ex-body">
         <div class="ex-name">${e.name}</div>
-        <div class="ex-note">${e.note}</div>
+        ${e.note ? `<div class="ex-note">${e.note}</div>` : ''}
         <div class="ex-tags">
           <span class="tag sets">${e.sets} × ${e.reps}</span>
-          <span class="tag">${t('rest')} ${e.rest}</span>
-          <span class="tag rpe-${e.rpe}">RPE ${e.rpe}</span>
+          ${e.rest ? `<span class="tag">${t('rest')} ${e.rest}</span>` : ''}
+          ${(e.rpe !== null && e.rpe !== undefined && e.rpe !== '') ? `<span class="tag rpe-${e.rpe}">RPE ${e.rpe}</span>` : ''}
           <span class="tag" style="background:rgba(255,255,255,0.04);color:var(--muted)">▶ ${t('form')}</span>
         </div>
       </div>
@@ -6091,9 +6199,18 @@ async function sendMessage() {
 // PLAN RELOAD + UPDATE BADGE
 // ═══════════════════════════════════════════════════════
 async function reloadPlan() {
-  window._logProgrammeCache = null; // active programme may have changed — Log panel refetches
+  // Active programme may have changed — clear cached programme data so the Plan and Log
+  // panels refetch the now-active programme via getActiveProgramme().
+  window._logProgrammeCache = null;
+  window._planProgrammeCache = null;
   localStorage.removeItem('forge-cached-plan');
-  await loadPlanInCurrentLanguage();
+  await loadPlanInCurrentLanguage(); // re-fetches the plan and re-renders the Plan panel on success
+  // Belt-and-braces: if the Plan panel is open, force it to reflect the now-active
+  // programme even if the plan fetch returned nothing renderable.
+  if (typeof renderWorkoutPanel === 'function' &&
+      document.getElementById('panel-workout')?.classList.contains('active')) {
+    renderWorkoutPanel();
+  }
 }
 
 function showPlanUpdateBadge(summary) {
@@ -6924,6 +7041,15 @@ async function renderProgrammes() {
 
 function programmeCard(p) {
   const dateStr = new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  // Custom programmes can have their full workouts edited; AI programmes are view-only.
+  const isCustom = p.programme_type === 'custom';
+  const editOrView = isCustom
+    ? `<button onclick="editProgrammeWorkouts('${p.id}')" style="flex:1;min-width:120px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Edit workouts</button>`
+    : `<button onclick="viewProgrammeWorkouts('${p.id}')" style="flex:1;min-width:120px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;">View</button>`;
+  const switchDelete = !p.is_active
+    ? `<button onclick="switchProgramme('${p.id}')" style="flex:1;min-width:120px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Switch to this</button>
+          <button onclick="deleteProgramme('${p.id}')" style="background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Delete</button>`
+    : '';
   return `
     <div style="background:var(--surface);border:1px solid ${p.is_active ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:14px;margin-bottom:10px;">
       <div onclick="showRenameProgrammeModal('${p.id}')" style="cursor:pointer;">
@@ -6935,12 +7061,53 @@ function programmeCard(p) {
         ${p.description ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;">${escHtml(p.description)}</div>` : ''}
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;">${dateStr}</div>
       </div>
-      ${!p.is_active ? `
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button onclick="switchProgramme('${p.id}')" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Switch to this</button>
-          <button onclick="deleteProgramme('${p.id}')" style="background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Delete</button>
-        </div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">${editOrView}${switchDelete}</div>
     </div>`;
+}
+
+// Open the custom builder pre-populated with an existing custom programme's full data.
+function editProgrammeWorkouts(id) {
+  api('/api/programmes/' + id + '/full').then(res => {
+    const prog = (res && res.programme) ? res.programme : res;
+    if (!prog || prog._status >= 400) { showToast('Could not load programme', 'error'); return; }
+    openCustomBuilder({
+      editMode: true,
+      programmeId: id,
+      name: prog.name,
+      days: prog.plan_data?.workout?.days || []
+    });
+  });
+}
+
+// Read-only view of an AI programme's workouts (AI programmes are not editable).
+function viewProgrammeWorkouts(id) {
+  api('/api/programmes/' + id + '/full').then(res => {
+    const prog = (res && res.programme) ? res.programme : res;
+    if (!prog || prog._status >= 400) { showToast('Could not load programme', 'error'); return; }
+    const days = (prog.plan_data?.workout?.days) || (prog.plan_data?.workout_plan?.days) || [];
+    document.getElementById('progViewOverlay')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'progViewOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10040;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
+    const dayBlocks = days.map(function(d) {
+      const exRows = (d.exercises || []).map(function(e) {
+        const meta = [e.sets != null && e.reps != null ? (e.sets + ' × ' + e.reps) : '', e.rest ? ('rest ' + e.rest) : '', (e.rpe !== null && e.rpe !== undefined && e.rpe !== '') ? ('RPE ' + e.rpe) : ''].filter(Boolean).join(' · ');
+        return '<div style="padding:9px 0;border-top:1px solid var(--border-subtle);"><div style="font-size:13px;color:var(--text);">' + escHtml(e.name || '') + '</div>' + (meta ? '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:0.5px;">' + escHtml(meta) + '</div>' : '') + '</div>';
+      }).join('');
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;">'
+        + '<div style="font-family:DM Sans,sans-serif;font-size:15px;font-weight:600;color:var(--text);margin-bottom:2px;">' + escHtml(d.label || d.day_name || 'Day') + '</div>'
+        + (exRows || '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--muted);padding-top:8px;">Rest day</div>')
+        + '</div>';
+    }).join('');
+    ov.innerHTML = `
+      <div style="padding:max(env(safe-area-inset-top),44px) 14px 12px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button onclick="document.getElementById('progViewOverlay').remove()" style="background:transparent;border:none;color:var(--text);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px;padding:4px 6px;flex-shrink:0;"><span style="font-size:20px;line-height:1;">←</span> Back</button>
+        <div style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(prog.name || 'Programme')}</div>
+        <div style="width:52px;flex-shrink:0;"></div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;">${dayBlocks || '<div class="empty-state">No workouts in this programme.</div>'}</div>`;
+    document.body.appendChild(ov);
+  });
 }
 
 function showNewProgrammeModal() {
@@ -7505,7 +7672,9 @@ async function sendPasswordResetAccount(event) {
 // EXERCISE MODAL — Form video + advice
 // ═══════════════════════════════════════════════════════
 async function showExerciseModal(exerciseIndex) {
-  const day = userPlan?.workout_plan?.days?.[selectedDay];
+  // Read from the Plan-panel day source so this works for a custom programme too
+  // (not just the AI plan).
+  const day = (window._planPanelDays || userPlan?.workout_plan?.days)?.[selectedDay];
   const exercise = day?.exercises?.[exerciseIndex];
   if (!exercise) return;
 
@@ -12730,6 +12899,7 @@ async function loadPlanInCurrentLanguage() {
   if (res?.plan) {
     userPlan = res.plan;
     localStorage.setItem('forge-cached-plan', JSON.stringify(userPlan));
+    window._logProgrammeCache = null; // plan changed — Plan/Log panels rebuild from the new plan
     if (typeof renderWorkoutPanel === 'function') renderWorkoutPanel();
     if (typeof renderNutritionPanel === 'function') renderNutritionPanel();
     if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
@@ -15741,6 +15911,8 @@ let _cbSearch = '';
 let _cbCustomFormOpen = false;
 let _cbCustomForm = { name:'', equipment:'', primary:'' };
 let _cbLastSaved = null;   // { id, name } awaiting the activate-or-later choice
+let _cbEditMode = false;   // true when editing an existing custom programme's workouts
+let _cbEditId = null;      // id of the programme being edited (edit mode only)
 
 // ── custom exercises (localStorage) ──
 function cbGetCustomExercises() {
@@ -15838,9 +16010,19 @@ function cbFilteredExercises() {
 }
 
 // ── open / close builder ──
-function openCustomBuilder() {
-  _cbName = '';
-  _cbDays = [{ name: 'Day 1', exercises: [] }];
+// opts (optional): { editMode, programmeId, name, days } — when editMode is true the
+// builder opens pre-populated with an existing custom programme and saves via PATCH.
+function openCustomBuilder(opts) {
+  opts = opts || {};
+  _cbEditMode = !!opts.editMode;
+  _cbEditId = _cbEditMode ? (opts.programmeId || null) : null;
+  if (_cbEditMode) {
+    _cbName = opts.name || '';
+    _cbDays = cbDaysFromSaved(opts.days);
+  } else {
+    _cbName = '';
+    _cbDays = [{ name: 'Day 1', exercises: [] }];
+  }
   _cbPickerDay = null;
   _cbSelMuscles = [];
   _cbSearch = '';
@@ -15851,15 +16033,42 @@ function openCustomBuilder() {
   const ov = document.createElement('div');
   ov.id = 'customBuilderOverlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:10040;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
+  const headerTitle = _cbEditMode ? 'Edit Programme' : 'Build Programme';
+  const saveLabel = _cbEditMode ? 'Save changes' : 'Save';
   ov.innerHTML = `
     <div style="padding:max(env(safe-area-inset-top),44px) 14px 12px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:8px;flex-shrink:0;">
       <button onclick="closeCustomBuilder()" style="background:transparent;border:none;color:var(--text);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px;padding:4px 6px;flex-shrink:0;"><span style="font-size:20px;line-height:1;">←</span> Back</button>
-      <div style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);">Build Programme</div>
-      <button id="cbSaveBtn" onclick="cbSave()" disabled style="background:transparent;border:none;color:var(--accent);font-size:15px;font-weight:600;cursor:default;font-family:'DM Sans',sans-serif;padding:4px 6px;opacity:0.4;flex-shrink:0;">Save</button>
+      <div style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);">${headerTitle}</div>
+      <button id="cbSaveBtn" onclick="cbSave()" disabled style="background:transparent;border:none;color:var(--accent);font-size:15px;font-weight:600;cursor:default;font-family:'DM Sans',sans-serif;padding:4px 6px;opacity:0.4;flex-shrink:0;">${saveLabel}</button>
     </div>
     <div id="cbBody" style="flex:1;overflow-y:auto;padding:16px;"></div>`;
   document.body.appendChild(ov);
   cbRenderBuilder();
+}
+
+// Convert a saved programme's days (plan_data.workout.days shape) into the builder's
+// working shape so an existing programme can be edited. Falls back to a single seed
+// day so the builder is never blank.
+function cbDaysFromSaved(days) {
+  const out = (Array.isArray(days) ? days : []).map(function(d) {
+    return {
+      name: (d.label || d.day_name || 'Day').toString(),
+      exercises: (Array.isArray(d.exercises) ? d.exercises : []).map(function(ex) {
+        return {
+          exId: ex.exId || null,
+          name: ex.name || '',
+          equipment: ex.equipment || '',
+          primary: Array.isArray(ex.primary) ? ex.primary : [],
+          secondary: Array.isArray(ex.secondary) ? ex.secondary : [],
+          sets: (ex.sets == null ? 3 : ex.sets),
+          reps: (ex.reps == null ? 10 : ex.reps),
+          rest: (ex.rest == null ? 90 : ex.rest),
+          rpe: (ex.rpe == null ? '' : ex.rpe)
+        };
+      })
+    };
+  });
+  return out.length ? out : [{ name: 'Day 1', exercises: [] }];
 }
 function closeCustomBuilder() {
   document.getElementById('cbPickerSheet')?.remove();
@@ -16153,6 +16362,27 @@ async function cbSave() {
   const btn = document.getElementById('cbSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; btn.style.opacity = '0.6'; }
   const plan_data = cbBuildPlanData();
+
+  // EDIT MODE — PATCH the existing programme instead of creating a new one. The server
+  // pushes the new plan_data into the live plans table when the programme is active.
+  if (_cbEditMode && _cbEditId) {
+    const res = await api('/api/programmes/' + _cbEditId, 'PATCH', { name: _cbName.trim(), plan_data });
+    if (res && res.programme) {
+      window._logProgrammeCache = null;
+      window._planProgrammeCache = null;
+      closeCustomBuilder();
+      if (typeof renderWorkoutPanel === 'function' && document.getElementById('panel-workout')?.classList.contains('active')) renderWorkoutPanel();
+      if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
+      if (typeof renderProgrammes === 'function') renderProgrammes();
+      showToast('Programme updated', 'success');
+    } else {
+      if (btn) { btn.textContent = 'Save changes'; }
+      cbUpdateSaveBtn();
+      showToast('Could not save changes. Try again.', 'error');
+    }
+    return;
+  }
+
   const res = await api('/api/programmes', 'POST', { name: _cbName.trim(), plan_data, programme_type: 'custom', is_active: false });
   if (btn) { btn.textContent = 'Save'; }
   if (res && res.programme && res.programme.id) {
