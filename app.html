@@ -1480,6 +1480,180 @@ const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 })();
 
 // ═══════════════════════════════════════════════════════
+// EXERCISE DATABASE
+// ~150 exercises across every muscle group. Stored as a JS constant (no API call →
+// instant search). Merged at search time with user-created exercises from
+// localStorage('forge-custom-exercises'). Used by the custom programme builder.
+// muscle values: chest, back, shoulders, biceps, triceps, forearms, quads,
+//   hamstrings, glutes, calves, core, traps, lats
+// equipment values: barbell, dumbbell, cable, machine, bodyweight, kettlebell, bands
+// ═══════════════════════════════════════════════════════
+const EXERCISE_DB = [
+  // ---- CHEST ----
+  { id:'bench_press', name:'Bench Press', primary:['chest'], secondary:['shoulders','triceps'], equipment:'barbell', type:'compound' },
+  { id:'incline_bench_press', name:'Incline Bench Press', primary:['chest'], secondary:['shoulders','triceps'], equipment:'barbell', type:'compound' },
+  { id:'decline_bench_press', name:'Decline Bench Press', primary:['chest'], secondary:['triceps'], equipment:'barbell', type:'compound' },
+  { id:'dumbbell_fly', name:'Dumbbell Fly', primary:['chest'], secondary:['shoulders'], equipment:'dumbbell', type:'isolation' },
+  { id:'cable_fly', name:'Cable Fly', primary:['chest'], secondary:['shoulders'], equipment:'cable', type:'isolation' },
+  { id:'push_up', name:'Push Up', primary:['chest'], secondary:['shoulders','triceps','core'], equipment:'bodyweight', type:'compound' },
+  { id:'dips', name:'Dips', primary:['chest'], secondary:['triceps','shoulders'], equipment:'bodyweight', type:'compound' },
+  { id:'chest_press_machine', name:'Chest Press Machine', primary:['chest'], secondary:['shoulders','triceps'], equipment:'machine', type:'compound' },
+  { id:'pec_deck_machine', name:'Pec Deck Machine', primary:['chest'], secondary:['shoulders'], equipment:'machine', type:'isolation' },
+  { id:'incline_dumbbell_press', name:'Incline Dumbbell Press', primary:['chest'], secondary:['shoulders','triceps'], equipment:'dumbbell', type:'compound' },
+  { id:'cable_crossover', name:'Cable Crossover', primary:['chest'], secondary:['shoulders'], equipment:'cable', type:'isolation' },
+  { id:'dumbbell_bench_press', name:'Dumbbell Bench Press', primary:['chest'], secondary:['shoulders','triceps'], equipment:'dumbbell', type:'compound' },
+  { id:'incline_cable_fly', name:'Incline Cable Fly', primary:['chest'], secondary:['shoulders'], equipment:'cable', type:'isolation' },
+  { id:'decline_push_up', name:'Decline Push Up', primary:['chest'], secondary:['shoulders','triceps'], equipment:'bodyweight', type:'compound' },
+  { id:'incline_push_up', name:'Incline Push Up', primary:['chest'], secondary:['shoulders','triceps'], equipment:'bodyweight', type:'compound' },
+  { id:'dumbbell_pullover', name:'Dumbbell Pullover', primary:['chest','lats'], secondary:['triceps'], equipment:'dumbbell', type:'compound' },
+  // ---- BACK ----
+  { id:'deadlift', name:'Deadlift', primary:['back','hamstrings','glutes'], secondary:['traps','forearms','lats'], equipment:'barbell', type:'compound' },
+  { id:'bent_over_row', name:'Bent Over Row', primary:['back','lats'], secondary:['biceps','traps'], equipment:'barbell', type:'compound' },
+  { id:'pull_up', name:'Pull Up', primary:['lats','back'], secondary:['biceps','forearms'], equipment:'bodyweight', type:'compound' },
+  { id:'chin_up', name:'Chin Up', primary:['lats','back'], secondary:['biceps'], equipment:'bodyweight', type:'compound' },
+  { id:'lat_pulldown', name:'Lat Pulldown', primary:['lats'], secondary:['biceps','back'], equipment:'cable', type:'compound' },
+  { id:'seated_cable_row', name:'Seated Cable Row', primary:['back','lats'], secondary:['biceps','traps'], equipment:'cable', type:'compound' },
+  { id:'t_bar_row', name:'T-Bar Row', primary:['back','lats'], secondary:['biceps','traps'], equipment:'barbell', type:'compound' },
+  { id:'single_arm_dumbbell_row', name:'Single Arm Dumbbell Row', primary:['back','lats'], secondary:['biceps'], equipment:'dumbbell', type:'compound' },
+  { id:'face_pull', name:'Face Pull', primary:['shoulders','traps'], secondary:['back'], equipment:'cable', type:'isolation' },
+  { id:'hyperextension', name:'Hyperextension', primary:['back'], secondary:['glutes','hamstrings'], equipment:'bodyweight', type:'isolation' },
+  { id:'rack_pull', name:'Rack Pull', primary:['back','traps'], secondary:['glutes','hamstrings','forearms'], equipment:'barbell', type:'compound' },
+  { id:'pendlay_row', name:'Pendlay Row', primary:['back','lats'], secondary:['biceps','traps'], equipment:'barbell', type:'compound' },
+  { id:'wide_grip_pulldown', name:'Wide Grip Lat Pulldown', primary:['lats'], secondary:['biceps','back'], equipment:'cable', type:'compound' },
+  { id:'close_grip_pulldown', name:'Close Grip Pulldown', primary:['lats','back'], secondary:['biceps'], equipment:'cable', type:'compound' },
+  { id:'machine_row', name:'Machine Row', primary:['back','lats'], secondary:['biceps'], equipment:'machine', type:'compound' },
+  { id:'inverted_row', name:'Inverted Row', primary:['back','lats'], secondary:['biceps'], equipment:'bodyweight', type:'compound' },
+  { id:'straight_arm_pulldown', name:'Straight Arm Pulldown', primary:['lats'], secondary:['back'], equipment:'cable', type:'isolation' },
+  { id:'chest_supported_row', name:'Chest Supported Row', primary:['back','lats'], secondary:['traps','biceps'], equipment:'dumbbell', type:'compound' },
+  // ---- SHOULDERS ----
+  { id:'overhead_press', name:'Overhead Press', primary:['shoulders'], secondary:['triceps','traps'], equipment:'barbell', type:'compound' },
+  { id:'dumbbell_shoulder_press', name:'Dumbbell Shoulder Press', primary:['shoulders'], secondary:['triceps'], equipment:'dumbbell', type:'compound' },
+  { id:'lateral_raise', name:'Lateral Raise', primary:['shoulders'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'front_raise', name:'Front Raise', primary:['shoulders'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'rear_delt_fly', name:'Rear Delt Fly', primary:['shoulders'], secondary:['traps'], equipment:'dumbbell', type:'isolation' },
+  { id:'cable_lateral_raise', name:'Cable Lateral Raise', primary:['shoulders'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'arnold_press', name:'Arnold Press', primary:['shoulders'], secondary:['triceps'], equipment:'dumbbell', type:'compound' },
+  { id:'upright_row', name:'Upright Row', primary:['shoulders','traps'], secondary:['biceps'], equipment:'barbell', type:'compound' },
+  { id:'machine_shoulder_press', name:'Machine Shoulder Press', primary:['shoulders'], secondary:['triceps'], equipment:'machine', type:'compound' },
+  { id:'cable_face_pull', name:'Cable Face Pull', primary:['shoulders','traps'], secondary:['back'], equipment:'cable', type:'isolation' },
+  { id:'reverse_pec_deck', name:'Reverse Pec Deck', primary:['shoulders'], secondary:['traps'], equipment:'machine', type:'isolation' },
+  { id:'seated_dumbbell_press', name:'Seated Dumbbell Press', primary:['shoulders'], secondary:['triceps'], equipment:'dumbbell', type:'compound' },
+  { id:'landmine_press', name:'Landmine Press', primary:['shoulders'], secondary:['triceps','chest'], equipment:'barbell', type:'compound' },
+  { id:'band_pull_apart', name:'Band Pull Apart', primary:['shoulders','traps'], secondary:['back'], equipment:'bands', type:'isolation' },
+  { id:'cable_upright_row', name:'Cable Upright Row', primary:['shoulders','traps'], secondary:['biceps'], equipment:'cable', type:'compound' },
+  // ---- BICEPS ----
+  { id:'barbell_curl', name:'Barbell Curl', primary:['biceps'], secondary:['forearms'], equipment:'barbell', type:'isolation' },
+  { id:'dumbbell_curl', name:'Dumbbell Curl', primary:['biceps'], secondary:['forearms'], equipment:'dumbbell', type:'isolation' },
+  { id:'hammer_curl', name:'Hammer Curl', primary:['biceps','forearms'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'preacher_curl', name:'Preacher Curl', primary:['biceps'], secondary:['forearms'], equipment:'barbell', type:'isolation' },
+  { id:'cable_curl', name:'Cable Curl', primary:['biceps'], secondary:['forearms'], equipment:'cable', type:'isolation' },
+  { id:'incline_dumbbell_curl', name:'Incline Dumbbell Curl', primary:['biceps'], secondary:['forearms'], equipment:'dumbbell', type:'isolation' },
+  { id:'concentration_curl', name:'Concentration Curl', primary:['biceps'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'ez_bar_curl', name:'EZ Bar Curl', primary:['biceps'], secondary:['forearms'], equipment:'barbell', type:'isolation' },
+  { id:'spider_curl', name:'Spider Curl', primary:['biceps'], secondary:[], equipment:'barbell', type:'isolation' },
+  { id:'cable_hammer_curl', name:'Cable Hammer Curl', primary:['biceps','forearms'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'machine_curl', name:'Machine Curl', primary:['biceps'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'band_curl', name:'Band Curl', primary:['biceps'], secondary:['forearms'], equipment:'bands', type:'isolation' },
+  { id:'machine_preacher_curl', name:'Machine Preacher Curl', primary:['biceps'], secondary:[], equipment:'machine', type:'isolation' },
+  // ---- TRICEPS ----
+  { id:'tricep_dips', name:'Tricep Dips', primary:['triceps'], secondary:['chest','shoulders'], equipment:'bodyweight', type:'compound' },
+  { id:'close_grip_bench_press', name:'Close Grip Bench Press', primary:['triceps'], secondary:['chest','shoulders'], equipment:'barbell', type:'compound' },
+  { id:'skull_crusher', name:'Skull Crusher', primary:['triceps'], secondary:[], equipment:'barbell', type:'isolation' },
+  { id:'tricep_pushdown', name:'Tricep Pushdown', primary:['triceps'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'overhead_tricep_extension', name:'Overhead Tricep Extension', primary:['triceps'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'diamond_push_up', name:'Diamond Push Up', primary:['triceps'], secondary:['chest','shoulders'], equipment:'bodyweight', type:'compound' },
+  { id:'tricep_kickback', name:'Kickback', primary:['triceps'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'cable_overhead_extension', name:'Cable Overhead Extension', primary:['triceps'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'jm_press', name:'JM Press', primary:['triceps'], secondary:['chest'], equipment:'barbell', type:'compound' },
+  { id:'rope_pushdown', name:'Rope Pushdown', primary:['triceps'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'bench_dip', name:'Bench Dip', primary:['triceps'], secondary:['shoulders'], equipment:'bodyweight', type:'compound' },
+  { id:'machine_tricep_extension', name:'Machine Tricep Extension', primary:['triceps'], secondary:[], equipment:'machine', type:'isolation' },
+  // ---- QUADS ----
+  { id:'squat', name:'Squat', primary:['quads'], secondary:['glutes','hamstrings','core'], equipment:'barbell', type:'compound' },
+  { id:'front_squat', name:'Front Squat', primary:['quads'], secondary:['glutes','core'], equipment:'barbell', type:'compound' },
+  { id:'leg_press', name:'Leg Press', primary:['quads'], secondary:['glutes','hamstrings'], equipment:'machine', type:'compound' },
+  { id:'hack_squat', name:'Hack Squat', primary:['quads'], secondary:['glutes'], equipment:'machine', type:'compound' },
+  { id:'lunge', name:'Lunge', primary:['quads','glutes'], secondary:['hamstrings'], equipment:'dumbbell', type:'compound' },
+  { id:'bulgarian_split_squat', name:'Bulgarian Split Squat', primary:['quads','glutes'], secondary:['hamstrings'], equipment:'dumbbell', type:'compound' },
+  { id:'step_up', name:'Step Up', primary:['quads','glutes'], secondary:['hamstrings'], equipment:'dumbbell', type:'compound' },
+  { id:'leg_extension', name:'Leg Extension', primary:['quads'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'goblet_squat', name:'Goblet Squat', primary:['quads','glutes'], secondary:['core'], equipment:'kettlebell', type:'compound' },
+  { id:'sissy_squat', name:'Sissy Squat', primary:['quads'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'walking_lunge', name:'Walking Lunge', primary:['quads','glutes'], secondary:['hamstrings'], equipment:'dumbbell', type:'compound' },
+  { id:'box_squat', name:'Box Squat', primary:['quads','glutes'], secondary:['hamstrings'], equipment:'barbell', type:'compound' },
+  { id:'pistol_squat', name:'Pistol Squat', primary:['quads','glutes'], secondary:['core'], equipment:'bodyweight', type:'compound' },
+  { id:'smith_machine_squat', name:'Smith Machine Squat', primary:['quads'], secondary:['glutes'], equipment:'machine', type:'compound' },
+  { id:'zercher_squat', name:'Zercher Squat', primary:['quads','glutes'], secondary:['core','back'], equipment:'barbell', type:'compound' },
+  // ---- HAMSTRINGS / GLUTES ----
+  { id:'romanian_deadlift', name:'Romanian Deadlift', primary:['hamstrings','glutes'], secondary:['back'], equipment:'barbell', type:'compound' },
+  { id:'nordic_curl', name:'Nordic Curl', primary:['hamstrings'], secondary:['glutes'], equipment:'bodyweight', type:'isolation' },
+  { id:'leg_curl', name:'Leg Curl', primary:['hamstrings'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'hip_thrust', name:'Hip Thrust', primary:['glutes'], secondary:['hamstrings'], equipment:'barbell', type:'compound' },
+  { id:'glute_bridge', name:'Glute Bridge', primary:['glutes'], secondary:['hamstrings'], equipment:'bodyweight', type:'isolation' },
+  { id:'cable_kickback', name:'Cable Kickback', primary:['glutes'], secondary:['hamstrings'], equipment:'cable', type:'isolation' },
+  { id:'sumo_deadlift', name:'Sumo Deadlift', primary:['glutes','hamstrings'], secondary:['back','quads','traps'], equipment:'barbell', type:'compound' },
+  { id:'good_morning', name:'Good Morning', primary:['hamstrings'], secondary:['glutes','back'], equipment:'barbell', type:'compound' },
+  { id:'single_leg_romanian_deadlift', name:'Single Leg Romanian Deadlift', primary:['hamstrings','glutes'], secondary:['back','core'], equipment:'dumbbell', type:'compound' },
+  { id:'reverse_hyper', name:'Reverse Hyper', primary:['glutes','hamstrings'], secondary:['back'], equipment:'machine', type:'isolation' },
+  { id:'seated_leg_curl', name:'Seated Leg Curl', primary:['hamstrings'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'cable_pull_through', name:'Cable Pull Through', primary:['glutes','hamstrings'], secondary:['back'], equipment:'cable', type:'compound' },
+  { id:'frog_pump', name:'Frog Pump', primary:['glutes'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'banded_glute_kickback', name:'Banded Kickback', primary:['glutes'], secondary:['hamstrings'], equipment:'bands', type:'isolation' },
+  { id:'glute_ham_raise', name:'Glute Ham Raise', primary:['hamstrings','glutes'], secondary:['back'], equipment:'machine', type:'compound' },
+  { id:'hip_abduction_machine', name:'Hip Abduction Machine', primary:['glutes'], secondary:[], equipment:'machine', type:'isolation' },
+  // ---- CALVES ----
+  { id:'calf_raise_machine', name:'Calf Raise Machine', primary:['calves'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'standing_calf_raise', name:'Standing Calf Raise', primary:['calves'], secondary:[], equipment:'barbell', type:'isolation' },
+  { id:'seated_calf_raise', name:'Seated Calf Raise', primary:['calves'], secondary:[], equipment:'machine', type:'isolation' },
+  { id:'donkey_calf_raise', name:'Donkey Calf Raise', primary:['calves'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'single_leg_calf_raise', name:'Single Leg Calf Raise', primary:['calves'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'dumbbell_calf_raise', name:'Dumbbell Calf Raise', primary:['calves'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'leg_press_calf_raise', name:'Leg Press Calf Raise', primary:['calves'], secondary:[], equipment:'machine', type:'isolation' },
+  // ---- CORE ----
+  { id:'plank', name:'Plank', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'crunch', name:'Crunch', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'sit_up', name:'Sit Up', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'leg_raise', name:'Leg Raise', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'russian_twist', name:'Russian Twist', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'ab_wheel_rollout', name:'Ab Wheel Rollout', primary:['core'], secondary:['shoulders','lats'], equipment:'bodyweight', type:'compound' },
+  { id:'cable_crunch', name:'Cable Crunch', primary:['core'], secondary:[], equipment:'cable', type:'isolation' },
+  { id:'hanging_leg_raise', name:'Hanging Leg Raise', primary:['core'], secondary:['forearms'], equipment:'bodyweight', type:'isolation' },
+  { id:'side_plank', name:'Side Plank', primary:['core'], secondary:['shoulders'], equipment:'bodyweight', type:'isolation' },
+  { id:'dragon_flag', name:'Dragon Flag', primary:['core'], secondary:[], equipment:'bodyweight', type:'compound' },
+  { id:'pallof_press', name:'Pallof Press', primary:['core'], secondary:['shoulders'], equipment:'cable', type:'isolation' },
+  { id:'hollow_body_hold', name:'Hollow Body Hold', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'bicycle_crunch', name:'Bicycle Crunch', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'v_up', name:'V-Up', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'cable_woodchopper', name:'Cable Woodchopper', primary:['core'], secondary:['shoulders'], equipment:'cable', type:'isolation' },
+  { id:'decline_sit_up', name:'Decline Sit Up', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'flutter_kicks', name:'Flutter Kicks', primary:['core'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  { id:'ab_crunch_machine', name:'Ab Crunch Machine', primary:['core'], secondary:[], equipment:'machine', type:'isolation' },
+  // ---- TRAPS ----
+  { id:'shrug', name:'Shrug', primary:['traps'], secondary:['forearms'], equipment:'barbell', type:'isolation' },
+  { id:'dumbbell_shrug', name:'Dumbbell Shrug', primary:['traps'], secondary:['forearms'], equipment:'dumbbell', type:'isolation' },
+  { id:'cable_shrug', name:'Cable Shrug', primary:['traps'], secondary:['forearms'], equipment:'cable', type:'isolation' },
+  { id:'power_clean', name:'Power Clean', primary:['traps','back'], secondary:['quads','glutes','shoulders'], equipment:'barbell', type:'compound' },
+  { id:'trap_bar_shrug', name:'Trap Bar Shrug', primary:['traps'], secondary:['forearms'], equipment:'barbell', type:'isolation' },
+  { id:'farmers_walk', name:"Farmer's Walk", primary:['traps','forearms'], secondary:['core'], equipment:'dumbbell', type:'compound' },
+  // ---- FOREARMS ----
+  { id:'wrist_curl', name:'Wrist Curl', primary:['forearms'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'reverse_wrist_curl', name:'Reverse Wrist Curl', primary:['forearms'], secondary:[], equipment:'dumbbell', type:'isolation' },
+  { id:'reverse_curl', name:'Reverse Curl', primary:['forearms','biceps'], secondary:[], equipment:'barbell', type:'isolation' },
+  { id:'wrist_roller', name:'Wrist Roller', primary:['forearms'], secondary:[], equipment:'bodyweight', type:'isolation' },
+  // ---- COMPOUND / FULL BODY ----
+  { id:'clean_and_press', name:'Clean and Press', primary:['shoulders','traps'], secondary:['quads','glutes','back'], equipment:'barbell', type:'compound' },
+  { id:'thruster', name:'Thruster', primary:['quads','shoulders'], secondary:['glutes','triceps'], equipment:'barbell', type:'compound' },
+  { id:'kettlebell_swing', name:'Kettlebell Swing', primary:['glutes','hamstrings'], secondary:['back','shoulders','core'], equipment:'kettlebell', type:'compound' },
+  { id:'turkish_get_up', name:'Turkish Get Up', primary:['core','shoulders'], secondary:['glutes','quads'], equipment:'kettlebell', type:'compound' },
+  { id:'burpee', name:'Burpee', primary:['quads','chest'], secondary:['core','shoulders','triceps'], equipment:'bodyweight', type:'compound' },
+  { id:'mountain_climber', name:'Mountain Climber', primary:['core'], secondary:['quads','shoulders'], equipment:'bodyweight', type:'compound' },
+  { id:'bear_crawl', name:'Bear Crawl', primary:['core','shoulders'], secondary:['quads'], equipment:'bodyweight', type:'compound' },
+  { id:'snatch', name:'Snatch', primary:['shoulders','traps'], secondary:['back','quads','glutes'], equipment:'barbell', type:'compound' },
+  { id:'wall_ball', name:'Wall Ball', primary:['quads','shoulders'], secondary:['glutes','core'], equipment:'bodyweight', type:'compound' },
+  { id:'kettlebell_clean', name:'Kettlebell Clean', primary:['traps','shoulders'], secondary:['back','glutes'], equipment:'kettlebell', type:'compound' },
+];
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 const { createClient } = supabase;
@@ -15158,6 +15332,11 @@ renderProgrammes = async function () {
   var createBtn = atLimit
     ? `<button onclick="programmeLimitToast()" style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Programme limit reached</button>`
     : `<button onclick="startNewProgramme()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">+ Create new programme</button>`;
+  // "Build my own" — opens the manual custom programme builder (no AI generation).
+  // Hidden when at the tier limit, same as the other create buttons.
+  var buildOwnBtn = atLimit
+    ? ''
+    : `<button onclick="openCustomBuilder()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Build my own</button>`;
   var saveBtn = atLimit
     ? ''
     : `<button onclick="showNewProgrammeModal()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">Save current plan as a programme</button>`;
@@ -15172,6 +15351,7 @@ renderProgrammes = async function () {
   el.innerHTML = `
     <div style="padding:16px;">
       ${createBtn}
+      ${buildOwnBtn}
       ${saveBtn}
       ${progs.length === 0
         ? '<div class="empty-state">No saved programmes yet. Create a new one for a different goal, or save your current plan.</div>'
@@ -15498,6 +15678,545 @@ async function activateNewProgramme() {
   }
 }
 
+</script>
+
+<style id="forge-custom-builder">
+/* ── Equipment icon badges (28×28 with AI stick-figure accent dot placeholder) ── */
+.equip-badge { position:relative; width:28px; height:28px; background:var(--surface2); border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); }
+.equip-badge svg { width:16px; height:16px; }
+.equip-badge::after { content:''; position:absolute; bottom:2px; right:2px; width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 3px 0 0.5px var(--accent); }
+/* ── Human body SVG diagram (front/back, tap-to-filter muscle regions) ── */
+.cb-body { display:block; margin:0 auto; max-width:100%; height:auto; }
+.cb-body .bd-label { font-family:'DM Mono',monospace; font-size:8px; fill:#555; letter-spacing:1px; }
+.cb-body .bd-deco { fill:rgba(255,255,255,0.04); stroke:#333; stroke-width:1; }
+.cb-body .bd-region { fill:rgba(255,255,255,0.04); stroke:#333; stroke-width:1; cursor:pointer; transition:fill .12s, stroke .12s; }
+.cb-body .bd-region:hover { fill:rgba(255,255,255,0.08); stroke:#555; }
+.cb-body .bd-region.bd-sel { fill:rgba(232,255,61,0.15); stroke:#e8ff3d; stroke-width:1.5; }
+</style>
+
+<script>
+/* ============================================================
+   CUSTOM PROGRAMME BUILDER
+   "Build my own" entry (My Programmes panel) → full-screen builder. Uses EXERCISE_DB
+   (declared at the top of the main script block) merged with user-created exercises in
+   localStorage('forge-custom-exercises'). Saves a plan_data whose shape matches the AI
+   plan (workout.days[{day_index,day_name,label,muscles,exercises[]}]) so the Log panel,
+   Plan panel and AI coach all render it identically. No build step — all handlers are
+   function declarations (hoisted to window) so inline onclick resolves them at click time;
+   top-level `let` state is reachable from inline handlers exactly like _npData elsewhere.
+   ============================================================ */
+
+// ── metadata ──
+const CB_MUSCLE_LABELS = { chest:'Chest', back:'Back', shoulders:'Shoulders', biceps:'Biceps', triceps:'Triceps', forearms:'Forearms', quads:'Quads', hamstrings:'Hamstrings', glutes:'Glutes', calves:'Calves', core:'Core', traps:'Traps', lats:'Lats' };
+const CB_EQUIP_LABELS = { barbell:'Barbell', dumbbell:'Dumbbell', cable:'Cable', machine:'Machine', bodyweight:'Bodyweight', kettlebell:'Kettlebell', bands:'Bands' };
+// Horizontal filter chips → the specific muscle set each one selects.
+const CB_FILTER_GROUPS = [
+  { key:'all', label:'All', muscles:[] },
+  { key:'chest', label:'Chest', muscles:['chest'] },
+  { key:'back', label:'Back', muscles:['back','lats','traps'] },
+  { key:'shoulders', label:'Shoulders', muscles:['shoulders'] },
+  { key:'arms', label:'Arms', muscles:['biceps','triceps','forearms'] },
+  { key:'legs', label:'Legs', muscles:['quads','hamstrings','glutes','calves'] },
+  { key:'core', label:'Core', muscles:['core'] },
+];
+const CB_REST_OPTIONS = [30, 45, 60, 90, 120, 180]; // seconds
+// Inline SVG inner-markup per equipment (drawn at viewBox 0 0 24 24, stroke=currentColor).
+const CB_EQUIP_SVG = {
+  barbell: '<line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="10" width="3" height="4" rx="1"/><rect x="19" y="10" width="3" height="4" rx="1"/><rect x="4" y="9" width="2" height="6" rx="1"/><rect x="18" y="9" width="2" height="6" rx="1"/>',
+  dumbbell: '<rect x="2" y="10" width="3" height="4" rx="1"/><line x1="5" y1="12" x2="8" y2="12"/><rect x="8" y="10" width="3" height="4" rx="1"/><rect x="13" y="10" width="3" height="4" rx="1"/><line x1="16" y1="12" x2="19" y2="12"/><rect x="19" y="10" width="3" height="4" rx="1"/>',
+  cable: '<circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="19"/><path d="M8 19h8"/><path d="M9 15l3 4 3-4"/>',
+  machine: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>',
+  bodyweight: '<circle cx="12" cy="5" r="2"/><path d="M12 7v8M9 10l3 2 3-2M9 20l3-5 3 5"/>',
+  kettlebell: '<circle cx="12" cy="14" r="5"/><path d="M9 9a3 3 0 0 1 6 0"/><line x1="12" y1="9" x2="12" y2="9"/>',
+  bands: '<path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/>',
+};
+const CB_TRASH_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/></svg>';
+
+// ── builder state ──
+let _cbName = '';
+let _cbDays = [];          // [{ name, exercises:[{exId,name,equipment,primary,secondary,sets,reps,rest,rpe}] }]
+let _cbPickerDay = null;   // index of the day the picker is adding to
+let _cbSelMuscles = [];    // active muscle filters (from diagram taps / group chips)
+let _cbSearch = '';
+let _cbCustomFormOpen = false;
+let _cbCustomForm = { name:'', equipment:'', primary:'' };
+let _cbLastSaved = null;   // { id, name } awaiting the activate-or-later choice
+
+// ── custom exercises (localStorage) ──
+function cbGetCustomExercises() {
+  try { const a = JSON.parse(localStorage.getItem('forge-custom-exercises') || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function cbSaveCustomExercise(ex) {
+  const list = cbGetCustomExercises();
+  list.push(ex);
+  try { localStorage.setItem('forge-custom-exercises', JSON.stringify(list)); } catch (e) {}
+}
+function cbAllExercises() { return EXERCISE_DB.concat(cbGetCustomExercises()); }
+
+// ── equipment badge ──
+function cbEquipBadge(equipment) {
+  const inner = CB_EQUIP_SVG[equipment] || CB_EQUIP_SVG.barbell;
+  return `<div class="equip-badge" title="${escHtml(CB_EQUIP_LABELS[equipment] || equipment || '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${inner}</svg></div>`;
+}
+
+// ── body diagram ──
+function cbEll(cx, cy, rx, ry, m) { return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" data-muscle="${m}" class="bd-region" onclick="cbToggleMuscle('${m}')"/>`; }
+function cbRct(x, y, w, h, rx, m) { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" data-muscle="${m}" class="bd-region" onclick="cbToggleMuscle('${m}')"/>`; }
+function cbPth(d, m) { return `<path d="${d}" data-muscle="${m}" class="bd-region" onclick="cbToggleMuscle('${m}')"/>`; }
+function cbBodyDiagramSvg() {
+  return `<svg viewBox="0 0 280 200" width="280" height="200" class="cb-body" xmlns="http://www.w3.org/2000/svg">
+    <text x="6" y="9" class="bd-label">FRONT</text>
+    <text x="156" y="9" class="bd-label">BACK</text>
+    <!-- FRONT VIEW -->
+    <circle cx="65" cy="20" r="13" class="bd-deco"/>
+    <rect x="60" y="31" width="10" height="8" rx="3" class="bd-deco"/>
+    ${cbEll(44,46,9,7,'shoulders')}${cbEll(86,46,9,7,'shoulders')}
+    ${cbEll(57,57,11,10,'chest')}${cbEll(73,57,11,10,'chest')}
+    ${cbRct(54,67,22,30,5,'core')}
+    ${cbEll(37,67,6,13,'biceps')}${cbEll(93,67,6,13,'biceps')}
+    ${cbEll(32,91,5,13,'forearms')}${cbEll(98,91,5,13,'forearms')}
+    ${cbEll(56,122,8,22,'quads')}${cbEll(74,122,8,22,'quads')}
+    ${cbEll(56,166,6,17,'calves')}${cbEll(74,166,6,17,'calves')}
+    <!-- BACK VIEW (x offset 150) -->
+    <circle cx="215" cy="20" r="13" class="bd-deco"/>
+    <rect x="210" y="31" width="10" height="8" rx="3" class="bd-deco"/>
+    ${cbPth('M205 38 L225 38 L235 54 L195 54 Z','traps')}
+    ${cbEll(194,49,9,7,'shoulders')}${cbEll(236,49,9,7,'shoulders')}
+    ${cbPth('M196 57 L234 57 L224 94 L206 94 Z','lats')}
+    ${cbEll(187,68,6,13,'triceps')}${cbEll(243,68,6,13,'triceps')}
+    ${cbEll(182,92,5,13,'forearms')}${cbEll(248,92,5,13,'forearms')}
+    ${cbEll(207,105,10,9,'glutes')}${cbEll(223,105,10,9,'glutes')}
+    ${cbEll(206,134,8,20,'hamstrings')}${cbEll(224,134,8,20,'hamstrings')}
+    ${cbEll(206,170,6,16,'calves')}${cbEll(224,170,6,16,'calves')}
+  </svg>`;
+}
+function cbApplyDiagramSel() {
+  document.querySelectorAll('#cbDiagram [data-muscle]').forEach(function (el) {
+    el.classList.toggle('bd-sel', _cbSelMuscles.indexOf(el.getAttribute('data-muscle')) >= 0);
+  });
+}
+
+// ── filtering ──
+function cbMuscleMatch(ex) {
+  if (!_cbSelMuscles.length) return true;
+  const all = (ex.primary || []).concat(ex.secondary || []);
+  return _cbSelMuscles.some(function (m) { return all.indexOf(m) >= 0; });
+}
+// Fuzzy search: normalise spaces, substring, tag match, per-word partial, and
+// Levenshtein ≤ 2 for short queries (reuses the existing levenshtein()).
+function cbSearchMatch(ex, query) {
+  const q = (query || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (!q) return true;
+  const name = (ex.name || '').toLowerCase();
+  const nameC = name.replace(/\s+/g, '');
+  const qC = q.replace(/\s+/g, '');
+  if (nameC.indexOf(qC) >= 0) return true;
+  const tags = ((ex.primary || []).concat(ex.secondary || []).join(' ') + ' ' + (ex.equipment || '')).toLowerCase();
+  if (tags.indexOf(q) >= 0) return true;
+  const qWords = q.split(' ').filter(Boolean);
+  // Token pool = name words + muscle names + equipment, so "bicep curl" matches a curl
+  // (muscle "biceps" + name "curl") and singular/plural resolves via substring.
+  const tokens = name.split(/\s+/).filter(Boolean)
+    .concat(ex.primary || [], ex.secondary || [], [ex.equipment || ''])
+    .map(function (t) { return String(t).toLowerCase(); })
+    .filter(Boolean);
+  const everyWord = qWords.every(function (qw) {
+    return tokens.some(function (tok) {
+      if (tok.indexOf(qw) >= 0) return true;                       // partial / plural match
+      if (qw.length >= 5 && levenshtein(tok, qw) <= 2) return true; // forgiving typo on longer words
+      if (qw.length >= 3 && levenshtein(tok, qw) <= 1) return true; // tight typo on short words
+      return false;
+    });
+  });
+  if (everyWord) return true;
+  if (qC.length <= 6 && levenshtein(nameC, qC) <= 2) return true;
+  return false;
+}
+function cbFilteredExercises() {
+  return cbAllExercises().filter(function (ex) { return cbMuscleMatch(ex) && cbSearchMatch(ex, _cbSearch); });
+}
+
+// ── open / close builder ──
+function openCustomBuilder() {
+  _cbName = '';
+  _cbDays = [{ name: 'Day 1', exercises: [] }];
+  _cbPickerDay = null;
+  _cbSelMuscles = [];
+  _cbSearch = '';
+  _cbCustomFormOpen = false;
+  _cbCustomForm = { name:'', equipment:'', primary:'' };
+  _cbLastSaved = null;
+  document.getElementById('customBuilderOverlay')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'customBuilderOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10040;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;';
+  ov.innerHTML = `
+    <div style="padding:max(env(safe-area-inset-top),44px) 14px 12px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <button onclick="closeCustomBuilder()" style="background:transparent;border:none;color:var(--text);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px;padding:4px 6px;flex-shrink:0;"><span style="font-size:20px;line-height:1;">←</span> Back</button>
+      <div style="flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);">Build Programme</div>
+      <button id="cbSaveBtn" onclick="cbSave()" disabled style="background:transparent;border:none;color:var(--accent);font-size:15px;font-weight:600;cursor:default;font-family:'DM Sans',sans-serif;padding:4px 6px;opacity:0.4;flex-shrink:0;">Save</button>
+    </div>
+    <div id="cbBody" style="flex:1;overflow-y:auto;padding:16px;"></div>`;
+  document.body.appendChild(ov);
+  cbRenderBuilder();
+}
+function closeCustomBuilder() {
+  document.getElementById('cbPickerSheet')?.remove();
+  document.getElementById('cbSaveChoiceModal')?.remove();
+  document.getElementById('customBuilderOverlay')?.remove();
+  _cbPickerDay = null;
+}
+
+// ── builder body ──
+function cbRenderBuilder() {
+  const body = document.getElementById('cbBody');
+  if (!body) return;
+  body.innerHTML = `
+    <input id="cbNameInput" value="${escHtml(_cbName)}" oninput="_cbName=this.value;cbUpdateSaveBtn()" placeholder="Programme name..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;padding:14px 16px;color:var(--text);box-sizing:border-box;margin-bottom:18px;">
+    <div id="cbDaysList">${_cbDays.map(cbDayCard).join('')}</div>
+    <button onclick="cbAddDay()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:13px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-top:4px;">+ Add training day</button>
+    <div id="cbError" style="color:var(--red,#ff4444);font-size:13px;margin-top:14px;text-align:center;display:none;font-family:'DM Sans',sans-serif;"></div>
+    <div style="height:40px;"></div>`;
+  cbUpdateSaveBtn();
+}
+function cbRenderDays() {
+  const list = document.getElementById('cbDaysList');
+  if (list) list.innerHTML = _cbDays.map(cbDayCard).join('');
+  cbUpdateSaveBtn();
+}
+function cbDayCard(day, idx) {
+  const count = day.exercises.length;
+  const exRows = day.exercises.map(function (ex, j) { return cbExerciseRow(idx, j, ex); }).join('');
+  const upDis = idx === 0, downDis = idx === _cbDays.length - 1;
+  return `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <span title="Reorder" style="color:var(--muted);font-size:16px;cursor:grab;flex-shrink:0;user-select:none;">&#8801;</span>
+        <input value="${escHtml(day.name)}" oninput="_cbDays[${idx}].name=this.value;cbUpdateSaveBtn()" placeholder="Day name" style="flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;padding:3px 0;" onfocus="this.style.borderBottomColor='var(--border)'" onblur="this.style.borderBottomColor='transparent'">
+        <button onclick="cbMoveDay(${idx},-1)" ${upDis ? 'disabled' : ''} style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0;${upDis ? 'opacity:0.3;' : ''}">&#8593;</button>
+        <button onclick="cbMoveDay(${idx},1)" ${downDis ? 'disabled' : ''} style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0;${downDis ? 'opacity:0.3;' : ''}">&#8595;</button>
+        <button onclick="cbDeleteDay(${idx})" title="Delete day" style="background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">${CB_TRASH_SVG}</button>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px;margin:0 0 10px 26px;">${count} ${count === 1 ? 'EXERCISE' : 'EXERCISES'}</div>
+      <div id="cbDayEx-${idx}">${exRows}</div>
+      <button onclick="cbOpenPicker(${idx})" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--accent);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-top:6px;">+ Add exercise</button>
+    </div>`;
+}
+function cbExerciseRow(d, j, ex) {
+  const restOpts = CB_REST_OPTIONS.map(function (s) { return `<option value="${s}" ${Number(ex.rest) === s ? 'selected' : ''}>${s}s</option>`; }).join('');
+  const lbl = "font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.5px;";
+  const inp = "background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:6px;text-align:center;box-sizing:border-box;font-family:'DM Sans',sans-serif;";
+  return `
+    <div style="background:var(--surface2);border:1px solid var(--border-subtle);border-radius:10px;padding:10px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+        ${cbEquipBadge(ex.equipment)}
+        <div style="flex:1;min-width:0;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(ex.name)}</div>
+        <button onclick="cbRemoveExercise(${d},${j})" title="Remove" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;flex-shrink:0;line-height:1;padding:2px 4px;">×</button>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="${lbl}">SETS</span><input value="${escHtml(String(ex.sets))}" oninput="_cbDays[${d}].exercises[${j}].sets=this.value" type="number" inputmode="numeric" min="1" max="20" style="${inp}width:46px;"></div>
+        <span style="color:var(--muted);padding-bottom:7px;">×</span>
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="${lbl}">REPS</span><input value="${escHtml(String(ex.reps))}" oninput="_cbDays[${d}].exercises[${j}].reps=this.value" inputmode="numeric" style="${inp}width:56px;"></div>
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="${lbl}">REST</span><select onchange="_cbDays[${d}].exercises[${j}].rest=parseInt(this.value,10)" style="${inp}width:64px;padding:6px 4px;">${restOpts}</select></div>
+        <div style="display:flex;flex-direction:column;gap:2px;"><span style="${lbl}">RPE</span><input value="${ex.rpe == null || ex.rpe === '' ? '' : escHtml(String(ex.rpe))}" oninput="_cbDays[${d}].exercises[${j}].rpe=this.value" type="number" inputmode="numeric" min="1" max="10" placeholder="–" style="${inp}width:46px;"></div>
+      </div>
+    </div>`;
+}
+function cbAddDay() { _cbDays.push({ name: 'Day ' + (_cbDays.length + 1), exercises: [] }); cbRenderDays(); }
+function cbDeleteDay(i) { _cbDays.splice(i, 1); if (!_cbDays.length) _cbDays.push({ name: 'Day 1', exercises: [] }); cbRenderDays(); }
+function cbMoveDay(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= _cbDays.length) return;
+  const tmp = _cbDays[i]; _cbDays[i] = _cbDays[j]; _cbDays[j] = tmp;
+  cbRenderDays();
+}
+function cbRemoveExercise(d, j) { _cbDays[d].exercises.splice(j, 1); cbRenderDays(); }
+function cbAddExerciseToDay(exId) {
+  if (_cbPickerDay == null || !_cbDays[_cbPickerDay]) return;
+  const src = cbAllExercises().find(function (e) { return e.id === exId; });
+  if (!src) return;
+  _cbDays[_cbPickerDay].exercises.push({
+    exId: src.id, name: src.name, equipment: src.equipment,
+    primary: src.primary || [], secondary: src.secondary || [],
+    sets: 3, reps: 10, rest: 90, rpe: null
+  });
+  cbRenderDays(); // builder body (behind the sheet) reflects the new exercise immediately
+}
+
+// ── save button / validation ──
+function cbValid() { return _cbName.trim().length > 0 && _cbDays.some(function (d) { return d.exercises.length > 0; }); }
+function cbUpdateSaveBtn() {
+  const btn = document.getElementById('cbSaveBtn');
+  const ok = cbValid();
+  if (btn) { btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.4'; btn.style.cursor = ok ? 'pointer' : 'default'; }
+  if (ok) { const err = document.getElementById('cbError'); if (err) err.style.display = 'none'; }
+}
+
+// ── exercise picker (bottom sheet) ──
+function cbOpenPicker(dayIdx) {
+  _cbPickerDay = dayIdx;
+  _cbSelMuscles = [];
+  _cbSearch = '';
+  _cbCustomFormOpen = false;
+  _cbCustomForm = { name:'', equipment:'', primary:'' };
+  document.getElementById('cbPickerSheet')?.remove();
+  const sheet = document.createElement('div');
+  sheet.id = 'cbPickerSheet';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:10070;background:rgba(0,0,0,0.6);display:flex;flex-direction:column;justify-content:flex-end;';
+  sheet.onclick = function (e) { if (e.target === sheet) cbClosePicker(); };
+  sheet.innerHTML = `
+    <div style="background:var(--bg);border-top:1px solid var(--border);border-top-left-radius:18px;border-top-right-radius:18px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:16px 16px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border-subtle);">
+        <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);">Add Exercise</div>
+        <button onclick="cbClosePicker()" style="background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 16px 28px;">
+        <div id="cbDiagram" style="margin-bottom:14px;">${cbBodyDiagramSvg()}</div>
+        <div id="cbChips" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px;-webkit-overflow-scrolling:touch;">${cbChipsHtml()}</div>
+        <input id="cbSearchInput" oninput="_cbSearch=this.value;cbRenderList()" placeholder="Search exercises..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:10px;">
+        <div id="cbSelChips">${cbSelChipsHtml()}</div>
+        <div id="cbList">${cbListHtml()}</div>
+        <div id="cbCustomArea">${cbCustomAreaHtml()}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(sheet);
+  cbApplyDiagramSel();
+}
+function cbClosePicker() { _cbPickerDay = null; document.getElementById('cbPickerSheet')?.remove(); }
+
+function cbChipsHtml() {
+  return CB_FILTER_GROUPS.map(function (g) {
+    const a = cbGroupActive(g);
+    return `<button onclick="cbSelectGroup('${g.key}')" style="flex-shrink:0;padding:7px 14px;border-radius:100px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.5px;border:1px solid ${a ? 'var(--accent)' : 'var(--border)'};background:${a ? 'rgba(232,255,61,0.08)' : 'transparent'};color:${a ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;white-space:nowrap;">${g.label}</button>`;
+  }).join('');
+}
+function cbGroupActive(g) {
+  if (g.key === 'all') return _cbSelMuscles.length === 0;
+  if (_cbSelMuscles.length !== g.muscles.length) return false;
+  return g.muscles.every(function (m) { return _cbSelMuscles.indexOf(m) >= 0; });
+}
+function cbSelectGroup(key) {
+  const g = CB_FILTER_GROUPS.find(function (x) { return x.key === key; });
+  if (!g) return;
+  _cbSelMuscles = key === 'all' ? [] : g.muscles.slice();
+  cbApplyFilterUI();
+}
+function cbToggleMuscle(m) {
+  const i = _cbSelMuscles.indexOf(m);
+  if (i >= 0) _cbSelMuscles.splice(i, 1); else _cbSelMuscles.push(m);
+  cbApplyFilterUI();
+}
+function cbClearFilter() { _cbSelMuscles = []; cbApplyFilterUI(); }
+function cbApplyFilterUI() {
+  cbApplyDiagramSel();
+  const chips = document.getElementById('cbChips'); if (chips) chips.innerHTML = cbChipsHtml();
+  const sel = document.getElementById('cbSelChips'); if (sel) sel.innerHTML = cbSelChipsHtml();
+  cbRenderList();
+}
+function cbSelChipsHtml() {
+  if (!_cbSelMuscles.length) return '';
+  const chips = _cbSelMuscles.map(function (m) {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:4px 8px;font-family:'DM Mono',monospace;font-size:10px;margin:0 6px 6px 0;">${escHtml(CB_MUSCLE_LABELS[m] || m)}<span onclick="cbToggleMuscle('${m}')" style="cursor:pointer;font-size:13px;line-height:1;">×</span></span>`;
+  }).join('');
+  return `<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:8px;">${chips}<a onclick="cbClearFilter()" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;margin:0 0 6px 4px;">Clear filter</a></div>`;
+}
+function cbRenderList() { const el = document.getElementById('cbList'); if (el) el.innerHTML = cbListHtml(); }
+function cbListHtml() {
+  const list = cbFilteredExercises();
+  if (!list.length) return `<div style="text-align:center;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;padding:24px 12px;">No exercises found. Try a different search, or add a custom exercise below.</div>`;
+  return list.map(cbExercisePickRow).join('');
+}
+function cbExercisePickRow(ex) {
+  const prim = (ex.primary || []).map(function (m) { return `<span style="background:var(--surface2);color:var(--accent);border-radius:4px;padding:2px 6px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3px;">${escHtml(CB_MUSCLE_LABELS[m] || m)}</span>`; }).join('');
+  const sec = (ex.secondary || []).map(function (m) { return `<span style="background:var(--surface2);color:var(--muted);border-radius:4px;padding:2px 6px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3px;">${escHtml(CB_MUSCLE_LABELS[m] || m)}</span>`; }).join('');
+  return `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-subtle);">
+      ${cbEquipBadge(ex.equipment)}
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text);">${escHtml(ex.name)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${prim}${sec}</div>
+      </div>
+      <button id="cbAdd-${escHtml(ex.id)}" onclick="cbPickExercise('${ex.id}',this)" style="flex-shrink:0;width:34px;height:34px;border-radius:8px;background:var(--accent);color:#000;border:none;font-size:20px;font-weight:600;cursor:pointer;line-height:1;">+</button>
+    </div>`;
+}
+function cbPickExercise(exId, btn) {
+  cbAddExerciseToDay(exId);
+  if (btn) {
+    btn.textContent = '✓';
+    btn.style.background = 'var(--green,#44ff88)';
+    setTimeout(function () { if (btn) { btn.textContent = '+'; btn.style.background = 'var(--accent)'; } }, 800);
+  }
+}
+
+// ── add custom exercise (inline form) ──
+function cbCustomAreaHtml() {
+  if (!_cbCustomFormOpen) {
+    return `<div onclick="cbOpenCustomForm()" style="margin-top:14px;text-align:center;padding:12px;border:1px dashed var(--border);border-radius:10px;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">+ Add custom exercise</div>`;
+  }
+  const eqChips = Object.keys(CB_EQUIP_LABELS).map(function (k) { return cbFormChip('equipment', k, CB_EQUIP_LABELS[k]); }).join('');
+  const muscleChips = Object.keys(CB_MUSCLE_LABELS).map(function (k) { return cbFormChip('primary', k, CB_MUSCLE_LABELS[k]); }).join('');
+  const valid = _cbCustomForm.name.trim() && _cbCustomForm.equipment && _cbCustomForm.primary;
+  return `
+    <div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">NEW CUSTOM EXERCISE</div>
+      <input value="${escHtml(_cbCustomForm.name)}" oninput="_cbCustomForm.name=this.value;cbUpdateCustomAddBtn()" placeholder="Exercise name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;">EQUIPMENT</div>
+      <div style="display:flex;flex-wrap:wrap;margin-bottom:12px;">${eqChips}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;">PRIMARY MUSCLE</div>
+      <div style="display:flex;flex-wrap:wrap;margin-bottom:14px;">${muscleChips}</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="cbCloseCustomForm()" style="flex:0 0 auto;padding:10px 16px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
+        <button id="cbCustomAddBtn" onclick="cbAddCustomExercise()" ${valid ? '' : 'disabled'} style="flex:1;padding:10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;opacity:${valid ? '1' : '0.4'};">Add</button>
+      </div>
+    </div>`;
+}
+function cbFormChip(field, key, label) {
+  const sel = _cbCustomForm[field] === key;
+  return `<button onclick="_cbCustomForm.${field}='${key}';cbRenderCustomArea()" style="padding:7px 12px;border-radius:100px;border:1px solid ${sel ? 'var(--accent)' : 'var(--border)'};background:${sel ? 'rgba(232,255,61,0.08)' : 'transparent'};color:${sel ? 'var(--accent)' : 'var(--muted)'};font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;margin:0 6px 6px 0;">${label}</button>`;
+}
+function cbRenderCustomArea() { const el = document.getElementById('cbCustomArea'); if (el) el.innerHTML = cbCustomAreaHtml(); }
+function cbOpenCustomForm() { _cbCustomFormOpen = true; _cbCustomForm = { name: (_cbSearch || '').trim(), equipment:'', primary:'' }; cbRenderCustomArea(); }
+function cbCloseCustomForm() { _cbCustomFormOpen = false; cbRenderCustomArea(); }
+function cbUpdateCustomAddBtn() {
+  const valid = _cbCustomForm.name.trim() && _cbCustomForm.equipment && _cbCustomForm.primary;
+  const btn = document.getElementById('cbCustomAddBtn');
+  if (btn) { btn.disabled = !valid; btn.style.opacity = valid ? '1' : '0.4'; }
+}
+function cbAddCustomExercise() {
+  const name = _cbCustomForm.name.trim();
+  if (!name || !_cbCustomForm.equipment || !_cbCustomForm.primary) return;
+  const ex = {
+    id: 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    name: name,
+    primary: [_cbCustomForm.primary],
+    secondary: [],
+    equipment: _cbCustomForm.equipment,
+    type: 'custom',
+    custom: true
+  };
+  cbSaveCustomExercise(ex);
+  _cbCustomFormOpen = false;
+  _cbSearch = '';
+  const si = document.getElementById('cbSearchInput'); if (si) si.value = '';
+  cbRenderCustomArea();
+  cbRenderList();
+  showToast('Custom exercise added', 'success');
+}
+
+// ── save flow ──
+function cbBuildPlanData() {
+  const days = _cbDays.filter(function (d) { return d.exercises.length > 0; }).map(function (d, i) {
+    return {
+      day_index: i,
+      day_name: '',
+      label: (d.name && d.name.trim()) || ('Day ' + (i + 1)),
+      muscles: cbDayMuscles(d.exercises),
+      exercises: d.exercises.map(function (ex) {
+        return {
+          name: ex.name,
+          note: '',
+          sets: cbCoerceInt(ex.sets, 3),
+          reps: cbCoerceReps(ex.reps),
+          rest: cbCoerceInt(ex.rest, 90),
+          rpe: (ex.rpe === '' || ex.rpe == null) ? null : cbCoerceInt(ex.rpe, null),
+          equipment: ex.equipment || '',
+          primary: ex.primary || [],
+          secondary: ex.secondary || []
+        };
+      })
+    };
+  });
+  return { workout: { split_name: _cbName.trim(), split_description: 'Custom programme', days: days }, goal: 'custom', programme_type: 'custom' };
+}
+function cbDayMuscles(exercises) {
+  const out = [];
+  exercises.forEach(function (ex) { (ex.primary || []).forEach(function (m) { if (out.indexOf(m) < 0) out.push(m); }); });
+  return out.map(function (m) { return CB_MUSCLE_LABELS[m] || m; });
+}
+function cbCoerceInt(v, fb) { const n = parseInt(v, 10); return isNaN(n) ? fb : n; }
+function cbCoerceReps(v) {
+  if (typeof v === 'number') return v;
+  const s = String(v == null ? '' : v).trim();
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  return s || 10;
+}
+async function cbSave() {
+  if (!cbValid()) {
+    const err = document.getElementById('cbError');
+    let msg = '';
+    if (!_cbName.trim()) msg = 'Give your programme a name.';
+    else if (!_cbDays.some(function (d) { return d.exercises.length > 0; })) msg = 'Add at least one exercise to a training day.';
+    if (err) { err.textContent = msg; err.style.display = 'block'; }
+    return;
+  }
+  const btn = document.getElementById('cbSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; btn.style.opacity = '0.6'; }
+  const plan_data = cbBuildPlanData();
+  const res = await api('/api/programmes', 'POST', { name: _cbName.trim(), plan_data, programme_type: 'custom', is_active: false });
+  if (btn) { btn.textContent = 'Save'; }
+  if (res && res.programme && res.programme.id) {
+    window._logProgrammeCache = null;
+    cbShowSaveChoice(res.programme.id, _cbName.trim());
+  } else if (res && res.error === 'upgrade_required') {
+    cbUpdateSaveBtn();
+    if (typeof showLockedFeature === 'function') showLockedFeature('Multiple Saved Programmes', 'steel');
+    else showToast(res.message || 'Upgrade required', 'error');
+  } else if (res && (res.error === 'programme_limit_reached' || res._status === 409)) {
+    cbUpdateSaveBtn();
+    showToast((res && res.message) || 'Programme limit reached', 'error');
+  } else {
+    cbUpdateSaveBtn();
+    showToast('Could not save programme. Try again.', 'error');
+  }
+}
+function cbShowSaveChoice(programmeId, name) {
+  _cbLastSaved = { id: programmeId, name: name };
+  document.getElementById('cbSaveChoiceModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'cbSaveChoiceModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10090;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:24px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">✅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--text);margin-bottom:6px;">Programme saved</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:22px;font-family:'DM Sans',sans-serif;">Make <strong style="color:var(--text);">${escHtml(name)}</strong> your active programme?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="cbActivateSaved()" style="width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Yes, switch now</button>
+        <button onclick="cbFinishSave()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">Save for later</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+function cbCleanupAfterSave() {
+  document.getElementById('cbSaveChoiceModal')?.remove();
+  closeCustomBuilder();
+  window._logProgrammeCache = null;
+  _cbLastSaved = null;
+  if (typeof renderProgrammes === 'function') renderProgrammes();
+}
+async function cbActivateSaved() {
+  const saved = _cbLastSaved;
+  if (!saved) { cbCleanupAfterSave(); if (typeof showPanel === 'function') showPanel('programmes'); showToast('Programme saved', 'success'); return; }
+  const res = await api('/api/programmes/' + saved.id + '/activate', 'POST');
+  if (res && res.ok) {
+    cbCleanupAfterSave();
+    if (typeof reloadPlan === 'function') await reloadPlan();
+    window._logProgrammeCache = null;
+    if (typeof renderLog === 'function' && document.getElementById('panel-log')?.classList.contains('active')) renderLog();
+    if (typeof showPanel === 'function') showPanel('workout');
+    showToast('Switched to ' + saved.name, 'success');
+  } else {
+    cbCleanupAfterSave();
+    if (typeof showPanel === 'function') showPanel('programmes');
+    showToast((res && res.message) || 'Saved, but could not switch', 'error');
+  }
+}
+function cbFinishSave() {
+  cbCleanupAfterSave();
+  if (typeof showPanel === 'function') showPanel('programmes');
+  showToast('Programme saved', 'success');
+}
 </script>
 </body>
 </html>
