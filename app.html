@@ -92,7 +92,7 @@
   --red:#cc2222; --green:#1a8a50;
 }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; max-width:100vw; }
+html,body { height:100%; overflow:hidden; overflow-x:hidden; overscroll-behavior:none; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; max-width:100vw; }
 
 /* ── SCREENS ── */
 .screen { position:fixed; inset:0; display:none; flex-direction:column; overflow-y:auto; overflow-x:hidden; background:var(--bg); z-index:50; max-width:100vw; }
@@ -317,6 +317,11 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
 .ob-input-card input { flex:1; min-width:0; width:100%; background:transparent; border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:18px; color:var(--text); padding:0; }
 .ob-input-card input::placeholder { color:var(--muted); }
 .ob-input-unit { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:1px; flex-shrink:0; }
+/* FIX 2: diet restrictions + injuries free-text boxes use a smaller font than the
+   stats number inputs so longer answers fit comfortably. Scoped to these two IDs so
+   the height/weight/sport text inputs keep their larger size. */
+#ob-restrictions, #ob-injuries { font-size:13px !important; line-height:1.5; }
+#ob-restrictions::placeholder, #ob-injuries::placeholder { font-size:13px; }
 
 /* "Why we ask" context card (sport step) */
 .ob-why-card { margin:6px 20px 0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
@@ -380,7 +385,7 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; background:var(--bg
  * max(env(...), 34px) uses env() where it works and 34px (the 15 Plus home-indicator height)
  * everywhere else. --nav-safe is the single source of truth read by .bottom-nav, every
  * .panel, and #panel-coach's bottom offset, so the floor propagates to all of them. */
-.app { display:flex; flex-direction:column; height:100%; height:100dvh; --nav-safe: max(env(safe-area-inset-bottom), 8px); --nav-h: calc(36px + var(--nav-safe)); }
+.app { display:flex; flex-direction:column; height:100%; height:100dvh; overscroll-behavior:none; --nav-safe: max(env(safe-area-inset-bottom), 8px); --nav-h: calc(36px + var(--nav-safe)); }
 body.pwa-mode .app {
   --nav-safe: 0px;
   --nav-h: 30px;
@@ -396,7 +401,7 @@ body.pwa-mode .app {
  * tracks env(safe-area-inset-bottom) (with a PWA floor). #panel-coach overrides
  * this with padding-bottom:0 because it is position:fixed and pins its own input
  * flush to the nav top. */
-.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; max-width:100%; padding-bottom:calc(60px + var(--nav-safe)); }
+.panel { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; display:none; flex-direction:column; -webkit-overflow-scrolling:touch; overscroll-behavior:none; max-width:100%; padding-bottom:calc(60px + var(--nav-safe)); }
 .panel::-webkit-scrollbar{width:3px} .panel::-webkit-scrollbar-thumb{background:var(--border)}
 nav.bottom-nav, .bottom-nav {
   position: fixed;
@@ -414,6 +419,9 @@ nav.bottom-nav, .bottom-nav {
   padding-bottom: var(--nav-safe);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* FIX 6: kill the rubber-band overscroll bounce that pushed the fixed nav down. */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
 }
 .bottom-nav .nav-btn,
 .nav-btn {
@@ -1056,6 +1064,10 @@ input:focus, textarea:focus, select:focus { outline: none; }
     <div class="ob-body" id="ob-body"></div>
   </div>
   <div class="ob-footer">
+    <!-- FIX 8: language selector moved here (above the continue button). The old global
+         top-right button was hidden behind the iPhone Dynamic Island during onboarding.
+         Populated by renderObLangSelector(); horizontally scrollable so all 12 fit. -->
+    <div id="ob-lang-row" style="display:flex;gap:6px;padding:8px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;"></div>
     <button class="ob-continue" id="ob-next" onclick="obNext()">Next</button>
     <div class="ob-continue-note" id="ob-note"></div>
   </div>
@@ -1754,7 +1766,9 @@ function showScreen(id) {
   document.getElementById('screen-' + id).classList.add('active');
   // Show global lang button on auth/onboarding/generating, hide inside app
   const globalBtn = document.getElementById('globalLangBtn');
-  if (globalBtn) globalBtn.style.display = id === 'app' ? 'none' : 'flex';
+  // FIX 8: hide the top-right global button on onboarding too — it sat under the iPhone
+  // Dynamic Island. Onboarding shows its own language row in the footer (renderObLangSelector).
+  if (globalBtn) globalBtn.style.display = (id === 'app' || id === 'onboarding') ? 'none' : 'flex';
   if (id === 'auth') renderAuthLangPicker();
 }
 
@@ -1822,6 +1836,26 @@ function selectGlobalLang(code) {
     const genStatus = document.getElementById('gen-status');
     if (genStatus) genStatus.textContent = t('generating_workout');
   }
+}
+
+// FIX 8: renders the onboarding language selector (flag + 2-letter code chips) into the
+// footer row above the continue button. Horizontally scrollable so all 12 languages are
+// reachable without being hidden by the iPhone Dynamic Island. Tapping reuses selectGlobalLang.
+function renderObLangSelector() {
+  const row = document.getElementById('ob-lang-row');
+  if (!row || typeof LANGUAGES === 'undefined') return;
+  row.innerHTML = LANGUAGES.map(function(l) {
+    const on = l.code === appLanguage;
+    return '<button type="button" onclick="selectGlobalLang(\'' + l.code + '\')" '
+      + 'style="flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:20px;cursor:pointer;'
+      + 'white-space:nowrap;-webkit-tap-highlight-color:transparent;font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.5px;'
+      + 'border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';'
+      + 'background:' + (on ? 'rgba(232,255,61,0.08)' : 'var(--surface)') + ';'
+      + 'color:' + (on ? 'var(--accent)' : 'var(--muted)') + ';">'
+      + '<span style="font-size:14px;">' + l.flag + '</span>'
+      + '<span>' + l.code.toUpperCase() + '</span>'
+      + '</button>';
+  }).join('');
 }
 
 // Close dropdown when clicking outside
@@ -2684,6 +2718,7 @@ function renderObStep() {
   }
   document.getElementById('ob-sub').textContent = stepSub;
   document.getElementById('ob-bar').style.width = pct + '%';
+  renderObLangSelector(); // FIX 8: keep the footer language chips in sync with the active language
   document.getElementById('ob-back').style.visibility = obStep > 0 ? 'visible' : 'hidden';
   document.getElementById('ob-next').textContent = obStep === getObSteps().length - 1 ? t('build_plan') : t('next');
   // The feature-selection step is the final question — its CTA is "Set up my app →".
@@ -2856,14 +2891,17 @@ function renderObStep() {
 
     body.innerHTML = '<div class="ob-pad">'
       + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">' + headerNote + '</div>'
-      + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px">' + t('ob_days_gym_count').replace('{n}', obData.preferred_days.length).replace('{total}', target) + '</div>'
+      + '<div id="ob-days-counter" style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px">' + t('ob_days_gym_count').replace('{n}', obData.preferred_days.length).replace('{total}', target) + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:8px">' + rowsHtml + '</div>'
       + '</div>';
 
     function syncDaysUI() {
       const count = obData.preferred_days.length;
-      const countEl = document.getElementById('days-count');
-      if (countEl) countEl.textContent = count;
+      // FIX 1: update the live "Gym days: N / T selected" counter on every tap. The id
+      // was previously 'days-count' (which no element had), so it never moved. Update the
+      // whole string here — never call renderObStep() from a day handler (kills Next btn).
+      const countEl = document.getElementById('ob-days-counter');
+      if (countEl) countEl.textContent = t('ob_days_gym_count').replace('{n}', count).replace('{total}', target);
       const nextBtn = document.getElementById('ob-next');
       if (nextBtn) {
         nextBtn.style.opacity = count === target ? '1' : '0.4';
@@ -4010,6 +4048,7 @@ function renderPlanDays(days, customLabel) {
       <div style="flex:1;min-width:0;">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:2px;">${shortName}</div>
         <div style="font-family:var(--font-body);font-size:15px;color:var(--text);font-weight:500;margin-top:3px;">${d.label || (isRest ? t('rest') : '—')}</div>
+        ${Array.isArray(d.scheduled_days) && d.scheduled_days.length ? `<div style="font-family:var(--font-mono);font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:4px;">${d.scheduled_days.map(sd => sd.slice(0,3).toUpperCase()).join(' · ')}</div>` : ''}
         ${muscles ? `<div style="font-family:var(--font-body);font-size:12px;color:var(--muted);margin-top:2px;">${muscles}</div>` : ''}
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:6px;">${isRest ? t('rest').toUpperCase() : exCount + (exCount === 1 ? ' EXERCISE' : ' EXERCISES')}</div>
       </div>
@@ -4158,9 +4197,12 @@ async function renderLog() {
   }
 
   const DAYS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
-  if (bar) bar.innerHTML = days.filter(d => d.exercises?.length > 0).map((d, i) => `
-    <div class="log-chip ${i === logDay ? 'active' : ''}" onclick="selectLogDay(${i})">${DAYS[i]} — ${d.label}</div>
-  `).join('');
+  if (bar) bar.innerHTML = days.filter(d => d.exercises?.length > 0).map((d, i) => {
+    // FIX 7: show the custom programme's assigned weekday(s) under the day label.
+    const sched = Array.isArray(d.scheduled_days) && d.scheduled_days.length
+      ? d.scheduled_days.map(sd => sd.slice(0,3).toUpperCase()).join(' · ') : '';
+    return `<div class="log-chip ${i === logDay ? 'active' : ''}" onclick="selectLogDay(${i})">${DAYS[i]} — ${d.label}${sched ? `<div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:2px;">${sched}</div>` : ''}</div>`;
+  }).join('');
 
   const day = days[logDay];
 
@@ -5935,8 +5977,21 @@ window._populateGreetingStats = function () {
     if (nextDay) {
       const ns = document.getElementById('greetingNextSession'); if (ns) ns.textContent = nextDay.label || '—';
       const tf = document.getElementById('greetingTodayFocus');  if (tf) tf.textContent = nextDay.label || '—';
-      const exCount = nextDay.exercises ? nextDay.exercises.length : 0; // ex × 3 sets × 4 min
-      const gd = document.getElementById('greetingDuration');    if (gd && exCount) gd.textContent = '~' + (exCount * 12) + ' min';
+      // FIX 3: duration comes from the user's SAVED session length, not an exercise-count
+      // estimate. When the user picked "varies by day", use the per-day value for the
+      // session being shown (nextDay); otherwise the single saved duration. Falls back to 60.
+      const gd = document.getElementById('greetingDuration');
+      if (gd) {
+        const generalMins = parseInt(userProfile?.session_duration_mins, 10) || 60;
+        const byDay = userProfile?.session_duration_by_day;
+        let durMins = generalMins;
+        if (userProfile?.session_duration_varies && byDay && typeof byDay === 'object') {
+          const dayKeys = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+          const todayKey = dayKeys[nextDay.day_index];
+          durMins = parseInt(byDay[todayKey], 10) || generalMins;
+        }
+        gd.textContent = '~' + durMins + ' min';
+      }
     }
     // Session-derived metrics from window._cachedStats (computed by renderProgress
     // from /api/sessions — no extra call). Until Progress runs once, fall back.
@@ -6607,6 +6662,18 @@ function renderUpgradeSheetContent(highlightTier) {
   const sheet = document.getElementById('upgradeSheet');
   if (!sheet) return;
 
+  // FIX 5: headline depends on trial state. During an ACTIVE trial, invite the user to
+  // lock in a plan — don't tell them the trial "has ended" when it hasn't. Trial state
+  // lives on userSubscription (.status / .trialEndsAt) — the same source the tier cards use.
+  const _sub = userSubscription || {};
+  const _trialEnd = _sub.trialEndsAt ? new Date(_sub.trialEndsAt) : null;
+  const _daysLeft = _trialEnd ? Math.max(0, Math.ceil((_trialEnd - new Date()) / (1000 * 60 * 60 * 24))) : (_sub.trialDaysLeft || 0);
+  const _trialActive = _sub.status === 'trial' && _daysLeft > 0;
+  const upgradeHeadline = _trialActive ? 'Upgrade your plan' : 'Your trial has ended.';
+  const upgradeSubline = _trialActive
+    ? ('You have ' + _daysLeft + ' day' + (_daysLeft === 1 ? '' : 's') + ' left on your trial. Lock in a plan now.')
+    : 'Keep your progress and continue training.';
+
   // Full pricing (never changes)
   const monthly = { iron: 'CHF 9.99', steel: 'CHF 13.99', forge: 'CHF 19.99' };
   const annual  = { iron: 'CHF 6.99',  steel: 'CHF 9.99',  forge: 'CHF 13.99' };
@@ -6680,7 +6747,8 @@ function renderUpgradeSheetContent(highlightTier) {
     <div class="us-sheet">
       <div class="us-handle"></div>
       <div class="us-header">
-        <div class="us-title" style="font-size:24px;line-height:1.2;">${t('upgrade_headline').replace('. ', '.<br>')}</div>
+        <div class="us-title" style="font-size:24px;line-height:1.2;">${upgradeHeadline}</div>
+        <div class="us-sub">${upgradeSubline}</div>
       </div>
       <div class="us-toggle">
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--muted)' : 'var(--text)'}">${t('upgrade_monthly')}</span>
@@ -15501,12 +15569,12 @@ renderProgrammes = async function () {
   }
   var createBtn = atLimit
     ? `<button onclick="programmeLimitToast()" style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Programme limit reached</button>`
-    : `<button onclick="startNewProgramme()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">+ Create new programme</button>`;
+    : `<button onclick="startNewProgramme()" style="width:100%;background:var(--accent);color:#000;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">+ Create new AI programme</button>`;
   // "Build my own" — opens the manual custom programme builder (no AI generation).
   // Hidden when at the tier limit, same as the other create buttons.
   var buildOwnBtn = atLimit
     ? ''
-    : `<button onclick="openCustomBuilder()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Build my own</button>`;
+    : `<button onclick="openCustomBuilder()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">Build my own programme</button>`;
   var saveBtn = atLimit
     ? ''
     : `<button onclick="showNewProgrammeModal()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">Save current plan as a programme</button>`;
@@ -16053,6 +16121,7 @@ function cbDaysFromSaved(days) {
   const out = (Array.isArray(days) ? days : []).map(function(d) {
     return {
       name: (d.label || d.day_name || 'Day').toString(),
+      scheduled_days: Array.isArray(d.scheduled_days) ? d.scheduled_days.slice() : [], // FIX 7: preserve day-of-week assignment when editing
       exercises: (Array.isArray(d.exercises) ? d.exercises : []).map(function(ex) {
         return {
           exId: ex.exId || null,
@@ -16107,6 +16176,8 @@ function cbDayCard(day, idx) {
         <button onclick="cbMoveDay(${idx},1)" ${downDis ? 'disabled' : ''} style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0;${downDis ? 'opacity:0.3;' : ''}">&#8595;</button>
         <button onclick="cbDeleteDay(${idx})" title="Delete day" style="background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">${CB_TRASH_SVG}</button>
       </div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.5px;margin:0 0 6px 26px;">SCHEDULED DAYS <span style="opacity:0.55;">(optional)</span></div>
+      ${cbDayChips(idx, day)}
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px;margin:0 0 10px 26px;">${count} ${count === 1 ? 'EXERCISE' : 'EXERCISES'}</div>
       <div id="cbDayEx-${idx}">${exRows}</div>
       <button onclick="cbOpenPicker(${idx})" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--accent);border-radius:8px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-top:6px;">+ Add exercise</button>
@@ -16132,7 +16203,39 @@ function cbExerciseRow(d, j, ex) {
       </div>
     </div>`;
 }
-function cbAddDay() { _cbDays.push({ name: 'Day ' + (_cbDays.length + 1), exercises: [] }); cbRenderDays(); }
+// FIX 7: per-day day-of-week chips. Lets the user assign which weekday(s) a training day
+// falls on (e.g. "Push" on Mon + Thu), instead of the app auto-assigning by list position.
+// Stored as day.scheduled_days = ['monday','thursday']. Empty array = unscheduled/floating.
+const CB_DOW = [['monday','M'],['tuesday','T'],['wednesday','W'],['thursday','T'],['friday','F'],['saturday','S'],['sunday','S']];
+function cbDayChips(idx, day) {
+  const sched = Array.isArray(day.scheduled_days) ? day.scheduled_days : [];
+  const chips = CB_DOW.map(function (p) {
+    const on = sched.indexOf(p[0]) >= 0;
+    return '<button type="button" data-day="' + p[0] + '" onclick="cbToggleScheduledDay(' + idx + ',\'' + p[0] + '\',this)" '
+      + 'style="width:32px;height:32px;border-radius:50%;flex-shrink:0;cursor:pointer;font-family:\'DM Mono\',monospace;font-size:11px;'
+      + 'border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';'
+      + 'background:' + (on ? 'var(--accent)' : 'var(--surface)') + ';'
+      + 'color:' + (on ? '#000' : 'var(--muted)') + ';'
+      + 'font-weight:' + (on ? '700' : '400') + ';">' + p[1] + '</button>';
+  }).join('');
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px 26px;">' + chips + '</div>';
+}
+function cbToggleScheduledDay(idx, dayName, el) {
+  if (!_cbDays[idx]) return;
+  if (!Array.isArray(_cbDays[idx].scheduled_days)) _cbDays[idx].scheduled_days = [];
+  const arr = _cbDays[idx].scheduled_days;
+  const i = arr.indexOf(dayName);
+  const on = i < 0;
+  if (on) arr.push(dayName); else arr.splice(i, 1);
+  // In-place style toggle (no re-render) so the day-name input keeps focus while editing.
+  if (el) {
+    el.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+    el.style.background = on ? 'var(--accent)' : 'var(--surface)';
+    el.style.color = on ? '#000' : 'var(--muted)';
+    el.style.fontWeight = on ? '700' : '400';
+  }
+}
+function cbAddDay() { _cbDays.push({ name: 'Day ' + (_cbDays.length + 1), exercises: [], scheduled_days: [] }); cbRenderDays(); }
 function cbDeleteDay(i) { _cbDays.splice(i, 1); if (!_cbDays.length) _cbDays.push({ name: 'Day 1', exercises: [] }); cbRenderDays(); }
 function cbMoveDay(i, dir) {
   const j = i + dir;
@@ -16320,6 +16423,7 @@ function cbBuildPlanData() {
       day_index: i,
       day_name: '',
       label: (d.name && d.name.trim()) || ('Day ' + (i + 1)),
+      scheduled_days: Array.isArray(d.scheduled_days) ? d.scheduled_days.slice() : [], // FIX 7: persist day-of-week assignment in plan_data.workout.days
       muscles: cbDayMuscles(d.exercises),
       exercises: d.exercises.map(function (ex) {
         return {
