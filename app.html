@@ -4089,8 +4089,8 @@ function renderExercises() {
     <div class="exercise-card" onclick="showExerciseModal(${i})" style="cursor:pointer">
       <div class="ex-num">${i + 1}</div>
       <div class="ex-body">
-        <div class="ex-name">${e.name}</div>
-        ${e.note ? `<div class="ex-note">${e.note}</div>` : ''}
+        <div class="ex-name">${escHtml(e.name)}</div>
+        ${e.note ? `<div class="ex-note">${escHtml(e.note)}</div>` : ''}
         <div class="ex-tags">
           <span class="tag sets">${e.sets} × ${e.reps}</span>
           ${e.rest ? `<span class="tag">${t('rest')} ${e.rest}</span>` : ''}
@@ -4236,7 +4236,7 @@ function renderLogCards(day) {
       <div class="log-card" id="log-card-${i}">
         <div class="log-card-header">
           <div>
-            <div class="log-ex-name">${e.name}</div>
+            <div class="log-ex-name">${escHtml(e.name)}</div>
             <div class="log-target">${t('target')}: ${e.sets}×${e.reps}</div>
           </div>
         </div>
@@ -4445,7 +4445,7 @@ async function saveLog(btn) {
         const histRes = await api(`/api/history/${encodeURIComponent(ex.name)}`);
         const history = histRes?.history || [];
         const advice = getOverloadAdvice(ex, history);
-        feedback.push(`<div class="feedback-card ${advice.type}"><strong>${advice.headline}</strong><br><span style="color:var(--muted);font-size:12px">${advice.detail}</span></div>`);
+        feedback.push(`<div class="feedback-card ${advice.type}"><strong>${escHtml(advice.headline)}</strong><br><span style="color:var(--muted);font-size:12px">${escHtml(advice.detail)}</span></div>`);
       }
       const fbEl = document.getElementById('logFeedback');
       if (fbEl) {
@@ -4611,7 +4611,7 @@ function renderMealCards(meals) {
     <div class="meal-card">
       <div class="meal-head">
         <div class="meal-top">
-          <div><div class="meal-name">${m.name}</div><div class="meal-time">${m.time}</div></div>
+          <div><div class="meal-name">${escHtml(m.name)}</div><div class="meal-time">${escHtml(m.time)}</div></div>
           <div class="meal-kcal">${m.kcal}</div>
         </div>
         <div class="meal-macros-row">
@@ -4621,7 +4621,7 @@ function renderMealCards(meals) {
         </div>
       </div>
       <div class="meal-foods">
-        ${(m.foods || []).map(f => `<div class="food-row"><span>${f.name}</span><span class="food-amt">${f.amount}</span></div>`).join('')}
+        ${(m.foods || []).map(f => `<div class="food-row"><span>${escHtml(f.name)}</span><span class="food-amt">${escHtml(f.amount)}</span></div>`).join('')}
       </div>
     </div>
   `).join('');
@@ -5268,7 +5268,6 @@ async function saveWeight() {
   const w = inputToKg(raw); // kg for storage
 
   const res = await api('/api/bodyweight', 'POST', { weight_kg: w });
-  console.log('[saveWeight] response:', res);
   if (!res || res._error || res.error) {
     showToast('Failed to save bodyweight', 'error');
     return;
@@ -6303,7 +6302,7 @@ async function triggerPostWorkoutCheckin(sessionSummary) {
   window._checkinDifficulty = null;
   window._checkinSummary = sessionSummary;
 
-  addMessage(`<strong>Session logged. Good work, ${name}.</strong><br><br>${sessionSummary.replace(/\n/g,'<br>')}<br><br>Two quick questions — <strong>how do you feel right now?</strong> And was the session about right for you, too easy, or too hard?`, 'ai');
+  addMessage(`<strong>Session logged. Good work, ${escHtml(name)}.</strong><br><br>${escHtml(sessionSummary).replace(/\n/g,'<br>')}<br><br>Two quick questions — <strong>how do you feel right now?</strong> And was the session about right for you, too easy, or too hard?`, 'ai');
 
   // Show feeling buttons
   const msgs = document.getElementById('chatMessages');
@@ -6374,7 +6373,7 @@ async function submitCheckin() {
   const userMsg = notes
     ? 'Feeling: ' + feelingLabel + ' · Difficulty: ' + diffLabel + '\nNotes: ' + notes
     : 'Feeling: ' + feelingLabel + ' · Difficulty: ' + diffLabel;
-  addMessage(userMsg, 'user');
+  addMessage(escHtml(userMsg), 'user');
 
   const loadId = addTyping();
 
@@ -6420,11 +6419,13 @@ async function submitCheckin() {
 }
 
 function fmt(t) {
-  return t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+  // Escape HTML first so AI/coach text can never inject markup, THEN apply the limited
+  // markdown the coach uses (**bold**, *italic*, newlines). escHtml is hoisted below.
+  return escHtml(t).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 function formatDate(iso) {
@@ -6636,10 +6637,26 @@ let _upgradeAnnual = true; // toggle state — default annual
 let _launchPromo = { steel_active: false, steel_sold: 0, forge_active: false, forge_sold: 0 }; // loaded from server
 
 // Load launch pricing status from backend
+// ── SIMPLE IN-MEMORY CACHE (TTL) ───────────────────────
+// For slow-changing GETs so re-opening a panel doesn't refetch. Personal/mutable
+// data is NOT cached here — only public, slow-changing values like launch pricing.
+const _cache = {};
+function cacheGet(key) {
+  const entry = _cache[key];
+  if (!entry) return null;
+  if (Date.now() > entry.expires) { delete _cache[key]; return null; }
+  return entry.data;
+}
+function cacheSet(key, data, ttlMs = 300000) {
+  _cache[key] = { data, expires: Date.now() + ttlMs };
+}
+
 async function loadLaunchPricingStatus() {
   try {
+    const cached = cacheGet('launch-pricing');
+    if (cached) { _launchPromo = cached; return; }
     const res = await api('/api/launch-pricing');
-    if (res) _launchPromo = res;
+    if (res) { _launchPromo = res; cacheSet('launch-pricing', res); }
   } catch(e) {}
 }
 
@@ -7636,7 +7653,6 @@ window.showAddToHomeScreen = () => {
 
 async function checkPendingCoachRequests() {
   const res = await api('/api/my-pending-coach-request');
-  console.log('[checkPendingCoachRequests] result:', res);
   if (res?.pending) {
     showCoachRequestBanner(res.coach);
   } else {
@@ -7890,7 +7906,6 @@ function showToast(msg, type = '') {
 function isAdmin() {
   const session = JSON.parse(localStorage.getItem('forge-session') || sessionStorage.getItem('forge-session-temp') || 'null');
   const email = session?.user?.email || currentUser?.email || '';
-  console.log('Admin check — email:', email, 'ADMIN_EMAIL:', ADMIN_EMAIL);
   return email === ADMIN_EMAIL;
 }
 
