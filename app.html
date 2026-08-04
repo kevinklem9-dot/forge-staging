@@ -10282,6 +10282,7 @@ const STRINGS = {
     client_prog_lib_delete_failed: 'Delete failed',
     client_prog_lib_delete_blocked: 'That programme is assigned to a client — remove it from the client first',
     client_prog_assign: 'Assign',
+    client_prog_assigned: 'Assigned',
     client_prog_nutrition: 'NUTRITION',
     client_prog_ai_nutrition_pill: 'AI NUTRITION',
     client_prog_coach_nutrition_pill: 'COACH NUTRITION',
@@ -11194,6 +11195,7 @@ const STRINGS = {
     client_prog_lib_delete_failed: 'Échec de la suppression',
     client_prog_lib_delete_blocked: 'Ce programme est assigné à un client — retirez-le du client d\'abord',
     client_prog_assign: 'Assigner',
+    client_prog_assigned: 'Assigné',
     client_prog_nutrition: 'NUTRITION',
     client_prog_ai_nutrition_pill: 'NUTRITION IA',
     client_prog_coach_nutrition_pill: 'NUTRITION COACH',
@@ -13168,9 +13170,18 @@ async function renderClientProgrammeTab(body) {
     // Same green fill / dark text as _activeBadge(), sized to this row's badge idiom so it
     // sits beside the template/draft badge. Only ever one row per client: it keys off the
     // single assigned programme's source_programme_id.
-    const activeBadge = (activeSourceId && p.id === activeSourceId)
+    const isActiveRow = !!(activeSourceId && p.id === activeSourceId);
+    const activeBadge = isActiveRow
       ? `<span style="${badgeStyle}background:var(--green,#39d98a);color:#04210f;font-weight:700;">${t('client_prog_active_badge')}</span>`
       : '';
+    // The live row's primary button reads "Assigned" and drops to the secondary treatment
+    // (surface2 + border + muted) so the one programme the client is actually on is obvious
+    // without reading the badge. It stays tappable — re-assigning the same programme is a
+    // harmless no-op, and disabling it would strip the only recovery path if the copy ever
+    // drifts from its library source.
+    const assignBtn = isActiveRow
+      ? `<button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${escHtml(t('client_prog_assigned'))}</button>`
+      : `<button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_prog_assign')}</button>`;
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
         <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name || '')}</div>
@@ -13179,7 +13190,7 @@ async function renderClientProgrammeTab(body) {
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}</div>
       <div style="display:flex;gap:6px;">
-        <button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_prog_assign')}</button>
+        ${assignBtn}
         ${libRowBtn(t('client_prog_lib_edit'), `openProgrammeBuilder('${p.id}')`, false)}
         ${libRowBtn(t('client_prog_lib_delete'), `deleteLibraryProgramme('${p.id}')`, true)}
       </div>
