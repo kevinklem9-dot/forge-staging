@@ -13109,6 +13109,11 @@ async function renderClientProgrammeTab(body) {
   // in every rendering path. Keying on client_id surfaces drafts and templates alike and
   // recovers every previously orphaned row with no migration.
   const library = all.filter(p => p.client_id === null && !isNutri(p));
+  // Assigning COPIES, so the library row and the assigned row are different rows. The copy
+  // carries source_programme_id back to the library row it came from — that pointer is the
+  // only thing that can mark a library row ACTIVE for the client being viewed. Null on every
+  // row assigned before the column existed, which simply shows no badge.
+  const activeSourceId = assigned?.source_programme_id || null;
   _currentClientDetail.programmes = all;
 
   const clientPlan = planRes?.plan || null;
@@ -13160,9 +13165,16 @@ async function renderClientProgrammeTab(body) {
     const badge = p.is_template
       ? `<span style="${badgeStyle}color:var(--accent);border:1px solid var(--accent);">${t('client_prog_badge_template')}</span>`
       : `<span style="${badgeStyle}color:var(--muted);border:1px solid var(--border);">${t('client_prog_badge_draft')}</span>`;
+    // Same green fill / dark text as _activeBadge(), sized to this row's badge idiom so it
+    // sits beside the template/draft badge. Only ever one row per client: it keys off the
+    // single assigned programme's source_programme_id.
+    const activeBadge = (activeSourceId && p.id === activeSourceId)
+      ? `<span style="${badgeStyle}background:var(--green,#39d98a);color:#04210f;font-weight:700;">${t('client_prog_active_badge')}</span>`
+      : '';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
         <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name || '')}</div>
+        ${activeBadge}
         ${badge}
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}</div>
@@ -13547,6 +13559,9 @@ async function assignFromLibrary(templateId) {
     name: tpl.name,
     programme_data: tpl.programme_data,
     is_template: false,
+    // Provenance only — the copy still stands alone. This is what lets the library mark
+    // this row ACTIVE for the client being viewed.
+    source_programme_id: tpl.id,
   });
   if (res?.ok) { showToast(t('toast_assigned'), 'success'); renderClientTab(); }
   else showToast(t('toast_assign_failed'), 'error');
@@ -13782,8 +13797,8 @@ function renderBuilderSessions() {
         const active = (s.scheduled_days || []).includes(key);
         return `<button type="button" ontouchstart="" onclick="toggleBuilderSessionDay(${sIdx}, '${key}')" style="padding:4px 10px;border-radius:99px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accent)' : 'transparent'};color:${active ? 'var(--bg)' : 'var(--muted)'};">${d}</button>`;
       }).join('')}</div>
-      ${(s.exercises || []).map((e, eIdx) => `
-        <div style="display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box;overflow:hidden;margin-bottom:8px;">
+      ${(s.exercises || []).map((e, eIdx, exArr) => `
+        <div style="display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box;overflow:hidden;${eIdx < exArr.length - 1 ? 'padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border);' : 'margin-bottom:8px;'}">
           <input value="${escHtml(e.name || '')}" placeholder="${t('pb_exercise_name')}" oninput="_builderState.sessions[${sIdx}].exercises[${eIdx}].name = this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
           <div style="display:flex;align-items:center;gap:6px;width:100%;">
             <button type="button" ontouchstart="" onclick="toggleBuilderExerciseCardio(${sIdx}, ${eIdx})" style="padding:4px 8px;border-radius:6px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;flex-shrink:0;border:1px solid ${e.cardio ? 'var(--accent)' : 'var(--border)'};background:${e.cardio ? 'var(--accent)' : 'transparent'};color:${e.cardio ? 'var(--bg)' : 'var(--muted)'};">CARDIO</button>
@@ -13865,6 +13880,24 @@ async function saveBuilderProgramme(asDraft) {
   let res;
   if (_builderState.id) {
     res = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data });
+  } else if (!asDraft && payload.client_id) {
+    // Save & assign on a NEW programme banks a library copy FIRST, then assigns from it.
+    // Before this, an assigned programme existed only as the assigned copy — a coach who
+    // assigned without saving a draft first had no reusable version of their own work.
+    // Two rows, not one: the library row (client_id null) and the assigned copy pointing
+    // back at it. Templates and drafts still take the single-POST path below unchanged.
+    const libRes = await api('/api/coach/programmes', 'POST', { ...payload, client_id: null });
+    if (!libRes?.ok) { showToast('Save failed', 'error'); return; }
+    res = await api('/api/coach/programmes', 'POST', { ...payload, source_programme_id: libRes.programme?.id });
+    if (!res?.ok) {
+      // Partial failure: the library copy landed, the assignment did not. Close and
+      // re-render so the coach can see the saved row and hit Assign on it — never leave
+      // them with nothing, and never make them rebuild the programme.
+      showToast('Saved to library, but assigning failed', 'error');
+      closeProgrammeBuilder();
+      if (_currentClientDetail) renderClientTab();
+      return;
+    }
   } else {
     res = await api('/api/coach/programmes', 'POST', payload);
   }
