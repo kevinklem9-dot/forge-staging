@@ -10247,6 +10247,27 @@ const STRINGS = {
     client_prog_no_ai: 'No AI plan generated yet.',
     client_prog_no_coach: 'No coach plan assigned yet',
     client_prog_create: 'Create plan',
+    client_prog_ai_generate: 'Generate with AI',
+    aiprog_title: 'GENERATE WITH AI',
+    aiprog_explain: "Describe the programme — the AI will use this client's profile for their stats, experience and available days.",
+    aiprog_placeholder: '4-day upper/lower split, 45 min sessions, work around a shoulder issue',
+    aiprog_generate: 'Generate',
+    aiprog_cancel: 'Cancel',
+    aiprog_need_brief: 'Describe the programme first',
+    aiprog_default_name: 'AI programme',
+    aiprog_status_1: 'READING THE PROFILE',
+    aiprog_sub_1: 'Pulling their stats, experience and training days.',
+    aiprog_status_2: 'BUILDING THE SPLIT',
+    aiprog_sub_2: 'Structuring the week around your brief.',
+    aiprog_status_3: 'PICKING EXERCISES',
+    aiprog_sub_3: 'Matching movements to their equipment and limitations.',
+    aiprog_status_4: 'ALMOST THERE',
+    aiprog_sub_4: 'Finishing sets, reps and rest. This can take a minute.',
+    aiprog_err_timeout: 'Generation took too long — try again',
+    aiprog_err_no_connection: 'You are no longer connected to this client',
+    aiprog_err_generation: "Couldn't generate that — try rephrasing your brief",
+    aiprog_err_rate_limit: 'Too many generations — try again later',
+    aiprog_failed: 'Generation failed — try again',
     client_prog_template_lib: 'TEMPLATE LIBRARY',
     client_prog_assign: 'Assign',
     client_prog_nutrition: 'NUTRITION',
@@ -11126,6 +11147,27 @@ const STRINGS = {
     client_prog_no_ai: 'Aucun plan IA généré pour l\'instant.',
     client_prog_no_coach: 'Aucun plan coach assigné',
     client_prog_create: 'Créer un plan',
+    client_prog_ai_generate: 'Générer avec l\'IA',
+    aiprog_title: 'GÉNÉRER AVEC L\'IA',
+    aiprog_explain: 'Décrivez le programme — l\'IA utilisera le profil de ce client pour ses mesures, son expérience et ses jours disponibles.',
+    aiprog_placeholder: 'Split haut/bas sur 4 jours, séances de 45 min, à adapter pour une épaule sensible',
+    aiprog_generate: 'Générer',
+    aiprog_cancel: 'Annuler',
+    aiprog_need_brief: 'Décrivez d\'abord le programme',
+    aiprog_default_name: 'Programme IA',
+    aiprog_status_1: 'LECTURE DU PROFIL',
+    aiprog_sub_1: 'Récupération des mesures, de l\'expérience et des jours d\'entraînement.',
+    aiprog_status_2: 'CONSTRUCTION DU SPLIT',
+    aiprog_sub_2: 'Organisation de la semaine selon vos consignes.',
+    aiprog_status_3: 'CHOIX DES EXERCICES',
+    aiprog_sub_3: 'Sélection des mouvements selon son matériel et ses limitations.',
+    aiprog_status_4: 'PRESQUE FINI',
+    aiprog_sub_4: 'Finalisation des séries, répétitions et temps de repos. Cela peut prendre une minute.',
+    aiprog_err_timeout: 'La génération a pris trop de temps — réessayez',
+    aiprog_err_no_connection: 'Vous n\'êtes plus connecté à ce client',
+    aiprog_err_generation: 'Génération impossible — reformulez vos consignes',
+    aiprog_err_rate_limit: 'Trop de générations — réessayez plus tard',
+    aiprog_failed: 'Échec de la génération — réessayez',
     client_prog_template_lib: 'BIBLIOTHÈQUE DE MODÈLES',
     client_prog_assign: 'Assigner',
     client_prog_nutrition: 'NUTRITION',
@@ -13075,6 +13117,9 @@ async function renderClientProgrammeTab(body) {
     : `<button onclick="${fn}" style="flex:1;padding:12px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">${t('client_prog_set_active')}</button>`;
   const emptyCard = (msg) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;color:var(--muted);font-size:13px;">${msg}</div>`;
   const ctaBtn = (label, fn) => `<button onclick="${fn}" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">${label}</button>`;
+  // Secondary, full-width. Styled like editBtn (surface2 + border) rather than the
+  // accent-filled ctaBtn so the manual builder stays the primary action in both states.
+  const aiCtaBtn = (label, fn) => `<button onclick="${fn}" style="width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">${label}</button>`;
 
   let html = '';
 
@@ -13094,9 +13139,11 @@ async function renderClientProgrammeTab(body) {
     if (coachWorkoutDays.length) {
       html += _coachRenderWorkoutDays(coachWorkoutDays);
       html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_coach'), "editCoachWorkout('coach')")}${activeBtn(workoutActive === 'coach', "setActiveWorkout('coach')")}</div>`;
+      html += `<div style="height:8px;"></div>` + aiCtaBtn(t('client_prog_ai_generate'), 'openAiProgrammeSheet()');
     } else {
       html += emptyCard(t('client_prog_no_coach'));
       html += ctaBtn(t('client_prog_create'), "editCoachWorkout('coach')");
+      html += aiCtaBtn(t('client_prog_ai_generate'), 'openAiProgrammeSheet()');
       if (templates.length) {
         html += sectionLabel(t('client_prog_template_lib'), '18px');
         html += templates.map(tp => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
@@ -13222,6 +13269,119 @@ function openProgrammeBuilderFromDays(days, name) {
     sessions: sessions.length ? sessions : [{ name: 'Day 1', note: '', scheduled_days: [], exercises: [{ name: '', sets: 3, reps: '8-10', rpe: '', rest: '', note: '', cardio: false }] }],
   };
   renderProgrammeBuilder();
+}
+
+// ── AI PROGRAMME GENERATION (coach) ───────────────────
+// The coach writes one free-text brief; the server generates from the CLIENT's profile
+// (goal, experience, days, equipment, injuries) and returns days for review. NOTHING is
+// written to the database by this flow — on success the days are handed to the existing
+// programme builder, and the coach saves through its normal buttons.
+//
+// _aiProgTimer holds the rotating-status interval. It is cleared in EVERY exit path:
+// success, each failure branch, and closeAiProgrammeSheet() (close button, backdrop tap).
+// The onboarding generator's msgInterval (see submitOnboarding) is never cleared — that
+// bug is deliberately not copied here.
+let _aiProgTimer = null;
+
+function _clearAiProgTimer() {
+  if (_aiProgTimer) { clearInterval(_aiProgTimer); _aiProgTimer = null; }
+}
+
+function closeAiProgrammeSheet() {
+  _clearAiProgTimer();
+  document.getElementById('aiProgrammeOverlay')?.remove();
+}
+
+// prefill re-seeds the textarea after a failed attempt so the coach never retypes a brief.
+function openAiProgrammeSheet(prefill) {
+  document.getElementById('aiProgrammeOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'aiProgrammeOverlay';
+  // Same layer as the programme builder (9500): appended after the client-detail overlay so
+  // it sits above it, and below the coach-request gate (9700) and the paywalls (10002+).
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);display:flex;flex-direction:column;justify-content:flex-end;';
+  // Backdrop dismiss — only when the tap lands on the backdrop itself, not inside the sheet.
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeAiProgrammeSheet(); });
+  overlay.innerHTML = `<div id="aiProgSheet" style="background:var(--bg);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:20px 18px calc(20px + var(--safe-bottom));max-height:88vh;overflow-y:auto;"></div>`;
+  document.body.appendChild(overlay);
+  _renderAiProgrammeInput(prefill || '');
+}
+
+function _renderAiProgrammeInput(brief) {
+  const el = document.getElementById('aiProgSheet');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">${t('aiprog_title')}</div>
+      <button onclick="closeAiProgrammeSheet()" style="background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;">${t('aiprog_explain')}</div>
+    <textarea id="aiProgBrief" maxlength="500" rows="4" placeholder="${t('aiprog_placeholder')}" style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;resize:none;outline:none;line-height:1.5;">${escHtml(brief || '')}</textarea>
+    <button onclick="runAiProgrammeGeneration()" style="width:100%;margin-top:14px;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;">${t('aiprog_generate')}</button>
+    <button onclick="closeAiProgrammeSheet()" style="width:100%;margin-top:8px;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('aiprog_cancel')}</button>`;
+}
+
+function _renderAiProgrammeLoading() {
+  const el = document.getElementById('aiProgSheet');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 10px;">
+      <div class="loader" style="margin-bottom:16px;"><div class="spin"></div></div>
+      <div id="aiProgStatus" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">${t('aiprog_status_1')}</div>
+      <div id="aiProgSub" style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.5;">${t('aiprog_sub_1')}</div>
+    </div>`;
+}
+
+async function runAiProgrammeGeneration() {
+  const ta = document.getElementById('aiProgBrief');
+  const brief = (ta?.value || '').trim();
+  if (!brief) { showToast(t('aiprog_need_brief'), 'error'); return; }
+
+  const cid = _currentClientDetail?.clientId;
+  if (!cid) { showToast(t('aiprog_failed'), 'error'); return; }
+
+  _renderAiProgrammeLoading();
+
+  // Rotating status copy — generation runs 20-90s, so a static spinner reads as a hang.
+  const msgs = [
+    [t('aiprog_status_1'), t('aiprog_sub_1')],
+    [t('aiprog_status_2'), t('aiprog_sub_2')],
+    [t('aiprog_status_3'), t('aiprog_sub_3')],
+    [t('aiprog_status_4'), t('aiprog_sub_4')],
+  ];
+  let mi = 0;
+  _clearAiProgTimer(); // guard against a double-tap leaving an orphaned interval
+  _aiProgTimer = setInterval(() => {
+    mi = (mi + 1) % msgs.length;
+    const s = document.getElementById('aiProgStatus');
+    const b = document.getElementById('aiProgSub');
+    if (s) s.textContent = msgs[mi][0];
+    if (b) b.textContent = msgs[mi][1];
+  }, 6000);
+
+  // 300000 is mandatory — api()'s 30s default would abort mid-generation.
+  const res = await api('/api/coach/clients/' + cid + '/generate-programme', 'POST',
+    { brief: brief, language: appLanguage || 'en' }, 300000);
+
+  _clearAiProgTimer();
+
+  if (res && Array.isArray(res.days) && res.days.length) {
+    closeAiProgrammeSheet();
+    // Already carries rest / note / rpe correctly (BUILD 1). The coach reviews and saves
+    // through the builder's existing buttons — nothing further to wire.
+    openProgrammeBuilderFromDays(res.days, res.split_name || t('aiprog_default_name'));
+    return;
+  }
+
+  // Failure — restore the input state with the brief intact, then explain what went wrong.
+  let msg;
+  if (res?._error === 'timeout')               msg = t('aiprog_err_timeout');
+  else if (res?.error === 'no_connection')     msg = t('aiprog_err_no_connection');
+  else if (res?.error === 'generation_failed') msg = t('aiprog_err_generation');
+  else if (res?._status === 429)               msg = t('aiprog_err_rate_limit');
+  else                                          msg = t('aiprog_failed');
+  _renderAiProgrammeInput(brief);
+  showToast(msg, 'error');
 }
 
 function editCoachNutrition(kind) {
