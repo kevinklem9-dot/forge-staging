@@ -13618,9 +13618,17 @@ let _nbClientId = null;
 // single repeated day, because the server spreads nutrition_data straight into the live
 // plan and a missing key deletes the week.
 let _nbWeeklyMeals = null;
+// The four daily macro targets, held in state instead of being read back off the DOM at save
+// time. saveNutritionPlan() used to read nbCalories.value directly, so anything that left the
+// input unstamped made `cals` 0 and the !cals guard returned silently — a save that looked
+// like nothing happened. The inputs now render FROM this object and write back to it on every
+// keystroke, so state is the single source of truth and save never touches the DOM.
+let _nbDaily = { calories: '', protein_g: '', carbs_g: '', fat_g: '' };
 
-function nbField(label, id) {
-  return `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace;">${label}</div><input id="${id}" type="number" inputmode="numeric" oninput="nbRecalc()" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>`;
+// `key` names the _nbDaily field this input owns. Rendering value= from state — rather than
+// stamping it on after appendChild — is what makes the first open show the plan's real numbers.
+function nbField(label, id, key) {
+  return `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace;">${escHtml(label)}</div><input id="${escHtml(id)}" value="${escHtml(_nbDaily[key] ?? '')}" type="number" inputmode="numeric" oninput="_nbDaily.${key}=this.value;nbRecalc()" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>`;
 }
 
 function openNutritionBuilder(clientId, prefillPlan) {
@@ -13644,6 +13652,15 @@ function openNutritionBuilder(clientId, prefillPlan) {
   _nbWeeklyMeals = (np.weekly_meals && typeof np.weekly_meals === 'object' && !Array.isArray(np.weekly_meals))
     ? np.weekly_meals
     : null;
+  // Assigned BEFORE the markup is built. nbField() renders value= straight from _nbDaily and
+  // renderNbMeals() reads _nbMeals, so every piece of state the render touches is set first.
+  // `?? ''` only falls through on null/undefined, so a genuine 0 is preserved.
+  _nbDaily = {
+    calories: np.calories ?? np.daily_calories ?? '',
+    protein_g: np.protein_g ?? '',
+    carbs_g: np.carbs_g ?? '',
+    fat_g: np.fat_g ?? '',
+  };
   document.getElementById('nutritionBuilderOverlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'nutritionBuilderOverlay';
@@ -13656,10 +13673,10 @@ function openNutritionBuilder(clientId, prefillPlan) {
     <div style="padding:18px;flex:1;">
       <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">${t('nb_daily_targets')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;">
-        ${nbField('Daily calories','nbCalories')}
-        ${nbField('Protein (g)','nbProtein')}
-        ${nbField('Carbs (g)','nbCarbs')}
-        ${nbField('Fat (g)','nbFat')}
+        ${nbField('Daily calories','nbCalories','calories')}
+        ${nbField('Protein (g)','nbProtein','protein_g')}
+        ${nbField('Carbs (g)','nbCarbs','carbs_g')}
+        ${nbField('Fat (g)','nbFat','fat_g')}
       </div>
       <div id="nbCalcLine" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:18px;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -13676,20 +13693,20 @@ function openNutritionBuilder(clientId, prefillPlan) {
       <button onclick="closeNutritionBuilder()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Cancel</button>
     </div>`;
   document.body.appendChild(overlay);
-  document.getElementById('nbCalories').value = np.calories ?? np.daily_calories ?? '';
-  document.getElementById('nbProtein').value = np.protein_g ?? '';
-  document.getElementById('nbCarbs').value = np.carbs_g ?? '';
-  document.getElementById('nbFat').value = np.fat_g ?? '';
+  // No post-append value stamping: the four macro inputs already carry _nbDaily's values from
+  // nbField(). Stamping them here was the only thing keeping the DOM authoritative.
   renderNbMeals();
   nbRecalc();
 }
 
 function closeNutritionBuilder() { document.getElementById('nutritionBuilderOverlay')?.remove(); }
 
+// Reads _nbDaily, not the inputs — the oninput handler writes state before calling this, so
+// the two can never disagree.
 function nbRecalc() {
-  const p = parseFloat(document.getElementById('nbProtein')?.value) || 0;
-  const c = parseFloat(document.getElementById('nbCarbs')?.value) || 0;
-  const f = parseFloat(document.getElementById('nbFat')?.value) || 0;
+  const p = parseFloat(_nbDaily.protein_g) || 0;
+  const c = parseFloat(_nbDaily.carbs_g) || 0;
+  const f = parseFloat(_nbDaily.fat_g) || 0;
   const el = document.getElementById('nbCalcLine');
   if (el) el.textContent = `Calories from macros: ${Math.round(p * 4 + c * 4 + f * 9)} kcal`;
 }
@@ -13751,7 +13768,11 @@ function renderNbMeals() {
 }
 
 async function saveNutritionPlan() {
-  const cals = parseFloat(document.getElementById('nbCalories')?.value) || 0;
+  // From state, never the DOM. Reading nbCalories.value here is what made a valid edit save as
+  // 0 calories and return at the guard below with no visible change. The guard stays — it is
+  // the only thing stopping a genuinely empty plan being assigned — but it can now only fire
+  // when the coach really has left the field blank.
+  const cals = parseFloat(_nbDaily.calories) || 0;
   if (!cals) { showToast(t('toast_enter_calories'), 'error'); return; }
   const meals = _nbMeals.filter(m => (m.name || '').trim() || m.calories).map(m => {
     const k = parseFloat(m.calories) || 0;
@@ -13770,9 +13791,9 @@ async function saveNutritionPlan() {
   const notes = (document.getElementById('nbCoachNotes')?.value || '').trim();
   const nutrition_data = {
     calories: cals,
-    protein_g: parseFloat(document.getElementById('nbProtein')?.value) || 0,
-    carbs_g: parseFloat(document.getElementById('nbCarbs')?.value) || 0,
-    fat_g: parseFloat(document.getElementById('nbFat')?.value) || 0,
+    protein_g: parseFloat(_nbDaily.protein_g) || 0,
+    carbs_g: parseFloat(_nbDaily.carbs_g) || 0,
+    fat_g: parseFloat(_nbDaily.fat_g) || 0,
     strategy: notes || 'Set by your coach',
     coach_notes: notes || null,
     meals,
