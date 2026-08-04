@@ -1,10 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  (function() {
+    try {
+      var session = localStorage.getItem('forge-session');
+      if (!session) return;
+      var s = JSON.parse(session);
+      if (!s || !s.access_token || !s.user) return;
+      var nowSecs = Math.floor(Date.now() / 1000);
+      var expiresAt = s.expires_at;
+      // Redirect if token is valid OR if we have a refresh token
+      // (app.html will handle the refresh). Build the target relative to the
+      // current directory so it works under the /forge/ subpath deploy too.
+      if ((expiresAt && expiresAt > nowSecs) || s.refresh_token) {
+        var target = location.pathname.endsWith('/')
+          ? location.pathname + 'app.html'
+          : location.pathname.replace(/\/[^\/]*$/, '/app.html');
+        window.location.replace(target);
+      }
+    } catch(e) {}
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FORGE — AI Performance Coach</title>
 <meta name="description" content="Personalised training, full nutrition, and a fitness AI that learns your data and coaches you like it knows you. Free 7-day trial.">
+
+<!-- Favicon & PWA icons -->
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<!-- Open Graph / Search result preview -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kevinklem9-dot.github.io/forge-staging">
+<meta property="og:title" content="FORGE — AI Performance Coach">
+<meta property="og:description" content="Built, not born. AI-powered personal fitness coaching that adapts to you.">
+<meta property="og:image" content="https://kevinklem9-dot.github.io/forge-staging/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FORGE — AI Performance Coach">
+<meta name="twitter:description" content="Built, not born. AI-powered personal fitness coaching that adapts to you.">
+<meta name="twitter:image" content="https://kevinklem9-dot.github.io/forge-staging/icon-512.png">
+
+<!-- Theme color -->
+<meta name="theme-color" content="#0a0a0a">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -122,6 +165,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .auth-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:14px;letter-spacing:0.5px;line-height:1.6}
 .auth-note a{color:var(--accent);cursor:pointer;text-decoration:none}
 .auth-note a:hover{text-decoration:underline}
+
+/* ── PASSWORD RESET OVERLAY (Supabase recovery) ── */
+.reset-overlay{position:fixed;inset:0;z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:90px 20px 40px;background:rgba(8,8,8,0.94);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%)}
+.reset-overlay.open{display:flex}
+.reset-overlay .auth-wrap{width:100%;max-width:440px}
+.reset-logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:6px;color:var(--accent);text-align:center;margin-bottom:24px;text-shadow:0 0 24px rgba(232,255,61,0.3)}
+.reset-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1.5px;color:var(--text);margin-bottom:8px;line-height:1.02}
+.reset-sub{font-size:13px;color:var(--muted2);margin-bottom:22px;line-height:1.6}
 
 /* ── GRIDS / CARDS ── */
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
@@ -245,6 +296,23 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .footer-link:hover{color:var(--accent)}
 .footer-bottom{max-width:1140px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#444;text-align:center}
 
+/* ── FOOTER CONTACT PANEL ──
+   The Contact footer link is a <button> (it reveals a panel, it does not navigate).
+   .footer-link gives it the same colour + hover as its <a> neighbours; these resets
+   strip the UA button styling so it sits on the same baseline in the flex row.
+   font: inherit does not carry letter-spacing or text-transform, so both are set. */
+.footer-link-btn{background:none;border:none;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.footer-link-btn[aria-expanded="true"]{color:var(--accent)}
+/* Wrapper is always in flow but collapses to zero height while the panel is
+   display:none, so opening the panel never shifts the footer above it. */
+.contact-panel-wrap{max-width:1140px;margin:0 auto;display:flex;justify-content:flex-end}
+.contact-panel{display:none;flex-direction:column;gap:10px;margin-top:18px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow-card);animation:fadeDown .18s ease-out;text-align:left}
+.contact-panel.open{display:flex}
+/* The address is real selectable text, not just an href target — it stays readable
+   and copyable on any browser with no mailto: handler registered. */
+.contact-email{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.5px;color:var(--accent);text-decoration:none;word-break:break-all;-webkit-user-select:text;user-select:text}
+.contact-email:hover{text-decoration:underline}
+
 /* ── REVEAL ANIMATION ── */
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
 .reveal.in{opacity:1;transform:translateY(0)}
@@ -295,6 +363,8 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .footer{padding:48px 18px 32px}
   .footer-inner{flex-direction:column;align-items:center;text-align:center;gap:24px}
   .footer-right{gap:18px;flex-wrap:wrap;justify-content:center}
+  .contact-panel-wrap{justify-content:center}
+  .contact-panel{width:100%}
   .footer-wordmark{font-size:28px;letter-spacing:5px}
   .section-divider::after{width:5px;height:5px}
 }
@@ -330,17 +400,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 <!-- LANG DRAWER -->
 <div id="langDrawer" class="lang-drawer">
   <div class="lang-option" onclick="selectLang('en')">🇬🇧 English</div>
-  <div class="lang-option" onclick="selectLang('es')">🇪🇸 Español</div>
   <div class="lang-option" onclick="selectLang('fr')">🇫🇷 Français</div>
-  <div class="lang-option" onclick="selectLang('de')">🇩🇪 Deutsch</div>
-  <div class="lang-option" onclick="selectLang('it')">🇮🇹 Italiano</div>
-  <div class="lang-option" onclick="selectLang('pt')">🇧🇷 Português</div>
-  <div class="lang-option" onclick="selectLang('nl')">🇳🇱 Nederlands</div>
-  <div class="lang-option" onclick="selectLang('uk')">🇺🇦 Українська</div>
-  <div class="lang-option" onclick="selectLang('fi')">🇫🇮 Suomi</div>
-  <div class="lang-option" onclick="selectLang('ar')">🇸🇦 العربية</div>
-  <div class="lang-option" onclick="selectLang('zh')">🇨🇳 中文</div>
-  <div class="lang-option" onclick="selectLang('ja')">🇯🇵 日本語</div>
 </div>
 
 <!-- HERO -->
@@ -477,7 +537,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div class="tier-feature"><span class="tier-check">✓</span><span>Workout logging (per-set)</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span>Streak tracking &amp; badges</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span>Personal records detection</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>5 themes · 12 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span>7 themes · 2 languages</span></div>
         </div>
         <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
       </div>
@@ -499,7 +559,6 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div class="tier-feature"><span class="tier-check">✓</span><span>Deload detection &amp; alerts</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span>Weekly shopping list</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span>Multiple saved programmes</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Workout history export</span></div>
         </div>
         <button class="tier-btn primary" onclick="scrollToAuth()">Start free trial</button>
       </div>
@@ -593,21 +652,52 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="footer-inner">
     <div class="footer-brand">
       <div class="footer-wordmark">FORGE</div>
-      <div class="footer-tag">AI Performance Coach</div>
+      <div class="footer-tag" data-i18n="footer_tag">AI Performance Coach</div>
     </div>
     <div class="footer-right">
-      <a class="footer-link" href="#">Privacy</a>
-      <a class="footer-link" href="#">Terms</a>
-      <a class="footer-link" href="mailto:hello@klemforge.com">Contact</a>
+      <button type="button" class="footer-link footer-link-btn" id="contactToggle" data-i18n="footer_contact"
+              aria-expanded="false" aria-controls="contactPanel" onclick="toggleContactPanel()">Contact</button>
+      <a class="footer-link" href="/privacy.html" data-i18n="footer_privacy">Privacy</a>
+      <a class="footer-link" href="/terms.html" data-i18n="footer_terms">Terms</a>
+    </div>
+  </div>
+  <!-- Contact panel — revealed by the Contact button above. The address is
+       rendered as visible, selectable text AND wrapped in mailto:, so the footer
+       still works when the browser has no mail handler and the mailto: no-ops.
+       One address only: hello@klemforge.com was never a provisioned mailbox.
+       No label — the Contact button already names the panel (aria-labelledby),
+       so a second "Support" caption above a single address just adds noise. -->
+  <div class="contact-panel-wrap">
+    <div class="contact-panel" id="contactPanel" role="group" aria-labelledby="contactToggle">
+      <a class="contact-email" href="mailto:support@klemforge.com">support@klemforge.com</a>
     </div>
   </div>
   <div class="footer-bottom">© FORGE · Built for athletes who don't make it up as they go.</div>
 </footer>
 
+<!-- ── PASSWORD RESET (Supabase recovery: …/?reset=true#access_token=…&type=recovery) ── -->
+<div id="reset-password-section" class="reset-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="reset-logo">FORGE</div>
+      <div class="reset-title" id="reset-title">Set a new password</div>
+      <div class="reset-sub">Choose a new password for your account. Minimum 6 characters.</div>
+      <div class="field-group"><div class="field-label">New password</div><div style="position:relative"><input class="field-input" type="password" id="reset-new-password" placeholder="Min. 6 characters" autocomplete="new-password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('reset-new-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="field-group"><div class="field-label">Confirm password</div><div style="position:relative"><input class="field-input" type="password" id="reset-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')submitNewPassword()"><button class="pw-toggle" onclick="togglePw('reset-confirm-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="auth-error" id="reset-password-error"></div>
+      <button class="auth-btn" id="reset-submit-btn" onclick="submitNewPassword()">Update password</button>
+      <div class="auth-note" style="margin-top:14px">Remembered it? <a onclick="closeResetOverlay()">Back to sign in</a></div>
+    </div>
+  </div>
+</div>
+
 <script>
+// ══ ENVIRONMENT CONFIG — STAGING ══
+// ⚠️ NEVER COPY THIS BLOCK TO PRODUCTION
 const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
 const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
+// ══ END ENVIRONMENT CONFIG ══
 
 async function supabaseAuth(endpoint, body) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
@@ -668,7 +758,7 @@ function updatePrices() {
 }
 
 // ── LANGUAGE ─────────────────────────────────────────
-const LANG_FLAGS = { en:'🇬🇧',es:'🇪🇸',fr:'🇫🇷',de:'🇩🇪',it:'🇮🇹',pt:'🇧🇷',nl:'🇳🇱',uk:'🇺🇦',fi:'🇫🇮',ar:'🇸🇦',zh:'🇨🇳',ja:'🇯🇵' };
+const LANG_FLAGS = { en:'🇬🇧',fr:'🇫🇷' };
 let currentLang = localStorage.getItem('forge_language') || 'en';
 
 function toggleLangDrawer() {
@@ -682,7 +772,7 @@ function selectLang(code) {
   document.getElementById('langBtn').textContent = flag;
   document.getElementById('langDrawer').classList.remove('open');
   applyLandingLanguage(code);
-  const LANG_NAMES = { en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',pt:'Português',nl:'Nederlands',uk:'Українська',fi:'Suomi',ar:'العربية',zh:'中文',ja:'日本語' };
+  const LANG_NAMES = { en:'English', fr:'Français' };
   const s = LANDING_STRINGS[code] || LANDING_STRINGS.en;
   showLandingToast(flag + ' ' + (LANG_NAMES[code] || code) + ' — ' + (s.lang_saved || 'language saved'));
 }
@@ -706,6 +796,47 @@ document.addEventListener('click', e => {
 
 // Apply saved language flag on load
 document.getElementById('langBtn').textContent = LANG_FLAGS[currentLang] || '🇬🇧';
+
+// ── FOOTER CONTACT PANEL ─────────────────────────────
+// Replaces the old Support + Contact mailto: pair. Those put the address only in
+// the href, so on any browser with no registered mail handler the click silently
+// did nothing and the user was left with no address at all. The panel shows both
+// addresses as real text; the mailto: links still work where a handler exists.
+function toggleContactPanel() {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !btn) return;
+  const open = !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function closeContactPanel(refocus) {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !panel.classList.contains('open')) return;
+  panel.classList.remove('open');
+  if (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+  }
+}
+
+// Three ways out and no focus trap: press Contact again, click anywhere outside,
+// or hit Escape. The panel is inline in the footer, never a modal overlay.
+// No stopPropagation on the button — the lang drawer's own document listener
+// still needs to see this click so it closes too.
+document.addEventListener('click', e => {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !panel.classList.contains('open')) return;
+  if (panel.contains(e.target) || (btn && btn.contains(e.target))) return;
+  closeContactPanel(false);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeContactPanel(true);
+});
 
 // ── AUTH ──────────────────────────────────────────────
 function switchTab(instance, tab) {
@@ -813,10 +944,58 @@ async function doSignin(instance) {
   }
 }
 
+// ── FORGOT PASSWORD (landing) ─────────────────────────
+function showForgotLanding(prefix) {
+  const f = document.getElementById(prefix + '-forgot');
+  if (f) f.style.display = 'block';
+  const err = document.getElementById(prefix + '-reset-error');
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
+  // Convenience: carry the typed sign-in email over to the reset field.
+  const emailEl = document.getElementById(prefix + '-reset-email');
+  const signinEmail = document.getElementById(prefix + '-signin-email');
+  if (emailEl && signinEmail && !emailEl.value) emailEl.value = signinEmail.value || '';
+}
+
+function hideForgotLanding(prefix) {
+  const f = document.getElementById(prefix + '-forgot');
+  if (f) f.style.display = 'none';
+}
+
+async function sendResetLanding(prefix) {
+  const emailEl = document.getElementById(prefix + '-reset-email');
+  const errEl = document.getElementById(prefix + '-reset-error');
+  const email = (emailEl?.value || '').trim();
+  const show = (msg, color) => { if (errEl) { errEl.textContent = msg; errEl.style.color = color; errEl.style.display = msg ? 'block' : 'none'; } };
+  if (!email) { show('Please enter your email.', '#ff5a5a'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { show('Please enter a valid email address.', '#ff5a5a'); return; }
+  show('', '');
+  const btn = document.querySelector('#' + prefix + '-forgot .auth-btn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  try {
+    const res = await fetch(BACKEND_URL + '/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Send Reset Link'; }
+    if (res.ok && !data.error) {
+      show('Check your email for a reset link.', '#4ade80'); // success — green
+    } else {
+      show(data.error || 'Could not send reset link. Please try again.', '#ff5a5a'); // error — red
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Send Reset Link'; }
+    show('Connection error. Please try again.', '#ff5a5a');
+  }
+}
+
 // ── INSTANT SESSION CHECK ─────────────────────────────
 (function() {
   try {
-    if (new URLSearchParams(window.location.search).get('reset_token')) return;
+    const _rq = new URLSearchParams(window.location.search);
+    if (_rq.get('reset_token') || _rq.get('reset') === 'true') return;
     if (window.location.hash.includes('type=recovery')) return;
     const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
     if (session?.access_token && session?.rememberMe) {
@@ -850,11 +1029,137 @@ if (urlParams.get('confirmed') === 'true') {
   setTimeout(() => showError('hero-signin-error', ''), 0);
 }
 
-// Check for ref code in URL
+// ── PASSWORD RESET (Supabase recovery flow) ───────────
+// server.js /api/reset-password sets redirectTo = FRONTEND_URL + '?reset=true', so Supabase
+// returns the user to  …/?reset=true#access_token=<jwt>&type=recovery&refresh_token=…
+// No Supabase JS SDK is loaded on this page, so we update the password over REST:
+//   PUT /auth/v1/user  with the recovery access_token as the Bearer (what updateUser() does).
+(function initPasswordReset() {
+  if (urlParams.get('reset') !== 'true') return;
+  const overlay = document.getElementById('reset-password-section');
+  if (!overlay) return;
+
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const accessToken = hashParams.get('access_token');
+
+  if (!accessToken) {
+    // Link expired, already used, or opened without a token — Supabase puts an error in the hash.
+    showResetState('This reset link has expired or has already been used. Request a fresh one and try again.');
+    return;
+  }
+
+  window._resetToken = accessToken;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('reset-new-password')?.focus(), 120);
+})();
+
+function showResetState(message) {
+  const overlay = document.getElementById('reset-password-section');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  ['reset-new-password','reset-confirm-password'].forEach(id => {
+    const fg = document.getElementById(id)?.closest('.field-group');
+    if (fg) fg.style.display = 'none';
+  });
+  const err = document.getElementById('reset-password-error'); if (err) err.style.display = 'none';
+  const title = document.getElementById('reset-title'); if (title) title.textContent = 'Reset link expired';
+  const sub = overlay.querySelector('.reset-sub'); if (sub) sub.textContent = message;
+  const btn = document.getElementById('reset-submit-btn');
+  if (btn) { btn.textContent = 'Request a new link'; btn.onclick = requestNewLink; }
+}
+
+function requestNewLink() {
+  closeResetOverlay();
+  if (typeof scrollToAuth === 'function') scrollToAuth();
+  if (typeof showForgotLanding === 'function') showForgotLanding('hero');
+}
+
+function closeResetOverlay(keepUrl) {
+  const overlay = document.getElementById('reset-password-section');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  if (!keepUrl) { try { history.replaceState(null, '', window.location.pathname); } catch(e) {} }
+  if (typeof switchTab === 'function') switchTab('hero', 'signin');
+}
+
+async function submitNewPassword() {
+  const errId = 'reset-password-error';
+  const pw = (document.getElementById('reset-new-password')?.value) || '';
+  const confirmPw = (document.getElementById('reset-confirm-password')?.value) || '';
+
+  if (!pw || pw.length < 6) return showError(errId, 'Password must be at least 6 characters.');
+  if (pw !== confirmPw) return showError(errId, 'Passwords do not match.');
+  showError(errId, '');
+
+  const token = window._resetToken;
+  if (!token) return showError(errId, 'Your reset link has expired. Please request a new one.');
+
+  const btn = document.getElementById('reset-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (btn) { btn.disabled = false; btn.textContent = 'Update password'; }
+
+    const errMsg = data.error_description || data.error || data.msg || data.message || '';
+    if (!res.ok || errMsg) {
+      if (res.status === 401 || res.status === 403 || /expired|invalid|jwt|token/i.test(errMsg)) {
+        return showError(errId, 'Your reset link has expired. Please request a new one.');
+      }
+      return showError(errId, errMsg || 'Could not update password. Please try again.');
+    }
+
+    // Success — password changed. Drop the recovery token, clean the URL, send them to sign in.
+    let email = '';
+    try { email = JSON.parse(atob(token.split('.')[1])).email || ''; } catch (e) {}
+    window._resetToken = null;
+    closeResetOverlay();
+    const se = document.getElementById('hero-signin-email');
+    if (se && email) se.value = email;
+    if (typeof showLandingToast === 'function') showLandingToast('✓ Password updated — sign in with your new password.');
+    document.getElementById('hero-auth')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => document.getElementById('hero-signin-password')?.focus(), 450);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Update password'; }
+    showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+// Check for ref code in URL — store it + prefill the signup code input.
+// The backend already credits FORGE- referral codes on signup (referred user gets 14 days).
 const refCode = urlParams.get('ref');
 if (refCode) {
-  document.getElementById('hero-code').value = refCode;
-  document.getElementById('final-code').value = refCode;
+  try { localStorage.setItem('forge_referral', refCode); } catch(e) {}
+  const hc = document.getElementById('hero-code'); if (hc) hc.value = refCode;
+  const fc = document.getElementById('final-code'); if (fc) fc.value = refCode;
+  // Referral banner — referred users get 14 days free instead of 7.
+  // Offset by the fixed nav's height so it sits below the nav instead of hidden under it.
+  const navEl = document.querySelector('.nav');
+  const navH = navEl ? navEl.offsetHeight : 60;
+  const refBanner = document.createElement('div');
+  refBanner.style.cssText = "position:relative;z-index:2;margin-top:" + navH + "px;background:#e8ff3d;color:#000;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;text-align:center;padding:10px 44px;letter-spacing:0.5px;line-height:1.5;";
+  const refMsg = document.createElement('span');
+  refMsg.textContent = 'A friend invited you to FORGE. Sign up for 14 days free.';
+  const refDismiss = document.createElement('button');
+  refDismiss.type = 'button';
+  refDismiss.setAttribute('aria-label', 'Dismiss');
+  refDismiss.textContent = '✕';
+  refDismiss.style.cssText = "position:absolute;top:50%;right:10px;transform:translateY(-50%);background:transparent;border:none;color:#000;font-size:16px;font-weight:700;line-height:1;cursor:pointer;padding:4px 8px;";
+  refDismiss.onclick = function(){ refBanner.remove(); };
+  refBanner.appendChild(refMsg);
+  refBanner.appendChild(refDismiss);
+  document.body.insertBefore(refBanner, document.body.firstChild);
 }
 
 // ── INIT ──────────────────────────────────────────────
@@ -941,7 +1246,7 @@ const LANDING_STRINGS = {
     feat_iron_4:"Workout logging (per-set)",
     feat_iron_5:"Streak tracking & badges",
     feat_iron_6:"Personal records detection",
-    feat_iron_7:"5 themes · 12 languages",
+    feat_iron_7:"7 themes · 2 languages",
     feat_steel_0:"Everything in Iron",
     feat_steel_1:"Unlimited AI fitness agent messages",
     feat_steel_2:"Weekly AI performance review",
@@ -952,7 +1257,6 @@ const LANDING_STRINGS = {
     feat_steel_7:"Deload detection & alerts",
     feat_steel_8:"Weekly shopping list",
     feat_steel_9:"Multiple saved programmes",
-    feat_steel_10:"Workout history export",
     feat_forge_0:"Everything in Steel",
     feat_forge_1:"Monthly AI deep-dive coaching review",
     feat_forge_2:"Exercise video demonstrations",
@@ -972,80 +1276,9 @@ const LANDING_STRINGS = {
     final_body:"Your programme is built in under 2 minutes.<br>Your AI coach is online right now.",
     final_trust:"No commitment until after your trial · Cancel anytime · 30-day money back",
     footer_brand:"FORGE · AI Performance Coach",
+    footer_tag:"AI Performance Coach",
     footer_privacy:"Privacy", footer_terms:"Terms", footer_contact:"Contact",
     lang_saved:"language saved. Your app will open in this language.",
-  },
-  es: {
-    hero_eyebrow:'Entrenador de Rendimiento IA',
-    hero_h1:"Estás en el gimnasio.<br>Y te lo estás inventando sobre la marcha.",
-    hero_sub:"FORGE construye tu programa, sigue tu progreso y se adapta a medida que crecen tus datos. Un entrenador de IA que entrena de verdad. Listo en menos de 2 minutos.",
-    hero_trust:"7 días gratis · Cancela cuando quieras · 30 días de garantía",
-    nav_trial:"Prueba gratuita",
-    auth_tab_signup:"Crear cuenta", auth_tab_signin:"Iniciar sesión",
-    auth_name:"Nombre completo", auth_email:"Email", auth_password:"Contraseña",
-    auth_code_placeholder:"¿Tienes un código? Introdúcelo aquí",
-    auth_tab_note:"Acceso completo. Sin restricciones. Sin compromiso hasta que termine tu prueba.",
-    auth_btn:"Empieza tu prueba gratuita",
-    auth_note_below:"7 días gratis. Se requiere tarjeta, solo se cobra al finalizar la prueba.",
-    auth_no_account:"¿Sin cuenta?", auth_start_trial:"Empieza tu prueba gratuita",
-    auth_signin_btn:"Iniciar sesión", auth_name_ph:"Tu nombre", auth_email_ph:"tu@email.com",
-    auth_pass_ph:"Mín. 6 caracteres", auth_pass_ph2:"Tu contraseña",
-    prob_label:"El problema",
-    prob_h2:"Estás dando todo. Y no ves los resultados.",
-    prob_body:"Todas las apps te dan el mismo plan. No conocen tu deporte. No preguntan por tu horario. No saben que tuviste una mala semana o que te duele el hombro. Lo sigues dos semanas y lo dejas — no por falta de disciplina, sino porque nunca fue creado para ti. Porque no lo era.",
-    pain_1:'"Voy al gimnasio y sigo la misma rutina que me inventé hace dos años."',
-    pain_2:'"Tres apps. Tres programas genéricos. Cero resultados reales."',
-    pain_3:'"Un PT estaría bien. Pero no puedo justificar el coste por sesión."',
-    pain_4:'"Necesito algo que funcione con mi deporte, no en su contra."',
-    feat_label:"Qué hace FORGE",
-    feat_h2:"Un entrenador que entrena. No solo un plan que está ahí.",
-    feat_body:"La mayoría de apps te dan un programa y desaparecen. FORGE sigue en ello contigo. La IA lee tus sesiones, sigue tu progresión y ajusta lo siguiente según lo que muestran tus datos reales.",
-    feat_1_title:"Tu entrenador revisa cada sesión",
-    feat_1_body:"Después de cada entreno, FORGE registra lo ocurrido y actualiza lo siguiente. La revisión semanal de rendimiento de IA te dice exactamente qué cambiar — y por qué.",
-    feat_2_title:"Construido alrededor de tu vida, no de la de otro",
-    feat_2_body:"Tu deporte. Tu horario. Tu equipamiento. Tu historial de lesiones. FORGE hace las preguntas que haría un entrenador real antes de construir nada.",
-    feat_3_title:"Nutrición que sabe cuándo entrenas",
-    feat_3_body:"Tu plan nutricional se construye junto a tu programa — no añadido después. Conoce tus días de entreno, tus objetivos calóricos y lo que tu cuerpo necesita.",
-    feat_4_title:"Detecta el sobreentrenamiento antes que tú",
-    feat_4_body:"Detección de descarga integrada. FORGE detecta cuando los datos dicen que necesitas bajar el ritmo — antes de que tu cuerpo te obligue a hacerlo.",
-    test_label:"Lo que dice la gente", test_h2:"Usuarios reales. Resultados reales.",
-    test_body:"Miembros de acceso anticipado. Entrenando con FORGE desde el primer día.",
-    test_1:'"Me construyó un programa completo en menos de 2 minutos. He probado cuatro apps. Esta es la primera que sentí que sabía lo que necesitaba."',
-    test_1_ctx:"Entrenando para la temporada de fútbol",
-    test_2:'"La IA revisó mi primera sesión y ya ajustó mi plan. Nunca había visto eso. Parece que alguien vigila tu progreso."',
-    test_2_ctx:"Entrenando alrededor del maratón",
-    test_3:'"Era escéptico con el coaching de IA. A los diez días mis levantamientos progresaban de una manera que no lograba en tres meses solo."',
-    test_3_ctx:"Levantador intermedio, objetivo hipertrofia",
-    test_4:'"El plan nutricional funciona alrededor de mis días de entreno. No es un plan genérico — sabe cuándo entreno y qué necesito."',
-    test_4_ctx:"Fitness y composición corporal",
-    pt_line1:"Una sesión de PT cuesta más que 14 meses de FORGE Steel anual.",
-    pt_line2:"Sesenta minutos del tiempo de un entrenador. O catorce meses de un coach de IA disponible a las 2am.",
-    price_label:"Precios", price_h2:"Elige tu nivel.",
-    price_sub:"Prueba gratis 7 días. Sin compromiso hasta que estés listo.",
-    price_iron_tag:"Empieza a entrenar con un plan real.",
-    price_steel_tag:"Coaching completo. Sin PT necesario.",
-    price_forge_tag:"Todo. Revisión mensual de rendimiento incluida.",
-    price_btn:"Prueba gratuita", price_recommended:"RECOMENDADO",
-    billing_monthly:"Mensual", billing_annual:"Anual",
-    showing_prices:"Precios en", change_currency:"cambiar moneda",
-    currency_chf_note:"Transacciones procesadas en CHF",
-    feat_iron_1:"Agente fitness IA — 20 mensajes/mes",feat_iron_2:"Programa de entrenamiento generado por IA",feat_iron_3:"Plan nutricional generado por IA",feat_iron_4:"Registro de entrenos (por serie)",feat_iron_5:"Rachas y badges",feat_iron_6:"Detección de récords personales",feat_iron_7:"5 temas · 12 idiomas",
-    feat_steel_0:"Todo lo de Iron",feat_steel_1:"Mensajes ilimitados con el agente IA",feat_steel_2:"Revisión semanal de rendimiento IA",feat_steel_3:"Check-in post-entreno IA",feat_steel_4:"Seguimiento de sobrecarga progresiva",feat_steel_5:"Métricas corporales e insights IA",feat_steel_6:"Edición del plan via chat IA",feat_steel_7:"Alertas de descarga",feat_steel_8:"Lista de compras semanal",feat_steel_9:"Múltiples programas guardados",feat_steel_10:"Exportar historial de entrenos",
-    feat_forge_0:"Todo lo de Steel",feat_forge_1:"Revisión mensual profunda IA",feat_forge_2:"Vídeos de ejercicios",feat_forge_3:"Escáner de código de barras nutricional",feat_forge_4:"Sync wearables — Apple / Garmin",feat_forge_5:"Soporte prioritario",feat_forge_6:"Acceso anticipado a nuevas funciones",
-    obj_label:"Preguntas frecuentes",
-    obj_h2:"Lo que pregunta la gente antes de registrarse.",
-    obj_1_q:'"Me han decepcionado apps personalizadas antes. Todas dan lo mismo a todos."',
-    obj_1_a:'Es una lectura justa del mercado. La mayoría de apps "personalizadas" son árboles de decisión con un nombre amigable. FORGE funciona con una IA conversacional que lee tus datos reales y construye desde ahí.',
-    obj_2_q:'"¿Es el coaching de IA tan bueno como un entrenador real?"',
-    obj_2_a:"Es la comparación equivocada para la mayoría. La pregunta real es: ¿es mejor que nada? Para eso: sí. La mayoría no elige entre FORGE y un coach de 200€/mes. Elige entre FORGE e ir solo. Para esa comparación, no hay competencia.",
-    obj_3_q:'"Me registraré y lo dejaré después de dos semanas."',
-    obj_3_a:"Es lo que merecen las apps que te dan un plan y desaparecen. FORGE hace check-in después de cada sesión, envía revisiones semanales y detecta cuando estás forzando demasiado. Pruébalo 7 días gratis. Si no te engancha, cancela.",
-    final_h2:"Deja de improvisarlo.",
-    final_body:"Tu programa está listo en menos de 2 minutos.<br>Tu entrenador IA está online ahora mismo.",
-    final_trust:"Sin compromiso hasta después de tu prueba · Cancela cuando quieras · 30 días de garantía",
-    footer_brand:"FORGE · Entrenador de Rendimiento IA",
-    footer_privacy:"Privacidad", footer_terms:"Términos", footer_contact:"Contacto",
-    lang_saved:"idioma guardado. Tu app se abrirá en este idioma.",
   },
   fr: {
     hero_eyebrow:"Coach Performance IA",
@@ -1101,8 +1334,8 @@ const LANDING_STRINGS = {
     billing_monthly:"Mensuel", billing_annual:"Annuel",
     showing_prices:"Prix en", change_currency:"changer la devise",
     currency_chf_note:"Transactions traitées en CHF",
-    feat_iron_1:"Agent fitness IA — 20 messages/mois",feat_iron_2:"Programme d'entraînement généré par IA",feat_iron_3:"Plan nutritionnel généré par IA",feat_iron_4:"Journal d'entraînement (par série)",feat_iron_5:"Suivi des séries et badges",feat_iron_6:"Détection des records personnels",feat_iron_7:"5 thèmes · 12 langues",
-    feat_steel_0:"Tout d'Iron",feat_steel_1:"Messages illimités avec l'agent IA",feat_steel_2:"Bilan hebdomadaire de performance IA",feat_steel_3:"Check-in post-entraînement IA",feat_steel_4:"Suivi de la surcharge progressive",feat_steel_5:"Métriques corporelles et insights IA",feat_steel_6:"Modification du plan via chat IA",feat_steel_7:"Alertes de décharge",feat_steel_8:"Liste de courses hebdomadaire",feat_steel_9:"Plusieurs programmes sauvegardés",feat_steel_10:"Export de l'historique d'entraînement",
+    feat_iron_1:"Agent fitness IA — 20 messages/mois",feat_iron_2:"Programme d'entraînement généré par IA",feat_iron_3:"Plan nutritionnel généré par IA",feat_iron_4:"Journal d'entraînement (par série)",feat_iron_5:"Suivi des séries et badges",feat_iron_6:"Détection des records personnels",feat_iron_7:"7 thèmes · 2 langues",
+    feat_steel_0:"Tout d'Iron",feat_steel_1:"Messages illimités avec l'agent IA",feat_steel_2:"Bilan hebdomadaire de performance IA",feat_steel_3:"Check-in post-entraînement IA",feat_steel_4:"Suivi de la surcharge progressive",feat_steel_5:"Métriques corporelles et insights IA",feat_steel_6:"Modification du plan via chat IA",feat_steel_7:"Alertes de décharge",feat_steel_8:"Liste de courses hebdomadaire",feat_steel_9:"Plusieurs programmes sauvegardés",
     feat_forge_0:"Tout de Steel",feat_forge_1:"Bilan mensuel approfondi IA",feat_forge_2:"Vidéos de démonstration des exercices",feat_forge_3:"Scanner de code-barres nutritionnel",feat_forge_4:"Sync wearables — Apple / Garmin",feat_forge_5:"Support prioritaire",feat_forge_6:"Accès anticipé aux nouvelles fonctionnalités",
     obj_label:"Questions fréquentes",
     obj_h2:"Ce que les gens demandent avant de s'inscrire.",
@@ -1116,88 +1349,11 @@ const LANDING_STRINGS = {
     final_body:"Ton programme est prêt en moins de 2 minutes.<br>Ton coach IA est en ligne maintenant.",
     final_trust:"Sans engagement jusqu'après ton essai · Annule quand tu veux · Remboursement 30 jours",
     footer_brand:"FORGE · Coach Performance IA",
+    footer_tag:"Coach Performance IA",
     footer_privacy:"Confidentialité", footer_terms:"CGU", footer_contact:"Contact",
     lang_saved:"langue enregistrée. Ton app s'ouvrira dans cette langue.",
   },
-  de: {
-    hero_eyebrow:"KI-Leistungscoach",
-    hero_h1:"Du bist im Gym.<br>Und improvisiertst.",
-    hero_sub:"FORGE erstellt dein Programm, verfolgt deinen Fortschritt und passt sich an deine Daten an. Ein KI-Coach, der wirklich coacht. In unter 2 Minuten fertig.",
-    hero_trust:"7 Tage kostenlos · Jederzeit kündbar · 30 Tage Geld-zurück",
-    nav_trial:"Kostenlos testen",
-    auth_tab_signup:"Konto erstellen", auth_tab_signin:"Anmelden",
-    auth_name:"Vollständiger Name", auth_email:"E-Mail", auth_password:"Passwort",
-    auth_code_placeholder:"Hast du einen Code? Hier eingeben",
-    auth_tab_note:"Voller Zugang. Nichts gesperrt. Keine Verpflichtung bis zum Testende.",
-    auth_btn:"Kostenlose Testversion starten",
-    auth_note_below:"7 Tage kostenlos. Karte erforderlich, Abbuchung nur nach dem Test.",
-    auth_no_account:"Noch kein Konto?", auth_start_trial:"Kostenlose Testversion starten",
-    auth_signin_btn:"Anmelden", auth_name_ph:"Dein Name", auth_email_ph:"du@email.com",
-    auth_pass_ph:"Min. 6 Zeichen", auth_pass_ph2:"Dein Passwort",
-    prob_label:"Das Problem",
-    prob_h2:"Du trainierst hart. Und siehst keine Ergebnisse.",
-    prob_body:"Jede App gibt dir den gleichen Plan. Sie kennt deinen Sport nicht. Fragt nicht nach deinem Zeitplan. Weiß nicht, dass du eine schlechte Woche hattest. Du folgst zwei Wochen und hörst auf — nicht wegen fehlender Disziplin, sondern weil er nie für dich gebaut wurde.",
-    pain_1:'"Ich gehe ins Gym und folge derselben Routine, die ich vor zwei Jahren erfunden habe."',
-    pain_2:'"Drei Apps. Drei generische Programme. Null echte Ergebnisse."',
-    pain_3:'"Ein PT wäre toll. Aber der Preis pro Einheit ist schwer zu rechtfertigen."',
-    pain_4:'"Ich brauche etwas, das meinen Sport unterstützt, nicht dagegen arbeitet."',
-    feat_label:"Was FORGE tut",
-    feat_h2:"Ein Coach, der coacht. Kein Plan, der nur da sitzt.",
-    feat_body:"Die meisten Apps geben dir ein Programm und verschwinden. FORGE bleibt dabei. Die KI liest deine Einheiten, verfolgt deine Progression und passt das Nächste an deine echten Daten an.",
-    feat_1_title:"Dein Coach überprüft jede Einheit",
-    feat_1_body:"Nach jedem Training protokolliert FORGE und aktualisiert das Nächste. Die wöchentliche KI-Leistungsüberprüfung sagt dir genau, was du ändern sollst — und warum.",
-    feat_2_title:"Um dein Leben gebaut, nicht das anderer",
-    feat_2_body:"Dein Sport. Dein Zeitplan. Deine Ausrüstung. Deine Verletzungshistorie. FORGE stellt die Fragen, die ein echter Coach stellen würde.",
-    feat_3_title:"Ernährung, die weiß, wann du trainierst",
-    feat_3_body:"Dein Ernährungsplan wird parallel zu deinem Programm erstellt. Er kennt deine Trainingstage und was dein Körper braucht.",
-    feat_4_title:"Erkennt Übertraining vor dir",
-    feat_4_body:"Entlastungserkennung eingebaut. FORGE erkennt, wann die Daten sagen, dass du zurückschalten musst — bevor dein Körper es erzwingt.",
-    test_label:"Was Nutzer sagen", test_h2:"Echte Nutzer. Echte Ergebnisse.",
-    test_body:"Frühzugang-Mitglieder. Trainieren mit FORGE von Tag eins.",
-    test_1:'"Hat mir in unter 2 Minuten ein vollständiges Programm erstellt. Ich habe vier Apps probiert. Diese ist die erste, die sich anfühlt, als würde sie wirklich wissen, was ich brauche."',
-    test_1_ctx:"Training für die Fußballsaison",
-    test_2:'"Die KI hat nach meiner ersten Einheit eingecheckt und meinen Plan bereits angepasst. Das hatte noch keine App getan."',
-    test_2_ctx:"Training rund um den Marathon",
-    test_3:'"Ich war skeptisch gegenüber KI-Coaching. Nach zehn Tagen verbesserten sich meine Lifte auf eine Weise, die in drei Monaten alleine nicht funktioniert hatte."',
-    test_3_ctx:"Fortgeschrittener Lifter, Hypertrophieziel",
-    test_4:'"Der Ernährungsplan funktioniert rund um meine Trainingstage. Kein generischer Plan — er weiß, wann ich trainiere."',
-    test_4_ctx:"Fitness und Körperzusammensetzung",
-    pt_line1:"Eine PT-Einheit kostet mehr als 14 Monate FORGE Steel jährlich.",
-    pt_line2:"Sechzig Minuten Trainerzeit. Oder vierzehn Monate KI-Coach, der um 2 Uhr morgens online ist.",
-    price_label:"Preise", price_h2:"Wähle dein Level.",
-    price_sub:"7 Tage kostenlos testen. Keine Verpflichtung bis du bereit bist.",
-    price_iron_tag:"Starte das Training mit einem echten Plan.",
-    price_steel_tag:"Vollständiges Coaching. Kein PT nötig.",
-    price_forge_tag:"Alles. Monatliche KI-Leistungsüberprüfung inklusive.",
-    price_btn:"Kostenlos testen", price_recommended:"EMPFOHLEN",
-    billing_monthly:"Monatlich", billing_annual:"Jährlich",
-    showing_prices:"Preise in", change_currency:"Währung ändern",
-    currency_chf_note:"Transaktionen in CHF",
-    feat_iron_1:"KI-Fitness-Agent — 20 Nachrichten/Monat",feat_iron_2:"KI-generiertes Trainingsprogramm",feat_iron_3:"KI-generierter Ernährungsplan",feat_iron_4:"Trainingsprotokoll (pro Satz)",feat_iron_5:"Streak-Tracking & Abzeichen",feat_iron_6:"Persönliche Rekorde",feat_iron_7:"5 Themes · 12 Sprachen",
-    feat_steel_0:"Alles aus Iron",feat_steel_1:"Unbegrenzte KI-Nachrichten",feat_steel_2:"Wöchentliche KI-Leistungsüberprüfung",feat_steel_3:"Post-Workout KI-Check-in",feat_steel_4:"Progressive Überlastungstracker",feat_steel_5:"Körpermetriken & KI-Einblicke",feat_steel_6:"Planbearbeitung per KI-Chat",feat_steel_7:"Entlastungsalarme",feat_steel_8:"Wöchentliche Einkaufsliste",feat_steel_9:"Mehrere gespeicherte Programme",feat_steel_10:"Trainingshistorie exportieren",
-    feat_forge_0:"Alles aus Steel",feat_forge_1:"Monatliche KI-Tiefenanalyse",feat_forge_2:"Übungsvideos",feat_forge_3:"Ernährungs-Barcode-Scanner",feat_forge_4:"Wearable-Sync — Apple / Garmin",feat_forge_5:"Prioritätssupport",feat_forge_6:"Frühzugang zu neuen Funktionen",
-    obj_label:"Häufige Fragen",
-    obj_h2:"Was die Leute fragen, bevor sie sich anmelden.",
-    obj_1_q:'"Ich wurde von personalisierten Apps enttäuscht. Alle geben jedem dasselbe."',
-    obj_1_a:'Das ist eine faire Einschätzung des Marktes. Die meisten "personalisierten" Apps sind Entscheidungsbäume mit einem freundlichen Namen. FORGE läuft auf einer konversationellen KI, die deine echten Daten liest.',
-    obj_2_q:'"Ist KI-Coaching so gut wie ein echter Trainer?"',
-    obj_2_a:"Das ist der falsche Vergleich für die meisten. Die echte Frage: Ist es besser als nichts? Dafür: ja. Die meisten wählen nicht zwischen FORGE und einem 200€/Monat-Coach. Sie wählen zwischen FORGE und alleine machen.",
-    obj_3_q:'"Ich melde mich an und höre nach zwei Wochen auf."',
-    obj_3_a:"Das verdienen Apps, die dir einen Plan geben und verschwinden. FORGE checkt nach jeder Einheit ein, sendet wöchentliche Berichte und erkennt, wenn du zu hart pushst. Probiere es 7 Tage kostenlos. Wenn es nicht hält, kündige.",
-    final_h2:"Hör auf zu improvisieren.",
-    final_body:"Dein Programm ist in unter 2 Minuten fertig.<br>Dein KI-Coach ist jetzt online.",
-    final_trust:"Keine Verpflichtung bis nach deinem Test · Jederzeit kündbar · 30 Tage Garantie",
-    footer_brand:"FORGE · KI-Leistungscoach",
-    footer_privacy:"Datenschutz", footer_terms:"AGB", footer_contact:"Kontakt",
-    lang_saved:"Sprache gespeichert. Deine App öffnet sich in dieser Sprache.",
-  },
 };
-
-// For remaining languages (it, pt, nl, uk, fi, ar, zh, ja) — fall back to English
-// They get translated in the app itself. Landing page covers EN/ES/FR/DE fully.
-['it','pt','nl','uk','fi','ar','zh','ja'].forEach(code => {
-  LANDING_STRINGS[code] = LANDING_STRINGS.en;
-});
 
 function applyLandingLanguage(code) {
   const s = LANDING_STRINGS[code] || LANDING_STRINGS.en;
@@ -1349,47 +1505,31 @@ function applyLandingLanguage(code) {
   const currNote = document.getElementById('currency-chf-note');
   if (currNote && s.currency_chf_note) currNote.textContent = s.currency_chf_note;
 
-  // Footer
-  const footerBrand = document.querySelector('.footer-left');
-  if (footerBrand && s.footer_brand) footerBrand.textContent = s.footer_brand;
-  const footerLinks = document.querySelectorAll('.footer-link');
-  if (footerLinks[0] && s.footer_privacy) footerLinks[0].textContent = s.footer_privacy;
-  if (footerLinks[1] && s.footer_terms) footerLinks[1].textContent = s.footer_terms;
-  if (footerLinks[2] && s.footer_contact) footerLinks[2].textContent = s.footer_contact;
+  // Footer — keyed by the data-i18n attribute, never by DOM position.
+  // The old code read querySelectorAll('.footer-link')[0..2], so adding or removing
+  // any single footer link silently shifted every other link onto the wrong string.
+  // This loop also covers .footer-tag and the contact panel labels. The address
+  // anchors carry no data-i18n, so hello@ / support@ are never overwritten.
+  // (.footer-left was translated here before and does not exist in the markup —
+  //  the brand block is .footer-brand > .footer-wordmark + .footer-tag. Only the
+  //  tag is translated: setting the whole brand block's textContent would delete
+  //  both child divs and their styling. FORGE itself is not translated.)
+  document.querySelectorAll('.footer [data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (s[key]) el.textContent = s[key];
+  });
 }
 
-// FIX 9: PWA install nudge on the landing page — fires 5s after load for new visitors
-// who haven't installed the app or dismissed the prompt. Mirrors the in-app prompt.
-(function () {
-  function isStandalone() {
-    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-  }
-  function dismissLandingPwa() {
-    try { localStorage.setItem('forge-pwa-dismissed', '1'); } catch (e) {}
-    var el = document.getElementById('pwaInstallPrompt');
-    if (el) el.remove();
-  }
-  window.dismissLandingPwa = dismissLandingPwa;
-  function showLandingPwa() {
-    if (isStandalone()) return;
-    try { if (localStorage.getItem('forge-pwa-dismissed')) return; } catch (e) {}
-    if (document.getElementById('pwaInstallPrompt')) return;
-    var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    var steps = isIos
-      ? ['Tap the Share button at the bottom of Safari', 'Scroll down and tap Add to Home Screen']
-      : ['Tap the menu in your browser', 'Tap Add to Home screen'];
-    var sheet = document.createElement('div');
-    sheet.id = 'pwaInstallPrompt';
-    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#111;border-top:1px solid #e8ff3d;padding:20px 18px calc(20px + env(safe-area-inset-bottom));color:#fff;font-family:"DM Sans",sans-serif;box-shadow:0 -10px 30px rgba(0,0,0,0.6);';
-    sheet.innerHTML = '<button onclick="dismissLandingPwa()" aria-label="Close" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>'
-      + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:20px;letter-spacing:1.5px;color:#e8ff3d;margin-bottom:8px;">INSTALL FORGE</div>'
-      + '<div style="font-size:13px;color:#bbb;margin-bottom:12px;line-height:1.5;">Add FORGE to your home screen for faster access and a fullscreen experience.</div>'
-      + '<ol style="margin:0;padding-left:22px;font-size:13px;line-height:1.7;color:#eee;">' + steps.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>';
-    document.body.appendChild(sheet);
-    setTimeout(function () { var el = document.getElementById('pwaInstallPrompt'); if (el) el.remove(); }, 12000);
-  }
-  setTimeout(showLandingPwa, 5000);
-})();
+// ── APPLY SAVED LANGUAGE ON LOAD ──────────────────────
+// Must run here, at the end of the block: LANDING_STRINGS is a const declared
+// above, so it cannot be read from the top of the script (temporal dead zone).
+// Before this, applyLandingLanguage() only ever fired from selectLang(), so a
+// returning French visitor got the 🇫🇷 flag restored above fully English copy.
+// Guarded to non-English on purpose. The HTML is authored in English and a few
+// EN strings have since drifted from it (hero_sub, pt_line1), so running the
+// English pass on load would silently rewrite live landing copy and flatten the
+// .pt-highlight span. English visitors keep the markup exactly as authored.
+if (currentLang && currentLang !== 'en') applyLandingLanguage(currentLang);
 
 </script>
   <div style="position:fixed;top:68px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
