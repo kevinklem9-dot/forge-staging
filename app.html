@@ -10092,8 +10092,9 @@ const STRINGS = {
     nb_meal_breakfast: 'Breakfast',
     pb_title: 'PROGRAMME BUILDER',
     pb_add_session: '+ Add session',
-    pb_save_draft: 'Save as draft',
+    pb_save_draft: 'Save to library',
     pb_save_assign: 'Save & assign',
+    pb_template_toggle: 'Reusable template — keep for assigning to other clients too',
     pb_session_name: 'Session name',
     pb_coach_note: 'Coach note (client sees this)',
     pb_exercise_name: 'Exercise name',
@@ -10269,6 +10270,17 @@ const STRINGS = {
     aiprog_err_rate_limit: 'Too many generations — try again later',
     aiprog_failed: 'Generation failed — try again',
     client_prog_template_lib: 'TEMPLATE LIBRARY',
+    client_prog_library: 'PROGRAMME LIBRARY',
+    client_prog_badge_template: 'Template',
+    client_prog_badge_draft: 'Draft',
+    client_prog_sessions: 'SESSIONS',
+    client_prog_session_one: 'SESSION',
+    client_prog_lib_edit: 'Edit',
+    client_prog_lib_delete: 'Delete',
+    client_prog_lib_delete_confirm: 'Delete "{name}" from your library? This cannot be undone.',
+    client_prog_lib_deleted: 'Deleted from library',
+    client_prog_lib_delete_failed: 'Delete failed',
+    client_prog_lib_delete_blocked: 'That programme is assigned to a client — remove it from the client first',
     client_prog_assign: 'Assign',
     client_prog_nutrition: 'NUTRITION',
     client_prog_ai_nutrition_pill: 'AI NUTRITION',
@@ -10992,8 +11004,9 @@ const STRINGS = {
     nb_meal_breakfast: 'Petit-déjeuner',
     pb_title: 'CRÉATEUR DE PROGRAMME',
     pb_add_session: '+ Ajouter une séance',
-    pb_save_draft: 'Sauvegarder comme brouillon',
+    pb_save_draft: 'Enregistrer dans la bibliothèque',
     pb_save_assign: 'Sauvegarder & assigner',
+    pb_template_toggle: 'Modèle réutilisable — à garder pour l\'assigner à d\'autres clients',
     pb_session_name: 'Nom de la séance',
     pb_coach_note: 'Note du coach (visible par le client)',
     pb_exercise_name: 'Nom de l\'exercice',
@@ -11169,6 +11182,17 @@ const STRINGS = {
     aiprog_err_rate_limit: 'Trop de générations — réessayez plus tard',
     aiprog_failed: 'Échec de la génération — réessayez',
     client_prog_template_lib: 'BIBLIOTHÈQUE DE MODÈLES',
+    client_prog_library: 'BIBLIOTHÈQUE DE PROGRAMMES',
+    client_prog_badge_template: 'Modèle',
+    client_prog_badge_draft: 'Brouillon',
+    client_prog_sessions: 'SÉANCES',
+    client_prog_session_one: 'SÉANCE',
+    client_prog_lib_edit: 'Modifier',
+    client_prog_lib_delete: 'Supprimer',
+    client_prog_lib_delete_confirm: 'Supprimer « {name} » de votre bibliothèque ? Cette action est irréversible.',
+    client_prog_lib_deleted: 'Supprimé de la bibliothèque',
+    client_prog_lib_delete_failed: 'Échec de la suppression',
+    client_prog_lib_delete_blocked: 'Ce programme est assigné à un client — retirez-le du client d\'abord',
     client_prog_assign: 'Assigner',
     client_prog_nutrition: 'NUTRITION',
     client_prog_ai_nutrition_pill: 'NUTRITION IA',
@@ -13079,7 +13103,12 @@ async function renderClientProgrammeTab(body) {
   const isNutri = p => (p.programme_type || 'workout') === 'nutrition';
   const assigned = all.find(p => p.client_id === cid && !p.is_template && !isNutri(p));
   const assignedNutri = all.find(p => p.client_id === cid && !p.is_template && isNutri(p));
-  const templates = all.filter(p => p.is_template && !isNutri(p));
+  // The library is every UNASSIGNED programme, keyed on client_id rather than is_template.
+  // "Save draft" writes { client_id: null, is_template: false } — a shape the old
+  // `p.is_template` filter excluded, so drafts saved successfully and were then invisible
+  // in every rendering path. Keying on client_id surfaces drafts and templates alike and
+  // recovers every previously orphaned row with no migration.
+  const library = all.filter(p => p.client_id === null && !isNutri(p));
   _currentClientDetail.programmes = all;
 
   const clientPlan = planRes?.plan || null;
@@ -13120,6 +13149,30 @@ async function renderClientProgrammeTab(body) {
   // Secondary, full-width. Styled like editBtn (surface2 + border) rather than the
   // accent-filled ctaBtn so the manual builder stays the primary action in both states.
   const aiCtaBtn = (label, fn) => `<button onclick="${fn}" style="width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">${label}</button>`;
+  // One row in the programme library — an unassigned programme, draft or template. Assign
+  // stays the primary action; Edit reopens it in the builder, Delete removes it after a
+  // confirm. The badge is what tells a reusable template apart from a one-off draft, since
+  // both now live in the same list.
+  const libRowBtn = (label, fn, danger) => `<button onclick="${fn}" style="padding:8px 12px;background:transparent;border:1px solid var(--border);color:${danger ? 'var(--red, #ff4444)' : 'var(--text)'};border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;">${label}</button>`;
+  const libraryRow = (p) => {
+    const count = (p.programme_data?.sessions || []).length;
+    const badgeStyle = 'font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;border-radius:5px;padding:2px 6px;flex-shrink:0;';
+    const badge = p.is_template
+      ? `<span style="${badgeStyle}color:var(--accent);border:1px solid var(--accent);">${t('client_prog_badge_template')}</span>`
+      : `<span style="${badgeStyle}color:var(--muted);border:1px solid var(--border);">${t('client_prog_badge_draft')}</span>`;
+    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name || '')}</div>
+        ${badge}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}</div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_prog_assign')}</button>
+        ${libRowBtn(t('client_prog_lib_edit'), `openProgrammeBuilder('${p.id}')`, false)}
+        ${libRowBtn(t('client_prog_lib_delete'), `deleteLibraryProgramme('${p.id}')`, true)}
+      </div>
+    </div>`;
+  };
 
   let html = '';
 
@@ -13144,13 +13197,13 @@ async function renderClientProgrammeTab(body) {
       html += emptyCard(t('client_prog_no_coach'));
       html += ctaBtn(t('client_prog_create'), "editCoachWorkout('coach')");
       html += aiCtaBtn(t('client_prog_ai_generate'), 'openAiProgrammeSheet()');
-      if (templates.length) {
-        html += sectionLabel(t('client_prog_template_lib'), '18px');
-        html += templates.map(tp => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
-          <div><div style="font-size:13px;color:var(--text);">${escHtml(tp.name)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${(tp.programme_data?.sessions || []).length} SESSIONS</div></div>
-          <button onclick="assignFromTemplate('${tp.id}')" style="padding:7px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_prog_assign')}</button>
-        </div>`).join('');
-      }
+    }
+    // The library renders in BOTH states, not just the empty one. With a plan already
+    // assigned this is the only route to switching the client onto a different saved
+    // programme — which is what makes "build several, assign one at a time" work.
+    if (library.length) {
+      html += sectionLabel(t('client_prog_library'), '18px');
+      html += library.map(libraryRow).join('');
     }
   }
 
@@ -13483,7 +13536,10 @@ function programmeSessionPreview(s) {
   </div>`;
 }
 
-async function assignFromTemplate(templateId) {
+// Assign-by-COPY from a library row: POSTs a fresh { is_template: false, client_id } row
+// and leaves the source untouched, so the library entry survives being assigned and can be
+// assigned again to another client. Logic unchanged from the former assignFromTemplate().
+async function assignFromLibrary(templateId) {
   const tpl = _currentClientDetail.programmes.find(p => p.id === templateId);
   if (!tpl) return;
   const res = await api('/api/coach/programmes', 'POST', {
@@ -13494,6 +13550,20 @@ async function assignFromTemplate(templateId) {
   });
   if (res?.ok) { showToast(t('toast_assigned'), 'success'); renderClientTab(); }
   else showToast(t('toast_assign_failed'), 'error');
+}
+
+// Deletes a LIBRARY row only. The client_id guard is not cosmetic: DELETE
+// /api/coach/programmes/:id will delete an assigned programme just as readily, so this
+// check is the only thing standing between a mis-wired call and a client losing their
+// assigned plan. Assigned programmes are removed via deleteAssignedProgramme() instead.
+async function deleteLibraryProgramme(programmeId) {
+  const p = (_currentClientDetail?.programmes || []).find(x => x.id === programmeId);
+  if (!p) return;
+  if (p.client_id !== null) { showToast(t('client_prog_lib_delete_blocked'), 'error'); return; }
+  if (!confirm(t('client_prog_lib_delete_confirm').replace('{name}', p.name || ''))) return;
+  const res = await api('/api/coach/programmes/' + programmeId, 'DELETE');
+  if (res?.ok) { showToast(t('client_prog_lib_deleted'), 'success'); renderClientTab(); }
+  else showToast(t('client_prog_lib_delete_failed'), 'error');
 }
 
 async function deleteAssignedProgramme(programmeId) {
@@ -13679,7 +13749,7 @@ function renderProgrammeBuilder() {
     <div style="padding:18px;flex:1;">
       <input id="builderName" value="${escHtml(_builderState.name)}" placeholder="${t('pb_programme_name')}" oninput="_builderState.name = this.value" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:18px;">
-        <input type="checkbox" ${_builderState.is_template ? 'checked' : ''} onchange="_builderState.is_template = this.checked"> Save as template (reusable, not assigned)
+        <input type="checkbox" ${_builderState.is_template ? 'checked' : ''} onchange="_builderState.is_template = this.checked"> ${t('pb_template_toggle')}
       </label>
       <div id="builderSessions"></div>
       <button onclick="addBuilderSession()" style="width:100%;padding:12px;background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">${t('pb_add_session')}</button>
