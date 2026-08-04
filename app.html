@@ -4839,8 +4839,30 @@ function renderExercises() {
 
   // note / rest / rpe are guarded — a custom programme's exercises may carry no note
   // and a null rpe, which would otherwise render an empty note row or "RPE null".
+  // Cardio prescriptions carry duration / distance / intensity in sets_data[0] (written by
+  // the coach programme transforms) instead of sets × reps, so the primary metric tag is
+  // built per-exercise. The e.cardio flag catches coach cardio whose name misses the
+  // _exCategory keyword list; the category catches AI cardio, which carries no flag. Each
+  // metric is guarded on its own — a coach may prescribe only duration, or only distance.
+  // Non-cardio exercises fall through to the unchanged sets × reps tag.
+  const _hasVal = v => v !== null && v !== undefined && v !== '';
   el.innerHTML = day.exercises.map((e, i) => {
     const catPill = _categoryPill(_exCategory(e.name, day.muscles));
+    let metricTags;
+    if (e.cardio === true || _exCategory(e.name) === 'cardio') {
+      const cd = e.sets_data?.[0] || {};
+      const parts = [];
+      if (_hasVal(cd.duration?.value)) parts.push(`<span class="tag sets">${escHtml(String(cd.duration.value))} ${escHtml(String(cd.duration.unit || 'min'))}</span>`);
+      if (_hasVal(cd.distance?.value)) parts.push(`<span class="tag sets">${escHtml(String(cd.distance.value))} ${escHtml(String(cd.distance.unit || 'km'))}</span>`);
+      if (_hasVal(cd.intensity)) parts.push(`<span class="tag">${escHtml(String(cd.intensity))}</span>`);
+      // AI cardio carries no sets_data — it is a plain exercise whose name happens to match
+      // the cardio keyword list, with its prescription in flat sets/reps ("1 × 20 min").
+      // Falling back to the sets × reps tag when no cardio metric was found keeps that
+      // rendering exactly as it is today; only coach cardio (which has sets_data) changes.
+      metricTags = parts.length ? parts.join('') : `<span class="tag sets">${escHtml(String(e.sets ?? ''))} × ${escHtml(String(e.reps ?? ''))}</span>`;
+    } else {
+      metricTags = `<span class="tag sets">${escHtml(String(e.sets ?? ''))} × ${escHtml(String(e.reps ?? ''))}</span>`;
+    }
     return `
     <div class="exercise-card" onclick="showExerciseModal(${i})" style="cursor:pointer">
       <div class="ex-num">${i + 1}</div>
@@ -4849,7 +4871,7 @@ function renderExercises() {
         ${e.note ? `<div class="ex-note">${escHtml(e.note)}</div>` : ''}
         <div class="ex-tags">
           ${catPill}
-          <span class="tag sets">${escHtml(String(e.sets ?? ''))} × ${escHtml(String(e.reps ?? ''))}</span>
+          ${metricTags}
           ${e.rest ? `<span class="tag">${t('rest')} ${escHtml(String(e.rest ?? ''))}</span>` : ''}
           ${(e.rpe !== null && e.rpe !== undefined && e.rpe !== '') ? `<span class="tag rpe-${(String(e.rpe||'')).replace(/[^0-9.]/g,'')}">RPE ${escHtml(String(e.rpe ?? ''))}</span>` : ''}
           <span class="tag" style="background:rgba(255,255,255,0.04);color:var(--muted)">▶ ${t('form')}</span>
@@ -5011,8 +5033,15 @@ async function renderLog() {
   logSetsState = {};
   day.exercises.forEach((e, i) => {
     // Cardio exercises log duration/distance/intensity/intervals instead of weight×reps.
-    if (_exCategory(e.name) === 'cardio') {
-      logSetsState[i] = [{ cardio: true, type: 'cardio', duration: { value: '', unit: 'min' }, distance: { value: '', unit: 'km' }, intensity: '', intervals: '' }];
+    // The e.cardio flag catches coach cardio whose name misses the _exCategory keyword
+    // list; the category catches AI cardio, which carries no flag.
+    if (e.cardio === true || _exCategory(e.name) === 'cardio') {
+      // Prefill the coach's prescribed values as targets. sets_data[0] is where the coach
+      // programme transforms write them; when it's absent (AI cardio) this falls back to
+      // blank exactly as before. restoreAutoSave() still runs after this, so a user's own
+      // saved draft continues to win over the prescription.
+      const pre = e.sets_data?.[0] || {};
+      logSetsState[i] = [{ cardio: true, type: 'cardio', duration: { value: pre.duration?.value ?? '', unit: 'min' }, distance: { value: pre.distance?.value ?? '', unit: 'km' }, intensity: pre.intensity ?? '', intervals: '' }];
     } else {
       const targetSets = parseInt(e.sets) || 3;
       logSetsState[i] = Array.from({ length: targetSets }, () => ({ weight: '', reps: '' }));
@@ -5033,7 +5062,8 @@ function renderLogCards(day) {
   const el = document.getElementById('logExerciseList');
   el.innerHTML = day.exercises.map((e, i) => {
     // Cardio exercise — render the cardio field set instead of weight/reps rows.
-    if (_exCategory(e.name) === 'cardio') {
+    // Detection mirrors the logSetsState seeding above: flag first, then name category.
+    if (e.cardio === true || _exCategory(e.name) === 'cardio') {
       const cd = (logSetsState[i] && logSetsState[i][0]) || {};
       return `
       <div class="log-card" id="log-card-${i}">
