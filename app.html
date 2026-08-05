@@ -5650,6 +5650,31 @@ function renderMealCards(meals) {
   `).join('');
 }
 
+// The coach's plan-level nutrition note (nutrition_plan.coach_notes — plural; coach_note
+// singular is the WORKOUT per-day field and is unrelated).
+//
+// It was already rendered inside the coachNutritionBanner on the Macros tab
+// (renderNutritionPanel, above) but nowhere else, so a client who opened the Week tab — where
+// the coach's day-by-day meals actually live — never saw it, and the coach's own read-only
+// preview never showed it either. This helper is what those two surfaces call, so the same
+// note can never render three different ways.
+//
+// Styling is copied from the existing Macros banner rather than invented: same container, same
+// --surface / --border-subtle / --amber / --muted variables, same sizes. No new CSS.
+// headingKey lets the client read "FROM YOUR COACH" while the coach's own preview reads
+// "NOTES FOR CLIENT" — both keys already exist in EN and FR.
+//
+// Line breaks are NOT converted to <br>, matching the existing banner exactly. Rendering the
+// same note with newlines on one tab and collapsed on another would be worse than either.
+function coachNoteBlockHtml(note, headingKey) {
+  const s = (note || '').trim();
+  if (!s) return '';
+  return `<div style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--amber);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;">${t(headingKey || 'from_your_coach')}</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;">${escHtml(s)}</div>
+    </div>`;
+}
+
 function renderNutritionCalendar() {
   const n = getActiveNutrition();
   if (!n) return;
@@ -5692,6 +5717,7 @@ function renderNutritionDayMeals() {
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:14px">
       ${n.calories} kcal · ${n.protein_g}g ${t('macro_protein').toLowerCase()} · ${n.carbs_g}g ${t('macro_carbs').toLowerCase()} · ${n.fat_g}g ${t('macro_fat').toLowerCase()}
     </div>
+    ${n.coach_assigned ? coachNoteBlockHtml(n.coach_notes, 'from_your_coach') : ''}
     ${renderMealCards(meals)}
   `;
 }
@@ -13461,7 +13487,14 @@ function _coachNutritionCard(np) {
   const cals = np.calories ?? np.daily_calories ?? 0;
   const p = np.protein_g ?? np.protein ?? 0, c = np.carbs_g ?? np.carbs ?? 0, f = np.fat_g ?? np.fat ?? 0;
   const meals = np.meals || [];
-  let h = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;">
+  // The note the coach wrote for this client. This preview never showed it, so a coach had no
+  // way to confirm the note they typed was actually attached to the plan. Gated on the note
+  // alone, not coach_assigned: this card only ever renders a coach plan, and coach_assigned is
+  // stamped server-side onto the client's LIVE plan, not onto the coach_programmes row this
+  // reads from. Heading reads "NOTES FOR CLIENT" here rather than "FROM YOUR COACH" — the
+  // coach is the author, not the recipient.
+  let h = coachNoteBlockHtml(np.coach_notes, 'nb_notes_client');
+  h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;">
       <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text);letter-spacing:0.3px;">${cals} KCAL · ${p}P / ${c}C / ${f}F</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;letter-spacing:0.3px;">${meals.length} MEAL${meals.length === 1 ? '' : 'S'}</div>
     </div>`;
