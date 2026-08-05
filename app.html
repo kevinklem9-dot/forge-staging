@@ -10095,6 +10095,12 @@ const STRINGS = {
     nb_food_amount: 'Amount e.g. 200g',
     nb_add_food: '+ Add food',
     nb_remove_food: 'Remove food',
+    nb_day: 'DAY',
+    nb_copy_all_days: 'All 7 days',
+    nb_copy_btn: 'Copy',
+    nb_copy_hint: 'Copies this day\'s meals over the target day.',
+    nb_copied_all: 'Copied to all 7 days',
+    nb_copied_day: 'Copied to {day}',
     pb_title: 'PROGRAMME BUILDER',
     pb_add_session: '+ Add session',
     pb_save_draft: 'Save to library',
@@ -11013,6 +11019,12 @@ const STRINGS = {
     nb_food_amount: 'Quantité ex. 200g',
     nb_add_food: '+ Ajouter un aliment',
     nb_remove_food: 'Retirer l\'aliment',
+    nb_day: 'JOUR',
+    nb_copy_all_days: 'Les 7 jours',
+    nb_copy_btn: 'Copier',
+    nb_copy_hint: 'Copie les repas de ce jour sur le jour choisi.',
+    nb_copied_all: 'Copié sur les 7 jours',
+    nb_copied_day: 'Copié sur {day}',
     pb_title: 'CRÉATEUR DE PROGRAMME',
     pb_add_session: '+ Ajouter une séance',
     pb_save_draft: 'Enregistrer dans la bibliothèque',
@@ -13609,15 +13621,26 @@ async function deleteAssignedProgramme(programmeId) {
 }
 
 // ── NUTRITION BUILDER ─────────────────────────────────
+// _nbMeals is NOT independent state. It is a live alias to _nbWeeklyMeals[_nbSelectedDay],
+// re-pointed by nbSelectDay(). Every existing handler — addNutritionMeal, addNbFood,
+// removeNbFood, moveNbMeal, and the × splice inside the meal card — mutates it IN PLACE, so
+// it stays the same array object the day holds. Never reassign it anywhere except
+// openNutritionBuilder() and nbSelectDay(): replacing the array instead of mutating it
+// silently detaches the builder from the day it is meant to be editing.
 let _nbMeals = [];
 let _nbClientId = null;
-// weekly_meals is the per-day override the AI generates (7 varied days). The client
-// renderer prefers it over `meals` — getMealsForDay() reads it before falling back. This
-// builder has no editor for it, so it is captured on open and written back untouched on
-// save. Without that, saving any plan that had one collapsed the client's week into a
-// single repeated day, because the server spreads nutrition_data straight into the live
-// plan and a missing key deletes the week.
+// weekly_meals is the per-day plan the AI generates (7 varied days) and the one the client
+// actually renders — getMealsForDay() reads it BEFORE falling back to the flat `meals` array,
+// which the generation prompt itself describes as "just a fallback". The builder used to edit
+// only `meals`, so a coach opening a 7-day AI plan saw a single meal and every edit was
+// written to the array the client never reads: the save reported success and changed nothing.
+// This is now the builder's source of truth and always carries all seven keys "0".."6" while
+// the builder is open. A coach-built plan with no weekly_meals is seeded from its flat array
+// on open, so there is only ever one structure to edit.
 let _nbWeeklyMeals = null;
+// 0=Mon..6=Sun — the same convention as workout_plan.days[].day_index and the client's
+// activeNutritionDay. Set to today on open.
+let _nbSelectedDay = 0;
 // The four daily macro targets, held in state instead of being read back off the DOM at save
 // time. saveNutritionPlan() used to read nbCalories.value directly, so anything that left the
 // input unstamped made `cals` 0 and the !cals guard returned silently — a save that looked
@@ -13631,27 +13654,57 @@ function nbField(label, id, key) {
   return `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace;">${escHtml(label)}</div><input id="${escHtml(id)}" value="${escHtml(_nbDaily[key] ?? '')}" type="number" inputmode="numeric" oninput="_nbDaily.${key}=this.value;nbRecalc()" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;"></div>`;
 }
 
+// 0=Mon..6=Sun, matching workout_plan.days[].day_index and the client's activeNutritionDay.
+// JS getDay() is 0=Sun, so Sunday wraps to 6 and every other day shifts down one.
+function nbTodayIndex() {
+  const d = new Date().getDay();
+  return d === 0 ? 6 : d - 1;
+}
+
+// Plan meal → builder meal. Every field the client renders is carried through, foods included,
+// and copied row by row so editing in the builder never mutates the source plan object.
+function nbNormaliseMeals(arr) {
+  return (Array.isArray(arr) ? arr : []).map(m => ({
+    name: (m && m.name) || '', time: (m && m.time) || '',
+    calories: (m && (m.kcal ?? m.calories)) ?? '',
+    protein_g: (m && m.protein_g) ?? '', carbs_g: (m && m.carbs_g) ?? '', fat_g: (m && m.fat_g) ?? '',
+    notes: (m && m.notes) || '',
+    foods: Array.isArray(m && m.foods)
+      ? m.foods.map(f => ({ name: (f && f.name) || '', amount: (f && f.amount) || '' }))
+      : []
+  }));
+}
+
+// Points _nbMeals at the selected day's array. Called on open and on every day switch — the
+// only two places _nbMeals may be reassigned. Self-heals a missing key so a day can never
+// render against undefined.
+function nbSyncMealsAlias() {
+  const k = String(_nbSelectedDay);
+  if (!Array.isArray(_nbWeeklyMeals[k])) _nbWeeklyMeals[k] = [];
+  _nbMeals = _nbWeeklyMeals[k];
+}
+
 function openNutritionBuilder(clientId, prefillPlan) {
   _nbClientId = clientId;
   // prefillPlan lets the coach edit a specific plan (AI vs coach); falls back to the live plan.
   const np = (prefillPlan && typeof prefillPlan === 'object') ? prefillPlan : (_currentClientDetail?.nutritionPlan || {});
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'client';
-  _nbMeals = ((np.meals) || []).map(m => ({
-    name: m.name || '', time: m.time || '',
-    calories: m.kcal ?? m.calories ?? '',
-    protein_g: m.protein_g ?? '', carbs_g: m.carbs_g ?? '', fat_g: m.fat_g ?? '',
-    notes: m.notes || '',
-    // Carried through rather than dropped: foods are what the client's meal card actually
-    // lists. Copied row by row so editing in the builder never mutates the source plan.
-    foods: Array.isArray(m.foods)
-      ? m.foods.map(f => ({ name: (f && f.name) || '', amount: (f && f.amount) || '' }))
-      : []
-  }));
-  // Reassigned on every open, so a plan without per-day meals clears any previous one
-  // instead of carrying it across clients.
-  _nbWeeklyMeals = (np.weekly_meals && typeof np.weekly_meals === 'object' && !Array.isArray(np.weekly_meals))
+  // The flat `meals` array is only a seed here, never the thing being edited.
+  const wm = (np.weekly_meals && typeof np.weekly_meals === 'object' && !Array.isArray(np.weekly_meals))
     ? np.weekly_meals
     : null;
+  // Rebuilt from scratch on every open, so a plan without per-day meals can never inherit the
+  // previous client's week. Two cases, one resulting structure:
+  //   AI plan  — weekly_meals is the truth; any day it happens to be missing falls back to flat
+  //   coach plan — no weekly_meals at all, so all 7 days are seeded from the flat array
+  // Each day gets its own deep copy, otherwise editing Monday would edit all seven.
+  _nbWeeklyMeals = {};
+  for (let d = 0; d < 7; d++) {
+    const src = (wm && Array.isArray(wm[String(d)])) ? wm[String(d)] : np.meals;
+    _nbWeeklyMeals[String(d)] = nbNormaliseMeals(src);
+  }
+  _nbSelectedDay = nbTodayIndex();
+  nbSyncMealsAlias();
   // Assigned BEFORE the markup is built. nbField() renders value= straight from _nbDaily and
   // renderNbMeals() reads _nbMeals, so every piece of state the render touches is set first.
   // `?? ''` only falls through on null/undefined, so a genuine 0 is preserved.
@@ -13679,9 +13732,16 @@ function openNutritionBuilder(clientId, prefillPlan) {
         ${nbField('Fat (g)','nbFat','fat_g')}
       </div>
       <div id="nbCalcLine" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:18px;"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;">${t('nb_meals')}</span>
-        <button onclick="addNutritionMeal()" style="padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">${t('nb_add_meal')}</button>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">${t('nb_day')}</div>
+      <!-- Day selector + copy-day control. Filled by renderNbDayChips(), which owns the whole
+           block so the copy picker can exclude whichever day is currently selected. Negative
+           side margins let the chip row bleed to the overlay edges and scroll like the
+           client's .day-scroll does, without changing the 18px padding on everything else. -->
+      <div id="nbDayScroll" class="day-scroll" style="padding:0 18px 12px;margin:0 -18px;border-bottom:none;"></div>
+      <div id="nbCopyRow" style="margin-bottom:16px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;">
+        <span id="nbMealsHeading" style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;min-width:0;">${t('nb_meals')}</span>
+        <button onclick="addNutritionMeal()" style="flex:0 0 auto;padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">${t('nb_add_meal')}</button>
       </div>
       <div id="nbMealList"></div>
       <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:18px 0 8px;">${t('nb_notes_client')}</div>
@@ -13695,8 +13755,100 @@ function openNutritionBuilder(clientId, prefillPlan) {
   document.body.appendChild(overlay);
   // No post-append value stamping: the four macro inputs already carry _nbDaily's values from
   // nbField(). Stamping them here was the only thing keeping the DOM authoritative.
+  renderNbDayChips();
   renderNbMeals();
   nbRecalc();
+}
+
+// Weekday labels for the builder, same source as the client's day chips and the programme
+// builder's day toggles. Kept local rather than reaching for the top-level WEEK_DAYS so the
+// labels translate.
+const NB_DAY_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+// Owns the whole day block: the seven chips and the copy-day row beneath them. Mirrors the
+// client's renderNutritionCalendar() — same .day-scroll container, same .day-chip / .chip-day /
+// .chip-label structure and .active class — so the coach sees the day picker they already know
+// from the client side. Second line is the day's meal count, which is the number that matters
+// while building: it shows at a glance which days are still empty.
+function renderNbDayChips() {
+  const scroll = document.getElementById('nbDayScroll');
+  if (!scroll) return;
+  scroll.innerHTML = NB_DAY_KEYS.map((k, i) => {
+    const n = (_nbWeeklyMeals && Array.isArray(_nbWeeklyMeals[String(i)])) ? _nbWeeklyMeals[String(i)].length : 0;
+    const name = t('day_' + k);
+    return `<div class="day-chip ${i === _nbSelectedDay ? 'active' : ''}" onclick="nbSelectDay(${i})" style="min-width:52px;">
+      <div class="chip-day">${escHtml(name.slice(0, 3).toUpperCase())}</div>
+      <div class="chip-label" style="font-size:10px;">${escHtml(String(n))} ${escHtml(t('meals_label'))}</div>
+    </div>`;
+  }).join('');
+
+  // Copy control. The picker never lists the day you are standing on, so there is no
+  // copy-onto-itself case to guard. Building seven days meal by meal is the tedium this
+  // removes: set one day up properly, then push it everywhere.
+  const row = document.getElementById('nbCopyRow');
+  if (row) {
+    // This block is rebuilt on every add/delete too, which would otherwise reset the coach's
+    // choice mid-build. Carried across, and silently dropped when the option no longer exists
+    // (the day they had picked is the day they just switched to).
+    const prev = document.getElementById('nbCopyTarget')?.value;
+    const sel = "padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;flex:1;min-width:0;";
+    const opts = [`<option value="all">${escHtml(t('nb_copy_all_days'))}</option>`]
+      .concat(NB_DAY_KEYS.map((k, i) => i === _nbSelectedDay ? '' : `<option value="${i}">${escHtml(t('day_' + k))}</option>`))
+      .join('');
+    row.innerHTML = `<div style="display:flex;gap:8px;align-items:center;">
+      <select id="nbCopyTarget" style="${sel}">${opts}</select>
+      <button onclick="nbCopyDay()" style="flex:0 0 auto;padding:9px 14px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">${escHtml(t('nb_copy_btn'))}</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:6px;">${escHtml(t('nb_copy_hint'))}</div>`;
+    const restored = document.getElementById('nbCopyTarget');
+    if (restored && prev && [...restored.options].some(o => o.value === prev)) restored.value = prev;
+  }
+
+  const heading = document.getElementById('nbMealsHeading');
+  if (heading) heading.textContent = `${t('nb_meals')} — ${t('day_' + NB_DAY_KEYS[_nbSelectedDay])}`;
+}
+
+// One of only two places _nbMeals may be reassigned. Re-points the alias, then re-renders both
+// halves of the builder so the chips, the heading and the meal cards agree on the day.
+function nbSelectDay(i) {
+  if (i < 0 || i > 6) return;
+  _nbSelectedDay = i;
+  nbSyncMealsAlias();
+  renderNbDayChips();
+  renderNbMeals();
+}
+
+// Deep copy — a shared reference here would make every copied day edit in lockstep, which is
+// exactly the single-day behaviour this whole change removes.
+function nbCloneMeals(arr) {
+  return (Array.isArray(arr) ? arr : []).map(m => ({
+    name: m.name || '', time: m.time || '',
+    calories: m.calories ?? '', protein_g: m.protein_g ?? '', carbs_g: m.carbs_g ?? '', fat_g: m.fat_g ?? '',
+    notes: m.notes || '',
+    foods: (Array.isArray(m.foods) ? m.foods : []).map(f => ({ name: (f && f.name) || '', amount: (f && f.amount) || '' }))
+  }));
+}
+
+function nbCopyDay() {
+  if (!_nbWeeklyMeals) return;
+  const target = document.getElementById('nbCopyTarget')?.value;
+  if (!target) return;
+  const src = _nbWeeklyMeals[String(_nbSelectedDay)] || [];
+  if (target === 'all') {
+    for (let d = 0; d < 7; d++) {
+      if (d === _nbSelectedDay) continue;
+      _nbWeeklyMeals[String(d)] = nbCloneMeals(src);
+    }
+    showToast(t('nb_copied_all'), 'success');
+  } else {
+    const d = parseInt(target, 10);
+    if (isNaN(d) || d < 0 || d > 6 || d === _nbSelectedDay) return;
+    _nbWeeklyMeals[String(d)] = nbCloneMeals(src);
+    showToast(t('nb_copied_day', { day: t('day_' + NB_DAY_KEYS[d]) }), 'success');
+  }
+  // The selected day is untouched, so the meal cards do not need re-rendering — but the chip
+  // counts do.
+  renderNbDayChips();
 }
 
 function closeNutritionBuilder() { document.getElementById('nutritionBuilderOverlay')?.remove(); }
@@ -13711,9 +13863,20 @@ function nbRecalc() {
   if (el) el.textContent = `Calories from macros: ${Math.round(p * 4 + c * 4 + f * 9)} kcal`;
 }
 
+// push/splice, never reassignment — _nbMeals is the selected day's own array, so mutating it
+// in place is what makes every add and delete land on that day and nowhere else. The extra
+// renderNbDayChips() keeps the per-day meal counts on the chips honest.
 function addNutritionMeal() {
   _nbMeals.push({ name: '', time: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', notes: '', foods: [] });
   renderNbMeals();
+  renderNbDayChips();
+}
+
+function nbRemoveMeal(i) {
+  if (i < 0 || i >= _nbMeals.length) return;
+  _nbMeals.splice(i, 1);
+  renderNbMeals();
+  renderNbDayChips();
 }
 
 // Food rows re-render on add/remove (the indices in every oninput below them shift), while
@@ -13744,6 +13907,10 @@ function moveNbMeal(i, dir) {
 // DEAD AT RUNTIME — a later <script> block reassigns renderNbMeals (search "FIX 3:
 // nutrition builder meal cards"). That version is what the coach sees, and it is where the
 // per-meal foods editor lives. Changing this body has no effect.
+// Left deliberately un-updated by the day-aware change: it renders _nbMeals, which is now the
+// alias to the selected day, so it would still be correct — but its × button calls the raw
+// splice rather than nbRemoveMeal(), so the chip counts would go stale if it ever became live
+// again. Edit the live twin below, not this one.
 function renderNbMeals() {
   const list = document.getElementById('nbMealList');
   if (!list) return;
@@ -13774,21 +13941,40 @@ async function saveNutritionPlan() {
   // when the coach really has left the field blank.
   const cals = parseFloat(_nbDaily.calories) || 0;
   if (!cals) { showToast(t('toast_enter_calories'), 'error'); return; }
-  const meals = _nbMeals.filter(m => (m.name || '').trim() || m.calories).map(m => {
-    const k = parseFloat(m.calories) || 0;
-    return {
-      name: (m.name || '').trim() || 'Meal', time: (m.time || '').trim(),
-      kcal: k, calories: k,
-      protein_g: parseFloat(m.protein_g) || 0, carbs_g: parseFloat(m.carbs_g) || 0, fat_g: parseFloat(m.fat_g) || 0,
-      notes: (m.notes || '').trim(),
-      // Half-typed rows are dropped, so a meal built without foods still saves foods: []
-      // exactly as before — no regression for plans that never had a food list.
-      foods: (m.foods || [])
-        .filter(f => (f.name || '').trim() || (f.amount || '').trim())
-        .map(f => ({ name: (f.name || '').trim(), amount: (f.amount || '').trim() }))
-    };
-  });
   const notes = (document.getElementById('nbCoachNotes')?.value || '').trim();
+  // Same filtering as before, now applied per day: a row blank in both name and calories is
+  // dropped, and a food row blank in both name and amount is dropped. A meal built without
+  // foods still saves foods: [] exactly as it always did.
+  const cleanDay = (arr) => (Array.isArray(arr) ? arr : [])
+    .filter(m => (m.name || '').trim() || m.calories)
+    .map(m => {
+      const k = parseFloat(m.calories) || 0;
+      return {
+        name: (m.name || '').trim() || 'Meal', time: (m.time || '').trim(),
+        kcal: k, calories: k,
+        protein_g: parseFloat(m.protein_g) || 0, carbs_g: parseFloat(m.carbs_g) || 0, fat_g: parseFloat(m.fat_g) || 0,
+        notes: (m.notes || '').trim(),
+        foods: (m.foods || [])
+          .filter(f => (f.name || '').trim() || (f.amount || '').trim())
+          .map(f => ({ name: (f.name || '').trim(), amount: (f.amount || '').trim() }))
+      };
+    });
+  // The full week is what the client actually renders — getMealsForDay() reads weekly_meals
+  // before it reads `meals`. Writing only `meals` is what made a coach's edit save cleanly and
+  // then have no visible effect on the client.
+  // Note on empty days: [] is truthy, so getMealsForDay() returns it rather than falling back.
+  // That is deliberate — a day the coach emptied shows as empty. It is not a silent trap either,
+  // because the day chips show each day's meal count while building, and the copy-day control is
+  // there to fill the rest of the week from one properly built day.
+  const weekly_meals = {};
+  for (let d = 0; d < 7; d++) weekly_meals[String(d)] = cleanDay(_nbWeeklyMeals?.[String(d)]);
+  // `meals` stays valid as the fallback the generation prompt describes it as, and keeps
+  // anything still reading the flat array working. Derived from Monday, not from a separate
+  // edit surface, so the two can no longer drift apart. If Monday is empty the first day that
+  // has meals is used instead — an empty fallback would defeat the point of keeping one.
+  const meals = weekly_meals['0'].length
+    ? weekly_meals['0']
+    : (Object.keys(weekly_meals).map(k => weekly_meals[k]).find(a => a.length) || []);
   const nutrition_data = {
     calories: cals,
     protein_g: parseFloat(_nbDaily.protein_g) || 0,
@@ -13796,13 +13982,9 @@ async function saveNutritionPlan() {
     fat_g: parseFloat(_nbDaily.fat_g) || 0,
     strategy: notes || 'Set by your coach',
     coach_notes: notes || null,
+    // Daily macro targets stay plan-level. Only the meals vary by day.
     meals,
-    // Written back exactly as it came in. Omitting the key is what used to delete the
-    // client's 7-day variation, since the server spreads nutrition_data over the live plan.
-    // KNOWN LIMITATION: these per-day meals are preserved but not editable here, so they can
-    // drift from an edited `meals` array — and the client reads weekly_meals first, so a
-    // stale day can outrank the coach's edit. Still preferable to deleting the week.
-    ...(_nbWeeklyMeals ? { weekly_meals: _nbWeeklyMeals } : {}),
+    weekly_meals,
   };
   const asTemplate = document.getElementById('nbTemplateToggle')?.checked;
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'Client';
@@ -15380,6 +15562,8 @@ renderClientSummaryCard = function (ov, opened) {
 // This REASSIGNS the renderNbMeals defined earlier in the file. Being in a later <script>
 // block, this version is the one that runs — the earlier definition never executes. Edit
 // the meal card here, not there.
+// Day-aware: _nbMeals is the alias to _nbWeeklyMeals[_nbSelectedDay], so this renders and
+// edits the selected day only. renderNbDayChips() owns the day picker above it.
 renderNbMeals = function () {
   var list = document.getElementById('nbMealList');
   if (!list) return;
@@ -15418,7 +15602,7 @@ renderNbMeals = function () {
         <input value="${escHtml(m.name)}" oninput="_nbMeals[${i}].name=this.value" placeholder="${t('nb_meal_name')}" style="flex:1;${inpS}font-family:'DM Sans',sans-serif;">
         <button onclick="moveNbMeal(${i},-1)" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↑</button>
         <button onclick="moveNbMeal(${i},1)" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;cursor:pointer;">↓</button>
-        <button onclick="_nbMeals.splice(${i},1);renderNbMeals()" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:8px;width:32px;cursor:pointer;">×</button>
+        <button onclick="nbRemoveMeal(${i})" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--red,#ff4444);border-radius:8px;width:32px;cursor:pointer;">×</button>
       </div>
       <input value="${escHtml(m.time)}" oninput="_nbMeals[${i}].time=this.value" placeholder="${t('nb_meal_time')}" style="${inpS}font-family:'DM Sans',sans-serif;margin-bottom:8px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
