@@ -4664,8 +4664,11 @@ async function renderWorkoutPanel() {
   refreshPlanEnrichment();
 }
 
-// FIX 5 + 7: inject (or remove) the "FROM YOUR COACH" banner and the AI/Coach plan toggle
-// at the top of the Plan panel. Only shown when the coach has assigned a workout plan.
+// Inject (or remove) the "FROM YOUR COACH" banner at the top of the Plan panel. Shown whenever
+// the coach has assigned a workout plan — gated on wp.coach_assigned, the RAW active plan, so
+// it depends on no toggle or view state and cannot disappear mid-session.
+//
+// The AI/Coach plan toggle that used to render here has been removed. See the block below.
 function renderWorkoutCoachUI() {
   const anchor = document.getElementById('dayScroll');
   document.getElementById('coachWorkoutBanner')?.remove();
@@ -4682,21 +4685,37 @@ function renderWorkoutCoachUI() {
       </div>
     </div>`;
 
-  const hasBackup = wp._ai_backup && (wp._ai_backup.days || []).length;
-  // Hide the AI/Coach toggle when an active coach is connected — the coach controls which plan
-  // is shown. _myCoachActive is cached from /api/my-coach (true once a coach is linked).
-  const hasCoach = _myCoachActive === true || !!window._myCoachData?.coach_id || !!window._activeCoach;
-  const onAI = !!window._useAIPlan;
-  const toggle = (hasBackup && !hasCoach) ? `<div id="planSourceToggle" style="display:flex;gap:8px;margin:0 16px 10px;align-items:center;">
-      <button onclick="setPlanSource('coach')" id="btnPlanCoach" class="tap-anim" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;background:${onAI ? 'var(--surface2)' : 'var(--accent)'};color:${onAI ? 'var(--muted)' : 'var(--bg)'};border:none;cursor:pointer;">COACH PLAN</button>
-      <button onclick="setPlanSource('ai')" id="btnPlanAI" class="tap-anim" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;background:${onAI ? 'var(--accent)' : 'var(--surface2)'};color:${onAI ? 'var(--bg)' : 'var(--muted)'};border:none;cursor:pointer;">AI PLAN</button>
-    </div>` : '';
-
-  anchor.insertAdjacentHTML('beforebegin', banner + toggle);
+  // The AI/Coach plan toggle is gone, mirroring the Food panel. It only ever rendered past the
+  // wp.coach_assigned guard above, so "never render it for a coach-assigned plan" makes every
+  // reachable case dead — the whole block goes rather than growing another condition.
+  //
+  // Why it had to go: its visibility was gated on
+  //     (hasBackup && !hasCoach), hasCoach = _myCoachActive === true || ...
+  // and _myCoachActive is null until /api/my-coach resolves (app.html:12117), permanently null
+  // if that call times out (app.html:12127). So the toggle rendered for a coached client, and
+  // then vanished on the next render once my-coach resolved true — no way back to the coach
+  // plan, with the banner still reading "FROM YOUR COACH" over AI days. Leaving a coach's
+  // programme is what the disconnect flow is for, not a pill that appears on a race.
+  //
+  // The ?.remove() above stays as a safety net for a stale node from an earlier render.
+  // setPlanSource() (app.html:4720) is NOT removed — see the note on its declaration.
+  anchor.insertAdjacentHTML('beforebegin', banner);
 }
 
-// FIX 7: module-level plan source ('coach' | 'ai'); window._useAIPlan mirrors it for the
-// shared getActiveProgramme() and getActiveNutrition() helpers.
+// Module-level plan source ('coach' | 'ai'); window._useAIPlan mirrors it.
+//
+// DEAD AT RUNTIME AS OF THIS BUILD — setPlanSource() has no remaining callers. Both Coach/AI
+// toggles that called it are gone: the Food panel's first, then the Plan panel's above. So
+// window._useAIPlan can now only ever be false — nothing sets it true, and
+// confirmDisconnectCoach() still resets it to false (app.html:15416).
+//
+// Kept, NOT deleted. Removing a function plus its module state is a separate change, and two
+// readers still consult the flag: renderWorkoutPanel() (app.html:4660) and getActiveProgramme()
+// (app.html:4929). Both of those branches are also guarded by coach_assigned, so they are inert
+// for un-coached clients and unreachable for coached ones while nothing sets the flag.
+//
+// getActiveNutrition() no longer reads the flag at all — the Food panel was deliberately
+// decoupled so a coach nutrition plan can never be swapped out from under its banner.
 let planSource = 'coach';
 function setPlanSource(source) {
   planSource = (source === 'ai') ? 'ai' : 'coach';
@@ -5548,13 +5567,24 @@ function switchNutritionTab(tab) {
   if (tab === 'shopping') { loadLanguage(); renderShoppingList(); }
 }
 
-// FIX 7: resolve the nutrition plan to render — the coach plan, or its AI backup when toggled.
+// Resolve the nutrition plan to render.
+//
+// A coach-assigned nutrition plan is now the ONLY plan the client sees. The client-side
+// Coach/AI nutrition toggle has been removed: its own visibility depended on _myCoachActive,
+// which is null until /api/my-coach resolves, so the toggle could render, be tapped, and then
+// disappear on the next render — stranding the client on the AI backup with no way back.
+//
+// window._useAIPlan is deliberately NOT consulted here any more. When this was written the
+// WORKOUT toggle still set it, so tapping AI on the Plan panel silently swapped the Food panel
+// to the AI backup underneath the "FROM YOUR COACH" banner. That toggle has since been removed
+// too, so nothing sets the flag at all now — this stays decoupled regardless.
+//
+// No coach plan: unchanged — falls through to the active nutrition programme, then the AI plan,
+// exactly as before (both removed branches already required coach_assigned).
 function getActiveNutrition() {
   const np = userPlan?.nutrition_plan;
   if (!np) return null;
-  if (window._useAIPlan && np.coach_assigned && np._ai_backup)
-    return np._ai_backup;
-  if (np.coach_assigned && !window._useAIPlan)
+  if (np.coach_assigned)
     return np;
   if (window._activeNutritionProgramme?.plan_data?.nutrition)
     return window._activeNutritionProgramme.plan_data.nutrition;
@@ -5568,25 +5598,26 @@ function renderNutritionPanel() {
   if (!n) return;
   document.getElementById('nutrition-sub').textContent = n.strategy || t('nutrition_personalised');
 
-  // Coach-assigned nutrition banner (Feature 2) — only while viewing the coach plan.
+  // Coach-assigned nutrition banner (Feature 2) — shown whenever a coach nutrition plan is
+  // active. Gated on the RAW active plan (np0), not on the resolved view and not on any toggle
+  // state, so the client can always see whose plan they are following. np0 and n are the same
+  // object here: getActiveNutrition() returns the coach plan whenever coach_assigned is set.
   document.getElementById('coachNutritionBanner')?.remove();
-  if (n.coach_assigned) {
+  if (np0.coach_assigned) {
     const mr = document.getElementById('macroRow');
-    if (mr) mr.insertAdjacentHTML('beforebegin', `<div id="coachNutritionBanner" style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:14px;"><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--amber);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;">${t('from_your_coach')}</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">${escHtml(n.coach_name || 'Your coach')} has set your nutrition plan.</div>${n.coach_notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">${escHtml(n.coach_notes)}</div>` : ''}</div>`);
+    if (mr) mr.insertAdjacentHTML('beforebegin', `<div id="coachNutritionBanner" style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:14px;"><div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--amber);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;">${t('from_your_coach')}</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">${escHtml(np0.coach_name || 'Your coach')} has set your nutrition plan.</div>${np0.coach_notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">${escHtml(np0.coach_notes)}</div>` : ''}</div>`);
   }
 
-  // FIX 7: AI/Coach nutrition toggle (only when the coach assigned nutrition with an AI backup).
+  // The AI/Coach nutrition toggle is gone. It only ever rendered for a coach-assigned plan
+  // (np0.coach_assigned && np0._ai_backup), and its own visibility also depended on
+  // _myCoachActive — null until /api/my-coach resolves, and permanently null if that call
+  // times out. So the toggle could render, be tapped, and then vanish on the very next render,
+  // leaving the client on the AI backup with no way back and no coach banner. A client on a
+  // coach nutrition plan now sees only that plan, with the banner above.
+  //
+  // The remove() stays as a safety net for a stale node left in the DOM by an earlier render.
+  // setPlanSource() is NOT removed — see the note on its declaration (app.html:4705).
   document.getElementById('nutritionSourceToggle')?.remove();
-  // Hide the AI/Coach toggle when an active coach is connected — the coach controls the plan.
-  const hasCoachN = _myCoachActive === true || !!window._myCoachData?.coach_id || !!window._activeCoach;
-  if (np0.coach_assigned && np0._ai_backup && !hasCoachN) {
-    const mr2 = document.getElementById('macroRow');
-    const onAI = !!window._useAIPlan;
-    if (mr2) mr2.insertAdjacentHTML('beforebegin', `<div id="nutritionSourceToggle" style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-      <button onclick="setPlanSource('coach')" class="tap-anim" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;background:${onAI ? 'var(--surface2)' : 'var(--accent)'};color:${onAI ? 'var(--muted)' : 'var(--bg)'};border:none;cursor:pointer;">COACH NUTRITION</button>
-      <button onclick="setPlanSource('ai')" class="tap-anim" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;background:${onAI ? 'var(--accent)' : 'var(--surface2)'};color:${onAI ? 'var(--bg)' : 'var(--muted)'};border:none;cursor:pointer;">AI NUTRITION</button>
-    </div>`);
-  }
 
   // Macros
   document.getElementById('macroRow').innerHTML = `
