@@ -10294,6 +10294,27 @@ const STRINGS = {
     aiprog_err_generation: "Couldn't generate that — try rephrasing your brief",
     aiprog_err_rate_limit: 'Too many generations — try again later',
     aiprog_failed: 'Generation failed — try again',
+    ainutri_cta: 'GENERATE WITH AI',
+    ainutri_title: 'GENERATE NUTRITION WITH AI',
+    ainutri_explain: "Describe the meal plan — the AI will use this client's profile for their stats, goal and dietary restrictions. It saves to your library as a draft, so nothing changes for the client until you assign it.",
+    ainutri_placeholder: '2200 kcal, high protein, vegetarian, 4 meals a day, no dairy',
+    ainutri_generate: 'Generate',
+    ainutri_cancel: 'Cancel',
+    ainutri_need_brief: 'Describe the meal plan first',
+    ainutri_default_name: 'AI nutrition plan',
+    ainutri_status_1: 'READING THE PROFILE',
+    ainutri_sub_1: 'Pulling their stats, goal and dietary restrictions.',
+    ainutri_status_2: 'SETTING THE MACROS',
+    ainutri_sub_2: 'Working out calories, protein, carbs and fat.',
+    ainutri_status_3: 'BUILDING THE MEALS',
+    ainutri_sub_3: 'Structuring the day around your brief.',
+    ainutri_status_4: 'VARYING THE WEEK',
+    ainutri_sub_4: 'Writing seven different days of food. This can take a minute.',
+    ainutri_err_timeout: 'Generation took too long — try again',
+    ainutri_err_no_connection: 'You are no longer connected to this client',
+    ainutri_err_generation: "Couldn't generate that — try rephrasing your brief",
+    ainutri_err_rate_limit: 'Too many generations — try again later',
+    ainutri_failed: 'Generation failed — try again',
     client_prog_template_lib: 'TEMPLATE LIBRARY',
     client_prog_library: 'PROGRAMME LIBRARY',
     client_prog_badge_template: 'Template',
@@ -11232,6 +11253,27 @@ const STRINGS = {
     aiprog_err_generation: 'Génération impossible — reformulez vos consignes',
     aiprog_err_rate_limit: 'Trop de générations — réessayez plus tard',
     aiprog_failed: 'Échec de la génération — réessayez',
+    ainutri_cta: 'GÉNÉRER AVEC L\'IA',
+    ainutri_title: 'GÉNÉRER LA NUTRITION AVEC L\'IA',
+    ainutri_explain: 'Décrivez le plan alimentaire — l\'IA utilisera le profil de ce client pour ses mesures, son objectif et ses restrictions alimentaires. Le plan est enregistré en brouillon dans votre bibliothèque : rien ne change pour le client tant que vous ne l\'assignez pas.',
+    ainutri_placeholder: '2200 kcal, riche en protéines, végétarien, 4 repas par jour, sans produits laitiers',
+    ainutri_generate: 'Générer',
+    ainutri_cancel: 'Annuler',
+    ainutri_need_brief: 'Décrivez d\'abord le plan alimentaire',
+    ainutri_default_name: 'Plan nutrition IA',
+    ainutri_status_1: 'LECTURE DU PROFIL',
+    ainutri_sub_1: 'Récupération des mesures, de l\'objectif et des restrictions alimentaires.',
+    ainutri_status_2: 'CALCUL DES MACROS',
+    ainutri_sub_2: 'Définition des calories, protéines, glucides et lipides.',
+    ainutri_status_3: 'CONSTRUCTION DES REPAS',
+    ainutri_sub_3: 'Organisation de la journée selon votre brief.',
+    ainutri_status_4: 'VARIATION DE LA SEMAINE',
+    ainutri_sub_4: 'Rédaction de sept journées différentes. Cela peut prendre une minute.',
+    ainutri_err_timeout: 'La génération a pris trop de temps — réessayez',
+    ainutri_err_no_connection: 'Vous n\'êtes plus connecté à ce client',
+    ainutri_err_generation: 'Impossible de générer cela — reformulez votre brief',
+    ainutri_err_rate_limit: 'Trop de générations — réessayez plus tard',
+    ainutri_failed: 'Échec de la génération — réessayez',
     client_prog_template_lib: 'BIBLIOTHÈQUE DE MODÈLES',
     client_prog_library: 'BIBLIOTHÈQUE DE PROGRAMMES',
     client_prog_badge_template: 'Modèle',
@@ -13348,9 +13390,13 @@ async function renderClientProgrammeTab(body) {
     if (coachNutrition && (coachNutrition.calories || coachNutrition.daily_calories || (coachNutrition.meals || []).length)) {
       html += _coachNutritionCard(coachNutrition);
       html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_coach_nutrition'), "editCoachNutrition('coach')")}${activeBtn(nutritionActive === 'coach', "setActiveNutrition('coach')")}</div>`;
+      // Secondary treatment (aiCtaBtn), below the manual actions — same placement and weight
+      // the workout side gives its generate button, so the manual builder stays first-class.
+      html += `<div style="height:8px;"></div>` + aiCtaBtn(t('ainutri_cta'), 'openAiNutritionSheet()');
     } else {
       html += emptyCard(t('client_prog_no_coach_nutrition'));
       html += ctaBtn(t('client_prog_create'), "editCoachNutrition('coach')");
+      html += aiCtaBtn(t('ainutri_cta'), 'openAiNutritionSheet()');
     }
     // Same placement as the workout library — inside the coach view, in BOTH states. With a
     // plan already assigned this is the only route to switching the client onto a different
@@ -13566,6 +13612,122 @@ async function runAiProgrammeGeneration() {
   else if (res?._status === 429)               msg = t('aiprog_err_rate_limit');
   else                                          msg = t('aiprog_failed');
   _renderAiProgrammeInput(brief);
+  showToast(msg, 'error');
+}
+
+// ── Coach AI nutrition generation ─────────────────────
+// The nutrition twin of the block above, deliberately structured the same way so the two
+// features are the same thing to use. POST /api/coach/clients/:id/generate-nutrition writes
+// nothing; the generated plan opens in the nutrition builder for review.
+//
+// _aiNutriTimer holds the rotating-status interval and is cleared in EVERY exit path:
+// success, each failure branch, and closeAiNutritionSheet() (close button, backdrop tap).
+let _aiNutriTimer = null;
+
+function _clearAiNutriTimer() {
+  if (_aiNutriTimer) { clearInterval(_aiNutriTimer); _aiNutriTimer = null; }
+}
+
+function closeAiNutritionSheet() {
+  _clearAiNutriTimer();
+  document.getElementById('aiNutritionOverlay')?.remove();
+}
+
+// prefill re-seeds the textarea after a failed attempt so the coach never retypes a brief.
+function openAiNutritionSheet(prefill) {
+  document.getElementById('aiNutritionOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'aiNutritionOverlay';
+  // Same layer as the workout sheet and the programme builder (9500): above the client-detail
+  // overlay, below the coach-request gate (9700) and the paywalls (10002+).
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);display:flex;flex-direction:column;justify-content:flex-end;';
+  // Backdrop dismiss — only when the tap lands on the backdrop itself, not inside the sheet.
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeAiNutritionSheet(); });
+  overlay.innerHTML = `<div id="aiNutriSheet" style="background:var(--bg);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:20px 18px calc(20px + var(--safe-bottom));max-height:88vh;overflow-y:auto;"></div>`;
+  document.body.appendChild(overlay);
+  _renderAiNutritionInput(prefill || '');
+}
+
+function _renderAiNutritionInput(brief) {
+  const el = document.getElementById('aiNutriSheet');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">${escHtml(t('ainutri_title'))}</div>
+      <button onclick="closeAiNutritionSheet()" style="background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;">${escHtml(t('ainutri_explain'))}</div>
+    <textarea id="aiNutriBrief" maxlength="500" rows="4" placeholder="${escHtml(t('ainutri_placeholder'))}" style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;resize:none;outline:none;line-height:1.5;">${escHtml(brief || '')}</textarea>
+    <button onclick="runAiNutritionGeneration()" style="width:100%;margin-top:14px;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;">${escHtml(t('ainutri_generate'))}</button>
+    <button onclick="closeAiNutritionSheet()" style="width:100%;margin-top:8px;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">${escHtml(t('ainutri_cancel'))}</button>`;
+}
+
+function _renderAiNutritionLoading() {
+  const el = document.getElementById('aiNutriSheet');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 10px;">
+      <div class="loader" style="margin-bottom:16px;"><div class="spin"></div></div>
+      <div id="aiNutriStatus" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">${escHtml(t('ainutri_status_1'))}</div>
+      <div id="aiNutriSub" style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.5;">${escHtml(t('ainutri_sub_1'))}</div>
+    </div>`;
+}
+
+async function runAiNutritionGeneration() {
+  const ta = document.getElementById('aiNutriBrief');
+  const brief = (ta?.value || '').trim();
+  if (!brief) { showToast(t('ainutri_need_brief'), 'error'); return; }
+
+  const cid = _currentClientDetail?.clientId;
+  if (!cid) { showToast(t('ainutri_failed'), 'error'); return; }
+
+  _renderAiNutritionLoading();
+
+  // Rotating status copy — generation runs 20-90s, so a static spinner reads as a hang.
+  const msgs = [
+    [t('ainutri_status_1'), t('ainutri_sub_1')],
+    [t('ainutri_status_2'), t('ainutri_sub_2')],
+    [t('ainutri_status_3'), t('ainutri_sub_3')],
+    [t('ainutri_status_4'), t('ainutri_sub_4')],
+  ];
+  let mi = 0;
+  _clearAiNutriTimer(); // guard against a double-tap leaving an orphaned interval
+  _aiNutriTimer = setInterval(() => {
+    mi = (mi + 1) % msgs.length;
+    const s = document.getElementById('aiNutriStatus');
+    const b = document.getElementById('aiNutriSub');
+    if (s) s.textContent = msgs[mi][0];
+    if (b) b.textContent = msgs[mi][1];
+  }, 6000);
+
+  // 300000 is mandatory — api()'s 30s default would abort mid-generation.
+  const res = await api('/api/coach/clients/' + cid + '/generate-nutrition', 'POST',
+    { brief: brief, language: appLanguage || 'en' }, 300000);
+
+  _clearAiNutriTimer();
+
+  if (res && res.nutrition && res.nutrition.calories) {
+    closeAiNutritionSheet();
+    // draftOnly is the point: generating must never assign anything to the client. The plan
+    // opens in the builder offering "Save to library" only, exactly like editing the AI plan,
+    // so the coach reviews it and then assigns from the library when they mean to.
+    // The whole nutrition object goes in — openNutritionBuilder reads weekly_meals across all
+    // 7 days, per-meal foods and the daily macros straight off it.
+    openNutritionBuilder(cid, res.nutrition, {
+      programmeId: null, isLibraryRow: false, draftOnly: true,
+      name: t('ainutri_default_name'),
+    });
+    return;
+  }
+
+  // Failure — restore the input state with the brief intact, then explain what went wrong.
+  let msg;
+  if (res?._error === 'timeout')               msg = t('ainutri_err_timeout');
+  else if (res?.error === 'no_connection')     msg = t('ainutri_err_no_connection');
+  else if (res?.error === 'generation_failed') msg = t('ainutri_err_generation');
+  else if (res?._status === 429)               msg = t('ainutri_err_rate_limit');
+  else                                          msg = t('ainutri_failed');
+  _renderAiNutritionInput(brief);
   showToast(msg, 'error');
 }
 
