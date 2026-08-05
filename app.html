@@ -13161,6 +13161,10 @@ async function renderClientProgrammeTab(body) {
   _currentClientDetail.progView = {
     aiWorkoutDays, coachWorkoutDays, assignedWorkoutId: assigned?.id || null,
     aiNutrition, coachNutrition,
+    // The nutrition equivalent of assignedWorkoutId. Non-null ONLY when coachNutrition was
+    // resolved FROM that row — the condition deliberately mirrors the ternary above, so the id
+    // can never point at a row that is not the plan being edited. Null makes the builder POST.
+    coachNutritionId: assignedNutri?.nutrition_data ? assignedNutri.id : null,
   };
   if (_currentClientDetail.planView == null) _currentClientDetail.planView = workoutActive;
   if (_currentClientDetail.nutriView == null) _currentClientDetail.nutriView = nutritionActive;
@@ -13486,7 +13490,12 @@ function editCoachNutrition(kind) {
   const pv = _currentClientDetail?.progView; if (!pv) return;
   const cid = _currentClientDetail.clientId;
   const np = kind === 'ai' ? pv.aiNutrition : pv.coachNutrition;
-  openNutritionBuilder(cid, np || {});
+  // Same shape as editCoachWorkout() → openProgrammeBuilder(pv.assignedWorkoutId): the coach
+  // plan carries its row id so saving PATCHes that row, while the AI plan and a from-scratch
+  // build carry null so saving POSTs. Opening the AI plan is a starting point for a NEW coach
+  // plan, never an edit of an existing one — passing its id would overwrite the wrong row.
+  const srcId = kind === 'coach' ? (pv.coachNutritionId || null) : null;
+  openNutritionBuilder(cid, np || {}, srcId);
 }
 
 async function setActiveWorkout(kind) {
@@ -13629,6 +13638,12 @@ async function deleteAssignedProgramme(programmeId) {
 // silently detaches the builder from the day it is meant to be editing.
 let _nbMeals = [];
 let _nbClientId = null;
+// The coach_programmes row this builder session is editing, or null when building a new plan.
+// Mirrors _builderState.id in the workout builder (see saveBuilderProgramme's `if
+// (_builderState.id)` branch). Without it saveNutritionPlan POSTed every time, so each save
+// INSERTed another assigned row for the same client — and the coach view resolves the assigned
+// plan with .find(), so which of the duplicates won came down to row ordering.
+let _nbProgrammeId = null;
 // weekly_meals is the per-day plan the AI generates (7 varied days) and the one the client
 // actually renders — getMealsForDay() reads it BEFORE falling back to the flat `meals` array,
 // which the generation prompt itself describes as "just a fallback". The builder used to edit
@@ -13684,8 +13699,11 @@ function nbSyncMealsAlias() {
   _nbMeals = _nbWeeklyMeals[k];
 }
 
-function openNutritionBuilder(clientId, prefillPlan) {
+function openNutritionBuilder(clientId, prefillPlan, programmeId) {
   _nbClientId = clientId;
+  // Set on every open, so a session that started from the AI plan can never inherit the row id
+  // of a coach plan opened earlier and overwrite it on save.
+  _nbProgrammeId = programmeId || null;
   // prefillPlan lets the coach edit a specific plan (AI vs coach); falls back to the live plan.
   const np = (prefillPlan && typeof prefillPlan === 'object') ? prefillPlan : (_currentClientDetail?.nutritionPlan || {});
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'client';
@@ -13870,6 +13888,16 @@ function addNutritionMeal() {
   _nbMeals.push({ name: '', time: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', notes: '', foods: [] });
   renderNbMeals();
   renderNbDayChips();
+  // renderNbMeals() replaces #nbMealList wholesale, so the new card is whatever ended up last.
+  // On a day with several meals it lands below the fold and the tap reads as a no-op. Deferred
+  // a frame so the freshly written innerHTML has been laid out before we measure it — the same
+  // requestAnimationFrame-then-scroll pattern the chat panels use.
+  // The workout builder's addBuilderSession() has no equivalent and appends off-screen the
+  // same way; this pattern ports straight across if that gets fixed too.
+  requestAnimationFrame(() => {
+    document.getElementById('nbMealList')?.lastElementChild
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
 function nbRemoveMeal(i) {
@@ -13988,13 +14016,25 @@ async function saveNutritionPlan() {
   };
   const asTemplate = document.getElementById('nbTemplateToggle')?.checked;
   const clientName = (_currentClientDetail?.overview?.profile?.name) || 'Client';
-  const res = await api('/api/coach/programmes', 'POST', {
-    name: `Nutrition — ${clientName}`,
-    programme_type: 'nutrition',
-    nutrition_data,
-    client_id: asTemplate ? null : _nbClientId,
-    is_template: !!asTemplate,
-  });
+  // The same branch the workout builder takes (`if (_builderState.id)` in
+  // saveBuilderProgramme). Editing an existing coach nutrition plan now updates that row
+  // instead of inserting a rival copy of it. "Save as template" always POSTs: a template is a
+  // new library row, never an edit of the client's assigned plan.
+  let res;
+  if (_nbProgrammeId && !asTemplate) {
+    res = await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', {
+      name: `Nutrition — ${clientName}`,
+      nutrition_data,
+    });
+  } else {
+    res = await api('/api/coach/programmes', 'POST', {
+      name: `Nutrition — ${clientName}`,
+      programme_type: 'nutrition',
+      nutrition_data,
+      client_id: asTemplate ? null : _nbClientId,
+      is_template: !!asTemplate,
+    });
+  }
   if (res?.ok) {
     showToast(asTemplate ? 'Template saved' : 'Nutrition plan assigned', 'success');
     closeNutritionBuilder();
