@@ -10161,7 +10161,7 @@ const STRINGS = {
     nb_builder_title: 'Nutrition plan for {name}',
     nb_plan_name: 'PLAN NAME',
     nb_plan_name_placeholder: 'e.g. Cutting phase — 2200 kcal',
-    nb_save_template_label: 'Reusable template — keep for assigning to other clients too',
+    nb_save_template_label: 'Reusable template — assignable to any client instead of belonging to this one',
     nb_save_library: 'Save to library',
     nb_save_assign: 'Save and assign to {name}',
     nb_cancel: 'Cancel',
@@ -10172,11 +10172,15 @@ const STRINGS = {
     nb_toast_assigned: 'Nutrition plan assigned',
     nb_toast_saved_not_assigned: 'Saved to library, but assigning failed',
     client_prog_nutrition_library: 'NUTRITION LIBRARY',
+    // The two shelves both libraries split into. Shared by the workout and nutrition sections
+    // on purpose — one pair of headings to learn, not two.
+    client_prog_lib_for_client: 'PROGRAMMES FOR THIS CLIENT',
+    client_prog_lib_available: 'AVAILABLE TO ASSIGN',
     pb_title: 'PROGRAMME BUILDER',
     pb_add_session: '+ Add session',
     pb_save_draft: 'Save to library',
     pb_save_assign: 'Save & assign',
-    pb_template_toggle: 'Reusable template — keep for assigning to other clients too',
+    pb_template_toggle: 'Reusable template — assignable to any client instead of belonging to this one',
     pb_session_name: 'Session name',
     pb_coach_note: 'Coach note (client sees this)',
     pb_exercise_name: 'Exercise name',
@@ -11120,7 +11124,7 @@ const STRINGS = {
     nb_builder_title: 'Plan nutrition pour {name}',
     nb_plan_name: 'NOM DU PLAN',
     nb_plan_name_placeholder: 'ex. Phase de sèche — 2200 kcal',
-    nb_save_template_label: 'Modèle réutilisable — à garder pour d\'autres clients',
+    nb_save_template_label: 'Modèle réutilisable — assignable à n\'importe quel client au lieu d\'appartenir à celui-ci',
     nb_save_library: 'Enregistrer dans la bibliothèque',
     nb_save_assign: 'Enregistrer et assigner à {name}',
     nb_cancel: 'Annuler',
@@ -11131,11 +11135,13 @@ const STRINGS = {
     nb_toast_assigned: 'Plan nutrition assigné',
     nb_toast_saved_not_assigned: 'Enregistré dans la bibliothèque, mais l\'assignation a échoué',
     client_prog_nutrition_library: 'BIBLIOTHÈQUE NUTRITION',
+    client_prog_lib_for_client: 'PROGRAMMES POUR CE CLIENT',
+    client_prog_lib_available: 'DISPONIBLES À ASSIGNER',
     pb_title: 'CRÉATEUR DE PROGRAMME',
     pb_add_session: '+ Ajouter une séance',
     pb_save_draft: 'Enregistrer dans la bibliothèque',
     pb_save_assign: 'Sauvegarder & assigner',
-    pb_template_toggle: 'Modèle réutilisable — à garder pour l\'assigner à d\'autres clients',
+    pb_template_toggle: 'Modèle réutilisable — assignable à n\'importe quel client au lieu d\'appartenir à celui-ci',
     pb_session_name: 'Nom de la séance',
     pb_coach_note: 'Note du coach (visible par le client)',
     pb_exercise_name: 'Nom de l\'exercice',
@@ -13259,11 +13265,23 @@ async function renderClientProgrammeTab(body) {
   // `p.is_template` filter excluded, so drafts saved successfully and were then invisible
   // in every rendering path. Keying on client_id surfaces drafts and templates alike and
   // recovers every previously orphaned row with no migration.
-  const library = all.filter(p => p.client_id === null && !isNutri(p));
+  //
+  // That shelf is then split in two by built_for_client_id — which client the row was BUILT
+  // for, independent of whether it is assigned to anyone. Section 1 is this client's own work;
+  // section 2 is the deliberate CATCH-ALL: `!== cid` also matches null (legacy rows saved
+  // before the column existed) and any other client's id (a draft built elsewhere). The two
+  // predicates are exact complements over the same set, so every unassigned row lands in
+  // exactly one section and no row can be invisible.
+  const isUnassignedWorkout = p => p.client_id === null && !isNutri(p);
+  const libraryForClient = all.filter(p => isUnassignedWorkout(p) && p.built_for_client_id === cid);
+  const libraryAvailable = all.filter(p => isUnassignedWorkout(p) && p.built_for_client_id !== cid);
   // The nutrition half of the same shelf. Deliberately a separate list rendered in its own
   // section under NUTRITION rather than merged into the programme library — a coach looking
-  // for a meal plan must not scroll past workout programmes to reach it.
-  const nutritionLibrary = all.filter(p => p.client_id === null && isNutri(p));
+  // for a meal plan must not scroll past workout programmes to reach it. Split on the same
+  // pointer, with the same catch-all on the second list.
+  const isUnassignedNutri = p => p.client_id === null && isNutri(p);
+  const nutritionForClient = all.filter(p => isUnassignedNutri(p) && p.built_for_client_id === cid);
+  const nutritionAvailable = all.filter(p => isUnassignedNutri(p) && p.built_for_client_id !== cid);
   // Assigning COPIES, so the library row and the assigned row are different rows. The copy
   // carries source_programme_id back to the library row it came from — that pointer is the
   // only thing that can mark a library row ACTIVE for the client being viewed. Null on every
@@ -13425,9 +13443,16 @@ async function renderClientProgrammeTab(body) {
     // The library renders in BOTH states, not just the empty one. With a plan already
     // assigned this is the only route to switching the client onto a different saved
     // programme — which is what makes "build several, assign one at a time" work.
-    if (library.length) {
-      html += sectionLabel(t('client_prog_library'), '18px');
-      html += library.map(libraryRow).join('');
+    // Two shelves, rendered this-client-first so the coach's own work for the person they are
+    // looking at is what they land on. An empty section renders NOTHING — not an empty block —
+    // so a coach with no scoped programmes sees the shared shelf exactly as before.
+    if (libraryForClient.length) {
+      html += sectionLabel(escHtml(t('client_prog_lib_for_client')), '18px');
+      html += libraryForClient.map(libraryRow).join('');
+    }
+    if (libraryAvailable.length) {
+      html += sectionLabel(escHtml(t('client_prog_lib_available')), '18px');
+      html += libraryAvailable.map(libraryRow).join('');
     }
   }
 
@@ -13458,9 +13483,15 @@ async function renderClientProgrammeTab(body) {
     // Same placement as the workout library — inside the coach view, in BOTH states. With a
     // plan already assigned this is the only route to switching the client onto a different
     // saved meal plan, which is what makes "build several, assign one at a time" work here too.
-    if (nutritionLibrary.length) {
-      html += sectionLabel(t('client_prog_nutrition_library'), '18px');
-      html += nutritionLibrary.map(nutritionLibraryRow).join('');
+    // Same two-section split as the workout shelf above — same headings, same order, same
+    // empty-section handling — so the two libraries stay one idea to learn.
+    if (nutritionForClient.length) {
+      html += sectionLabel(escHtml(t('client_prog_lib_for_client')), '18px');
+      html += nutritionForClient.map(nutritionLibraryRow).join('');
+    }
+    if (nutritionAvailable.length) {
+      html += sectionLabel(escHtml(t('client_prog_lib_available')), '18px');
+      html += nutritionAvailable.map(nutritionLibraryRow).join('');
     }
   }
 
@@ -14149,6 +14180,8 @@ function openNutritionBuilder(clientId, prefillPlan, opts) {
       <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:18px 0 8px;">${t('nb_notes_client')}</div>
       <textarea id="nbCoachNotes" rows="3" placeholder="${t('nb_notes_placeholder')}" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;line-height:1.5;resize:vertical;box-sizing:border-box;">${escHtml(np.coach_notes || '')}</textarea>
       <label style="display:flex;align-items:center;gap:8px;margin:14px 0;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <!-- No checked attribute: this box is unchecked on every open, so the natural save
+             scopes the plan to the client whose card the builder was opened from. -->
         <input type="checkbox" id="nbTemplateToggle"> ${escHtml(t('nb_save_template_label'))}
       </label>
       ${_nbDraftOnly ? `<div style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">${escHtml(t('nb_ai_draft_hint'))}</div>` : ''}
@@ -14411,12 +14444,21 @@ async function saveNutritionPlan(asDraft) {
   // template and never assigned — so this preserves the existing behaviour rather than
   // changing it. draftOnly (editing the AI plan) forces the same path.
   const draft = !!asDraft || asTemplate || _nbDraftOnly;
+  // Same contract as saveBuilderProgramme's builtFor: which client this plan was BUILT for,
+  // independent of whether it is assigned. _nbClientId is the client the builder was opened on
+  // and is what the assign path already uses for client_id, so the two can never disagree about
+  // whose card this save came from; _currentClientDetail.clientId is the fallback for the older
+  // two-argument callers that open the builder without one. Ticking the reusable-template box
+  // sends an explicit null, which the server treats as a clear and which lands the row on the
+  // shared "Available to assign" shelf.
+  const builtFor = asTemplate ? null : (_nbClientId || _currentClientDetail?.clientId || null);
   const libraryPayload = {
     name,
     programme_type: 'nutrition',
     nutrition_data,
     client_id: null,
     is_template: asTemplate,
+    built_for_client_id: builtFor,
   };
 
   // ── DRAFT ──────────────────────────────────────────────
@@ -14426,7 +14468,7 @@ async function saveNutritionPlan(asDraft) {
     // cannot move a row between the library and a client, so an assigned row being saved as a
     // draft has to be copied rather than moved; its assigned original stays exactly as it was.
     const res = (_nbProgrammeId && _nbIsLibraryRow)
-      ? await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data })
+      ? await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data, built_for_client_id: builtFor })
       : await api('/api/coach/programmes', 'POST', libraryPayload);
     if (res?.ok) {
       showToast(asTemplate ? t('nb_toast_template_saved') : t('nb_toast_library_saved'), 'success');
@@ -14446,7 +14488,7 @@ async function saveNutritionPlan(asDraft) {
   if (_nbProgrammeId && !_nbIsLibraryRow) {
     // Editing the client's assigned plan. PATCH in place — unchanged, and the reason repeated
     // saves no longer pile up duplicate assigned rows for the same client.
-    res = await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data });
+    res = await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data, built_for_client_id: builtFor });
   } else {
     // Assigning FROM the library: update the source row first so the library keeps the coach's
     // latest edit, then assign a copy of it. Assigning a NEW plan: bank the library row first,
@@ -14454,7 +14496,7 @@ async function saveNutritionPlan(asDraft) {
     // shape as saveBuilderProgramme's save-and-assign path.
     let sourceId = _nbProgrammeId;
     if (_nbProgrammeId && _nbIsLibraryRow) {
-      const upd = await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data });
+      const upd = await api('/api/coach/programmes/' + _nbProgrammeId, 'PATCH', { name, nutrition_data, built_for_client_id: builtFor });
       if (!upd?.ok) { showToast(t('toast_save_failed_generic'), 'error'); return; }
     } else {
       const libRes = await api('/api/coach/programmes', 'POST', libraryPayload);
@@ -14468,6 +14510,7 @@ async function saveNutritionPlan(asDraft) {
       client_id: _nbClientId,
       is_template: false,
       source_programme_id: sourceId,
+      built_for_client_id: builtFor,
     });
     if (!res?.ok) {
       // Partial failure: the library copy landed, the assignment did not. Close and re-render
@@ -14523,7 +14566,13 @@ function renderProgrammeBuilder() {
     <div style="padding:18px;flex:1;">
       <input id="builderName" value="${escHtml(_builderState.name)}" placeholder="${t('pb_programme_name')}" oninput="_builderState.name = this.value" style="width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;box-sizing:border-box;margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:18px;">
-        <input type="checkbox" ${_builderState.is_template ? 'checked' : ''} onchange="_builderState.is_template = this.checked"> ${t('pb_template_toggle')}
+        <!-- Unchecked on a NEW programme: openProgrammeBuilder seeds is_template from
+             existing?.is_template, which is false when there is no existing row. That is the
+             default the client-scoped shelf depends on — the natural save scopes the programme
+             to the client the coach is looking at, and ticking this is the deliberate act of
+             making it assignable to anyone. An existing template row still opens checked so
+             saving it cannot silently strip its own template flag. -->
+        <input type="checkbox" ${_builderState.is_template ? 'checked' : ''} onchange="_builderState.is_template = this.checked"> ${escHtml(t('pb_template_toggle'))}
       </label>
       <div id="builderSessions"></div>
       <button onclick="addBuilderSession()" style="width:100%;padding:12px;background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">${t('pb_add_session')}</button>
@@ -14630,15 +14679,23 @@ function closeProgrammeBuilder() {
 async function saveBuilderProgramme(asDraft) {
   if (!_builderState.name?.trim()) { showToast(t('toast_name_prog'), 'error'); return; }
   const isTemplate = !!_builderState.is_template;
+  // Which client this programme was BUILT for — deliberately independent of client_id, which
+  // only says whether it is assigned. Building from inside a client's card scopes the row to
+  // that client so it lands under "Programmes for this client" on their shelf; ticking the
+  // reusable-template box sends an explicit null instead, which is what puts it on the shared
+  // "Available to assign" shelf every client can see. Carried on every save path — draft,
+  // assign and edit — so a row cannot change shelf depending on which button saved it.
+  const builtFor = isTemplate ? null : (_currentClientDetail?.clientId || null);
   const payload = {
     name: _builderState.name.trim(),
     programme_data: { sessions: _builderState.sessions },
     is_template: isTemplate,
     client_id: (isTemplate || asDraft) ? null : (_currentClientDetail?.clientId || null),
+    built_for_client_id: builtFor,
   };
   let res;
   if (_builderState.id) {
-    res = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data });
+    res = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data, built_for_client_id: builtFor });
   } else if (!asDraft && payload.client_id) {
     // Save & assign on a NEW programme banks a library copy FIRST, then assigns from it.
     // Before this, an assigned programme existed only as the assigned copy — a coach who
