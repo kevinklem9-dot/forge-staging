@@ -8713,6 +8713,17 @@ async function switchNutritionProgramme(id, btn) {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const res = await api('/api/programmes/' + id + '/activate', 'POST');
   if (res?.ok) {
+    // BUILD 3 FIX: refresh the live plan BEFORE re-rendering — this was the only
+    // activation-class path missing it (switchProgramme:8941, chat:7479, checkin:7652).
+    // Without it userPlan.nutrition_plan stayed at its pre-switch value while the DB held
+    // the newly activated one, so programmeHasUnsavedChanges (8472) compared the fresh
+    // programme row against stale live data and showed a false "Save changes" button on a
+    // switch with no edits.
+    //
+    // Ordering is load-bearing: reloadPlan() nulls window._activeNutritionProgramme
+    // (7499), so it has to run BEFORE the refetch below or it would wipe the result.
+    // The re-renders stay after both, matching the twin (reload → cache clear → render).
+    await reloadPlan();
     const progRes = await api('/api/programmes/active-nutrition');
     window._activeNutritionProgramme = progRes?.programme || null;
     window._logProgrammeCache = null;
