@@ -8379,6 +8379,181 @@ async function renderProgrammes() {
     </div>`;
 }
 
+// ═══════════════════════════════════════════════════════
+// BUILD 3 — "Save changes to this programme"
+//
+// Chat PLAN_UPDATE handlers write to the LIVE plan (plans.workout_plan /
+// plans.nutrition_plan) and never back to the saved `programmes` row the plan
+// was activated from, so switching away silently discards every refinement.
+// This is read-side drift detection plus a user-initiated save. The handlers
+// themselves (server.js applyPlanUpdate) are untouched.
+//
+// LINK: the live plan carries no back-pointer, so the source programme is the
+// one with is_active — set by POST /api/programmes/:id/activate, which clears
+// the flag on other rows OF THE SAME programme_type. That gives one active
+// workout row and one active nutrition row, matching the two sections here.
+//
+// NARROW COMPARISON: only the fields applyPlanUpdate can actually write are
+// compared. Everything else the live plan legitimately accumulates — mw_id
+// stamps, _ai_backup, translations, coach_assigned — is ignored, so a freshly
+// activated programme with no edits never reports drift and the button stays
+// hidden. Scalars are string-normalised so a cosmetic 4 vs "4" type flip
+// cannot raise a false positive.
+function _driftScalar(v) { return (v === null || v === undefined) ? null : String(v); }
+
+// Fields from: swap_exercise, update_exercise, update_day, rename_day,
+// reschedule_days, add_day, remove_day, update_goals, replace_workout_plan,
+// replace_entire_plan.
+function _driftWorkoutProjection(w) {
+  if (!w || typeof w !== 'object') return null;
+  return {
+    goal: _driftScalar(w.goal),
+    experience: _driftScalar(w.experience),
+    days_per_week: _driftScalar(w.days_per_week),
+    split_type: _driftScalar(w.split_type),
+    days: Array.isArray(w.days) ? w.days.map(function (d) {
+      return {
+        day_index: _driftScalar(d && d.day_index),
+        day_name: _driftScalar(d && d.day_name),
+        label: _driftScalar(d && d.label),
+        exercises: (d && Array.isArray(d.exercises)) ? d.exercises.map(function (e) {
+          return {
+            name: _driftScalar(e && e.name),
+            note: _driftScalar(e && e.note),
+            sets: _driftScalar(e && e.sets),
+            reps: _driftScalar(e && e.reps),
+            rest: _driftScalar(e && e.rest),
+            rpe: _driftScalar(e && e.rpe)
+          };
+        }) : []
+      };
+    }) : []
+  };
+}
+
+// Fields from: update_nutrition, update_meal, update_weekly_meals,
+// replace_nutrition_plan, replace_entire_plan.
+function _driftMealProjection(m) {
+  return {
+    name: _driftScalar(m && m.name),
+    time: _driftScalar(m && m.time),
+    kcal: _driftScalar(m && (m.kcal !== undefined ? m.kcal : m.calories)),
+    protein_g: _driftScalar(m && m.protein_g),
+    carbs_g: _driftScalar(m && m.carbs_g),
+    fat_g: _driftScalar(m && m.fat_g),
+    foods: (m && Array.isArray(m.foods)) ? m.foods.map(function (f) {
+      return { name: _driftScalar(f && f.name), amount: _driftScalar(f && f.amount) };
+    }) : []
+  };
+}
+
+function _driftNutritionProjection(n) {
+  if (!n || typeof n !== 'object') return null;
+  const wm = {};
+  if (n.weekly_meals && typeof n.weekly_meals === 'object') {
+    Object.keys(n.weekly_meals).sort().forEach(function (k) {
+      wm[k] = Array.isArray(n.weekly_meals[k]) ? n.weekly_meals[k].map(_driftMealProjection) : [];
+    });
+  }
+  return {
+    calories: _driftScalar(n.calories !== undefined ? n.calories : n.daily_calories),
+    protein_g: _driftScalar(n.protein_g),
+    carbs_g: _driftScalar(n.carbs_g),
+    fat_g: _driftScalar(n.fat_g),
+    meals: Array.isArray(n.meals) ? n.meals.map(_driftMealProjection) : [],
+    weekly_meals: wm
+  };
+}
+
+// True when the live plan has drifted from the saved programme it is running.
+// Only the keys the row's plan_data already carries are compared — the same
+// rule the save uses. A row that is not active, or a plan that came from a
+// coach rather than from this programme, reports no drift.
+function programmeHasUnsavedChanges(p) {
+  if (!p || !p.is_active || !userPlan) return false;
+  const pd = p.plan_data;
+  if (!pd || typeof pd !== 'object') return false;
+
+  const savedW = (pd.workout !== undefined) ? pd.workout : pd.workout_plan;
+  if (savedW !== undefined && savedW !== null && userPlan.workout_plan && userPlan.workout_plan.coach_assigned !== true) {
+    if (JSON.stringify(_driftWorkoutProjection(savedW)) !== JSON.stringify(_driftWorkoutProjection(userPlan.workout_plan))) return true;
+  }
+
+  const savedN = (pd.nutrition !== undefined) ? pd.nutrition : pd.nutrition_plan;
+  if (savedN !== undefined && savedN !== null && userPlan.nutrition_plan && userPlan.nutrition_plan.coach_assigned !== true) {
+    if (JSON.stringify(_driftNutritionProjection(savedN)) !== JSON.stringify(_driftNutritionProjection(userPlan.nutrition_plan))) return true;
+  }
+
+  return false;
+}
+
+// Markup for the save button — shared by the workout card and the nutrition list.
+function programmeSaveChangesBtn(p) {
+  if (!programmeHasUnsavedChanges(p)) return '';
+  return '<button ontouchstart="" onclick="saveLivePlanToProgramme(\'' + escHtml(p.id) + '\', this)" ' +
+    'style="width:100%;margin-top:10px;padding:10px;background:transparent;color:var(--accent);' +
+    'border:1px solid var(--accent);border-radius:8px;font-family:\'DM Sans\',sans-serif;' +
+    'font-size:13px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
+    escHtml(t('prog_save_changes')) + '</button>';
+}
+
+// PATCHes the programmes row with the live plan's current content.
+//
+// Replaces ONLY the keys plan_data already carries, each with live content,
+// preserving the row's own key naming and every other plan_data key. This is
+// load-bearing: PATCH /api/programmes/:id write-through (server.js:4812)
+// rebuilds the live plans row from plan_data whenever the row is active, so a
+// key left stale here would push old content back over the live plan.
+async function saveLivePlanToProgramme(id, btn) {
+  const pool = (Array.isArray(userProgrammes) ? userProgrammes : [])
+    .concat(Array.isArray(window._nutritionProgrammes) ? window._nutritionProgrammes : []);
+  const p = pool.find(function (x) { return x && x.id === id; });
+  if (!p || !p.plan_data || typeof p.plan_data !== 'object') {
+    showToast(t('prog_save_changes_failed'), 'error');
+    return;
+  }
+
+  const _orig = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.style.cursor = 'wait';
+    btn.style.opacity = '0.9';
+    btn.innerHTML = '<span class="btn-spinner"></span>' + escHtml(t('prog_saving_changes'));
+  }
+
+  const next = Object.assign({}, p.plan_data);
+  const liveW = userPlan ? userPlan.workout_plan : null;
+  const liveN = userPlan ? userPlan.nutrition_plan : null;
+  if ('workout' in next && liveW) next.workout = liveW;
+  if ('workout_plan' in next && liveW) next.workout_plan = liveW;
+  if ('nutrition' in next && liveN) next.nutrition = liveN;
+  if ('nutrition_plan' in next && liveN) next.nutrition_plan = liveN;
+
+  const res = await api('/api/programmes/' + id, 'PATCH', { plan_data: next });
+  if (res && res.programme) {
+    showToast(t('prog_save_changes_saved'), 'success');
+    // Re-render refetches plan_data, so drift recomputes false and the button goes.
+    if ((p.programme_type || 'workout') === 'nutrition') renderNutritionProgrammes();
+    else renderProgrammes();
+  } else {
+    if (btn) {
+      btn.innerHTML = _orig;
+      btn.disabled = false;
+      btn.style.cursor = 'pointer';
+      btn.style.opacity = '1';
+    }
+    showToast(t('prog_save_changes_failed'), 'error');
+  }
+}
+
+// Confirm before switching away from a programme with unsaved chat refinements.
+// Warns and proceeds — never blocks. Returns false only when the user cancels.
+function confirmProgrammeSwitchDrift(activeProg, targetId) {
+  if (!activeProg || activeProg.id === targetId) return true;
+  if (!programmeHasUnsavedChanges(activeProg)) return true;
+  return confirm(t('prog_unsaved_warn', { name: activeProg.name || '' }));
+}
+
 function programmeCard(p) {
   const dateStr = new Date(p.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   // Custom programmes can have their full workouts edited; AI programmes are view-only.
@@ -8405,6 +8580,7 @@ function programmeCard(p) {
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:0.5px;">${dateStr}</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">${editOrView}${switchDelete}</div>
+      ${programmeSaveChangesBtn(p)}
     </div>`;
 }
 
@@ -8531,6 +8707,9 @@ async function saveCurrentNutritionPlan() {
 }
 
 async function switchNutritionProgramme(id, btn) {
+  // BUILD 3: same unsaved-changes warning as the workout switch.
+  const _activeNutri = (Array.isArray(window._nutritionProgrammes) ? window._nutritionProgrammes : []).find(p => p.is_active);
+  if (!confirmProgrammeSwitchDrift(_activeNutri, id)) return;
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const res = await api('/api/programmes/' + id + '/activate', 'POST');
   if (res?.ok) {
@@ -8574,6 +8753,8 @@ async function renderNutritionProgrammes() {
 
   const res = await api('/api/programmes?type=nutrition');
   const programmes = res?.programmes || [];
+  // BUILD 3: kept so switchNutritionProgramme can drift-check the active row.
+  window._nutritionProgrammes = programmes;
 
   let html = '';
 
@@ -8675,6 +8856,7 @@ async function renderNutritionProgrammes() {
           'var(--border);border-radius:8px;color:var(--muted);font-size:13px;' +
           'cursor:pointer;">Delete</button>' +
       '</div>' +
+      programmeSaveChangesBtn(p) +
     '</div>';
   }).join('');
 
@@ -8723,6 +8905,10 @@ async function submitRenameProgramme(id) {
 async function switchProgramme(id, btn) {
   const prog = userProgrammes.find(p => p.id === id);
   const name = prog?.name || 'this programme';
+  // BUILD 3: chat refinements live only on the plan until saved back. Warn before
+  // switching away from a programme that has them — warn and proceed, never block.
+  const _activeProg = (Array.isArray(userProgrammes) ? userProgrammes : []).find(p => p.is_active);
+  if (!confirmProgrammeSwitchDrift(_activeProg, id)) return;
   if (!confirm(`Switch to ${name}? Your current progress and logs are saved. This will replace your active programme.`)) return;
   // FIX 3: loading state on the switch button so the tap clearly registers during the
   // activate round-trip + plan reload.
@@ -10640,6 +10826,11 @@ const STRINGS = {
     prog_edit: 'Edit workouts',
     prog_view: 'View',
     prog_switch: 'Switch to this',
+    prog_save_changes: 'Save changes to this programme',
+    prog_saving_changes: 'Saving...',
+    prog_save_changes_saved: 'Changes saved to this programme',
+    prog_save_changes_failed: 'Could not save changes',
+    prog_unsaved_warn: 'You have unsaved changes to {name}. Switching now discards them. Continue?',
     prog_delete: 'Delete',
     prog_active: 'ACTIVE',
     prog_rest_day: 'Rest day',
@@ -11601,6 +11792,11 @@ const STRINGS = {
     prog_edit: 'Modifier les séances',
     prog_view: 'Voir',
     prog_switch: 'Activer celui-ci',
+    prog_save_changes: 'Enregistrer les modifications dans ce programme',
+    prog_saving_changes: 'Enregistrement...',
+    prog_save_changes_saved: 'Modifications enregistrées dans ce programme',
+    prog_save_changes_failed: 'Impossible d\'enregistrer les modifications',
+    prog_unsaved_warn: 'Tu as des modifications non enregistrées dans {name}. Changer maintenant les supprimera. Continuer ?',
     prog_delete: 'Supprimer',
     prog_active: 'ACTIF',
     prog_rest_day: 'Jour de repos',
