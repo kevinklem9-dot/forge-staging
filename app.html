@@ -13579,7 +13579,7 @@ async function renderClientProgrammeTab(body) {
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}</div>
       <div style="display:flex;gap:6px;">
         ${assignBtn}
-        ${libRowBtn(t('client_prog_lib_edit'), `openProgrammeBuilder('${p.id}')`, false)}
+        ${libRowBtn(t('client_prog_lib_edit'), `openProgrammeBuilder('${p.id}', true)`, false)}
         ${libRowBtn(t('client_prog_lib_delete'), `deleteLibraryProgramme('${p.id}')`, true)}
       </div>
     </div>`;
@@ -13798,7 +13798,10 @@ function openProgrammeBuilderFromDays(days, name) {
     })),
   }));
   _builderState = {
-    id: null, name: name || 'Custom programme', is_template: false,
+    // id null and isLibraryRow false: this is always a NEW programme seeded from a `days` array
+    // (the AI plan, a coach plan with no library row, or an AI generation result), never an edit
+    // of an existing row. Stated explicitly so _builderState always carries the same shape.
+    id: null, name: name || 'Custom programme', is_template: false, isLibraryRow: false,
     sessions: sessions.length ? sessions : [{ name: 'Day 1', note: '', scheduled_days: [], exercises: [{ name: '', sets: 3, reps: '8-10', rpe: '', rest: '', note: '', cardio: false }] }],
   };
   renderProgrammeBuilder();
@@ -14748,12 +14751,23 @@ async function resetClientNutrition(clientId) {
 
 // ── PROGRAMME BUILDER ─────────────────────────────────
 let _builderState = null;
-function openProgrammeBuilder(programmeId) {
+// isLibraryRow is the workout twin of the nutrition builder's _nbIsLibraryRow. True ONLY when
+// this builder session was opened from a LIBRARY row (client_id null) rather than the client's
+// assigned programme. The server's PATCH cannot move a row between the library and a client, so
+// the two cases need different save paths: a library row is PATCHed in place and assigned by
+// copying, an assigned row is PATCHed and stays where it is. Without it, "Save & assign" on a
+// library row PATCHed the library row, assigned nothing, and still toasted "Programme assigned".
+// Defaults false, so every caller that does not pass it — editCoachWorkout's assigned-programme
+// branch, openProgrammeBuilderFromDays, AI generation — keeps its existing PATCH-only behaviour.
+function openProgrammeBuilder(programmeId, isLibraryRow) {
   const existing = programmeId ? _currentClientDetail.programmes.find(p => p.id === programmeId) : null;
   _builderState = {
     id: existing?.id || null,
     name: existing?.name || 'Custom programme',
     is_template: !!existing?.is_template,
+    // Reassigned on every open, so a session started from an assigned programme can never
+    // inherit a library flag left behind by a row opened earlier and take the wrong save path.
+    isLibraryRow: !!isLibraryRow,
     sessions: existing?.programme_data?.sessions ? JSON.parse(JSON.stringify(existing.programme_data.sessions)) : [{ name:'Day 1', note:'', scheduled_days:[], exercises:[{ name:'', sets:3, reps:'8-10', rpe:'', rest:'', note:'', cardio:false }] }],
   };
   renderProgrammeBuilder();
@@ -14901,8 +14915,40 @@ async function saveBuilderProgramme(asDraft) {
     built_for_client_id: builtFor,
   };
   let res;
-  if (_builderState.id) {
+  // Did this save actually put the programme ON the client? Drives the success toast below, so
+  // "Programme assigned" can only appear when a row carrying client_id exists as a result of it.
+  // Inferring it from !asDraft was the reason a library row that assigned nothing still reported
+  // success — the PATCH-only branch has no client_id to report on.
+  let didAssign = false;
+  if (_builderState.id && _builderState.isLibraryRow && payload.client_id) {
+    // Save & assign FROM the library. Mirrors saveNutritionPlan's `_nbProgrammeId &&
+    // _nbIsLibraryRow` branch: update the source row FIRST so the library keeps the coach's
+    // latest edit, then assign a COPY of it carrying source_programme_id back to the source —
+    // which is also what lets the library mark that row ACTIVE for this client.
+    // payload.client_id is null whenever isTemplate or asDraft is set, so neither the template
+    // path nor the draft path can reach here; both still fall through to the PATCH below.
+    const upd = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data, built_for_client_id: builtFor });
+    if (!upd?.ok) { showToast('Save failed', 'error'); return; }
+    res = await api('/api/coach/programmes', 'POST', { ...payload, source_programme_id: _builderState.id });
+    if (!res?.ok) {
+      // Partial failure: the library row carries the edit, the assignment did not land. Same
+      // handling as the new-programme path below — close and re-render so the coach can see the
+      // saved row and hit Assign on it, never leaving them with nothing and never making them
+      // rebuild the programme.
+      showToast('Saved to library, but assigning failed', 'error');
+      closeProgrammeBuilder();
+      if (_currentClientDetail) renderClientTab();
+      return;
+    }
+    didAssign = true;
+  } else if (_builderState.id) {
+    // Editing the client's ASSIGNED programme, or saving a library row as a draft/template.
+    // PATCH in place — unchanged. An assigned row that is PATCHed stays assigned, which is the
+    // only case here that still counts as assigned for the toast; saveNutritionPlan's twin
+    // branch reports the same way. A library row PATCHed on the draft or template path did not
+    // assign anything, so it reports as saved instead.
     res = await api('/api/coach/programmes/' + _builderState.id, 'PATCH', { name: payload.name, programme_data: payload.programme_data, built_for_client_id: builtFor });
+    didAssign = !asDraft && !isTemplate && !_builderState.isLibraryRow;
   } else if (!asDraft && payload.client_id) {
     // Save & assign on a NEW programme banks a library copy FIRST, then assigns from it.
     // Before this, an assigned programme existed only as the assigned copy — a coach who
@@ -14921,11 +14967,13 @@ async function saveBuilderProgramme(asDraft) {
       if (_currentClientDetail) renderClientTab();
       return;
     }
+    didAssign = true;
   } else {
+    // Draft or template POST — client_id is null on this path, so nothing is assigned.
     res = await api('/api/coach/programmes', 'POST', payload);
   }
   if (res?.ok) {
-    showToast(isTemplate ? 'Template saved' : (asDraft ? 'Draft saved' : 'Programme assigned'), 'success');
+    showToast(isTemplate ? 'Template saved' : (didAssign ? 'Programme assigned' : 'Draft saved'), 'success');
     closeProgrammeBuilder();
     if (_currentClientDetail) renderClientTab();
   } else {
