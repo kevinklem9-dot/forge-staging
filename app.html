@@ -10545,6 +10545,8 @@ const STRINGS = {
     client_detail_loading: 'Loading…',
     client_tab_overview: 'OVERVIEW',
     client_tab_programme: 'PROGRAMME',
+    client_tab_workout: 'WORKOUT',
+    client_tab_nutrition: 'NUTRITION',
     client_tab_ai: 'AI',
     client_tab_messages: 'MESSAGES',
     client_menu_notes: 'Edit notes',
@@ -11596,6 +11598,8 @@ const STRINGS = {
     client_detail_loading: 'Chargement…',
     client_tab_overview: 'APERÇU',
     client_tab_programme: 'PROGRAMME',
+    client_tab_workout: 'SÉANCES',
+    client_tab_nutrition: 'NUTRITION',
     client_tab_ai: 'IA',
     client_tab_messages: 'MESSAGES',
     client_menu_notes: 'Modifier les notes',
@@ -13123,7 +13127,8 @@ async function openClientDetail(clientId) {
       </div>
       <div data-testid="client-detail-tabs" style="display:flex;gap:0;padding:0 18px;">
         <button onclick="switchClientTab('overview')" id="clTab-overview" data-testid="client-tab-overview" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_overview')}<span id="clTabBadge-overview"></span></button>
-        <button onclick="switchClientTab('programme')" id="clTab-programme" data-testid="client-tab-programme" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_programme')}</button>
+        <button onclick="switchClientTab('workout')" id="clTab-workout" data-testid="client-tab-workout" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_workout')}</button>
+        <button onclick="switchClientTab('nutrition')" id="clTab-nutrition" data-testid="client-tab-nutrition" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_nutrition')}</button>
         <button onclick="switchClientTab('ai')" id="clTab-ai" data-testid="client-tab-ai" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_ai')}<span id="clTabBadge-ai"></span></button>
         <button onclick="switchClientTab('messages')" id="clTab-messages" data-testid="client-tab-messages" class="cl-tab" style="flex:1;padding:12px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inactive);font-size:10px;text-transform:uppercase;font-family:'DM Mono',monospace;letter-spacing:1px;cursor:pointer;position:relative;">${t('client_tab_messages')}<span id="clTabBadge-messages"></span></button>
       </div>
@@ -13201,7 +13206,7 @@ function switchClientTab(tab) {
     _msgScrollArea._msgPollInterval = null;
   }
   _currentClientTab = tab;
-  ['overview','programme','ai','messages'].forEach(t => {
+  ['overview','workout','nutrition','ai','messages'].forEach(t => {
     const el = document.getElementById('clTab-' + t);
     if (!el) return;
     if (t === tab) {
@@ -13237,7 +13242,8 @@ function renderClientTab() {
   // that layout would leak into the overview/programme/AI tabs.
   body.style.cssText = 'padding:18px;flex:1;';
   if (_currentClientTab === 'overview') renderClientOverviewTab(body);
-  else if (_currentClientTab === 'programme') renderClientProgrammeTab(body);
+  else if (_currentClientTab === 'workout') renderClientWorkoutTab(body);
+  else if (_currentClientTab === 'nutrition') renderClientNutritionTab(body);
   else if (_currentClientTab === 'messages') renderClientMessagesTab(body);
   else renderClientAITab(body);
 }
@@ -13620,19 +13626,34 @@ async function saveCoachNotes(content) {
   }
 }
 
-// ── PROGRAMME TAB ─────────────────────────────────────
+// ── PROGRAMME TAB → WORKOUT TAB + NUTRITION TAB ───────
 // REDESIGNED: AI/Coach plan toggle with SET AS ACTIVE. Two pill-toggled sections each for
 // workout and nutrition. The ACTIVE badge marks whichever the client is currently using
 // (clientPlan.coach_assigned). The pill toggles only the VIEW; SET AS ACTIVE changes the live plan.
-async function renderClientProgrammeTab(body) {
-  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">${t('client_prog_loading')}</div>`;
-  const cid = _currentClientDetail.clientId;
+//
+// BUILD 1/2 — the single Programme tab is now two tabs. This is a ROUTING split only: the data
+// load, the derived state and every line of markup below are unchanged. Both tabs run the SAME
+// loader and write the SAME shared state, so the five handlers that read
+// _currentClientDetail.programmes — and the two that read .progView — find exactly what they
+// found when this was one tab, whichever of the two tabs the coach is standing on. Splitting the
+// load in half instead would have left editCoachNutrition() reading a progView with no nutrition
+// in it whenever the coach had only opened the Workout tab, and the `if (!pv) return` in those
+// handlers would have swallowed it silently. The layout redesign is Build 2.
+
+// Shared loader for both tabs. Fetches the three endpoints, derives every value either half
+// needs, and writes the FULL _currentClientDetail contract: .programmes, .nutritionPlan,
+// .progView (both halves), .planView and .nutriView. Returns null when the render has gone
+// stale, so the caller renders nothing.
+async function _loadClientProgrammeState(cid, forTab) {
   const [res, npRes, planRes] = await Promise.all([
     api('/api/coach/programmes'),
     api('/api/coach/clients/' + cid + '/nutrition-plan'),
     api('/api/coach/clients/' + cid + '/plan'),
   ]);
-  if (!_currentClientDetail || _currentClientDetail.clientId !== cid) return; // tab switched mid-fetch
+  // B15: the old guard tested the client id alone, so switching tabs mid-fetch let a late render
+  // paint over whichever tab the coach had moved to. Two tabs one tap apart make that easy to
+  // hit, so the expected tab is now part of the guard.
+  if (!_currentClientDetail || _currentClientDetail.clientId !== cid || _currentClientTab !== forTab) return null;
   const all = res?.programmes || [];
   const isNutri = p => (p.programme_type || 'workout') === 'nutrition';
   const assigned = all.find(p => p.client_id === cid && !p.is_template && !isNutri(p));
@@ -13703,6 +13724,21 @@ async function renderClientProgrammeTab(body) {
   const planView = _currentClientDetail.planView;
   const nutriView = _currentClientDetail.nutriView;
 
+  return {
+    activeSourceId, activeNutriSourceId,
+    workoutActive, aiWorkoutDays, coachWorkoutDays, libraryForClient, libraryAvailable,
+    nutritionActive, aiNutrition, coachNutrition, nutritionForClient, nutritionAvailable,
+    planView, nutriView,
+  };
+}
+
+// The ten render helpers, unchanged. They were closures inside the single render function; two
+// of them (libraryRow, nutritionLibraryRow) close over the active-source ids, which is why this
+// is a factory rather than ten module-level constants — keeping the closure means every call
+// site, including `.map(libraryRow)`, stays exactly as it was.
+function _coachProgHelpers(ctx) {
+  const activeSourceId = ctx.activeSourceId;
+  const activeNutriSourceId = ctx.activeNutriSourceId;
   const sectionLabel = (txt, mt) => `<div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:${mt || '0'} 0 8px;">${txt}</div>`;
   const planTitle = (title, active) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;">${title}</span>${active ? _activeBadge() : ''}</div>`;
   const editBtn = (label, fn) => `<button onclick="${fn}" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">${label}</button>`;
@@ -13793,6 +13829,17 @@ async function renderClientProgrammeTab(body) {
     </div>`;
   };
 
+  return { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, libRowBtn, libraryRow, nutritionLibraryRow };
+}
+
+async function renderClientWorkoutTab(body) {
+  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">${t('client_prog_loading')}</div>`;
+  const cid = _currentClientDetail.clientId;
+  const st = await _loadClientProgrammeState(cid, 'workout');
+  if (!st) return; // client changed or tab switched mid-fetch
+  const { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, libraryRow } = _coachProgHelpers(st);
+  const { planView, workoutActive, aiWorkoutDays, coachWorkoutDays, libraryForClient, libraryAvailable } = st;
+
   let html = '';
 
   // ── WORKOUT ──
@@ -13832,6 +13879,19 @@ async function renderClientProgrammeTab(body) {
       html += libraryAvailable.map(libraryRow).join('');
     }
   }
+
+  body.innerHTML = `<div style="padding-bottom:8px;">${html}</div>`;
+}
+
+async function renderClientNutritionTab(body) {
+  body.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--muted);font-size:13px;">${t('client_prog_loading')}</div>`;
+  const cid = _currentClientDetail.clientId;
+  const st = await _loadClientProgrammeState(cid, 'nutrition');
+  if (!st) return; // client changed or tab switched mid-fetch
+  const { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, nutritionLibraryRow } = _coachProgHelpers(st);
+  const { nutriView, nutritionActive, aiNutrition, coachNutrition, nutritionForClient, nutritionAvailable } = st;
+
+  let html = '';
 
   // ── NUTRITION ──
   html += sectionLabel(t('client_prog_nutrition'), '26px');
@@ -14289,7 +14349,7 @@ function renderClientCurrentPlanSection(plan) {
   </details>`;
 }
 
-// DEAD AT RUNTIME — defined but never called. renderClientProgrammeTab() renders the nutrition
+// DEAD AT RUNTIME — defined but never called. renderClientNutritionTab() renders the nutrition
 // section inline (the pills, the plan card, editCoachNutrition() and the nutrition library) and
 // nothing routes here. Its openNutritionBuilder() calls below pass the old two-argument shape,
 // which still resolves to "new plan, assignable" defaults, so it is harmless — but the buttons
