@@ -838,6 +838,35 @@ body.pwa-mode .chat-input-area {
 .bwh-row-delta.down { color:var(--green); }
 .bwh-row-weight { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; color:var(--text); }
 
+/* ── COACH PROGRAMME TABS (Build 2 layout) ── */
+/* Tokens only — every colour here resolves through a variable that all 7 themes define, so the
+   three light themes get the same treatment without a per-theme override. */
+.cprog-callout { background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:10px; padding:12px 14px; margin-bottom:18px; font-size:13px; line-height:1.5; color:var(--text); }
+/* Items 2 and 3 of the layout. One column on mobile, two from 760px up. */
+.cprog-cols { display:grid; grid-template-columns:1fr; gap:18px; }
+.cprog-active-card { background:var(--surface); border:1px solid var(--accent); border-radius:12px; padding:14px; }
+.cprog-meta { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:0.3px; margin-bottom:12px; }
+.cprog-actions { display:flex; gap:8px; }
+.cprog-create-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cprog-create-card { display:flex; flex-direction:column; gap:5px; text-align:left; width:100%; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.cprog-create-card:active { border-color:var(--accent); }
+.cprog-create-title { font-family:'DM Mono',monospace; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text); }
+.cprog-create-sub { font-size:12px; color:var(--muted); line-height:1.4; }
+.cprog-fold { margin-bottom:10px; }
+.cprog-fold-head { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 14px; }
+.cprog-fold-head::-webkit-details-marker { display:none; }
+.cprog-fold-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text); }
+.cprog-fold-count { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; flex-shrink:0; }
+.cprog-fold-body { margin-top:8px; }
+.cprog-row { padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; }
+.cprog-row-top { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+.cprog-row-name { flex:1; min-width:0; font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cprog-row-src { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:0.3px; margin-bottom:10px; }
+.cprog-row-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.cprog-row-assign { flex:1 1 90px; padding:8px 12px; background:var(--accent); color:var(--bg); border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.cprog-row-assign.is-assigned { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+@media (min-width:760px) { .cprog-cols { grid-template-columns:1fr 1fr; align-items:start; } }
+
 /* ── MISSIONS ── */
 .mission-row { display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; transition:all 0.2s; }
 .mission-row.done { opacity:0.5; }
@@ -10429,8 +10458,7 @@ const STRINGS = {
     client_prog_nutrition_library: 'NUTRITION LIBRARY',
     // The two shelves both libraries split into. Shared by the workout and nutrition sections
     // on purpose — one pair of headings to learn, not two.
-    client_prog_lib_for_client: 'PROGRAMMES FOR THIS CLIENT',
-    client_prog_lib_available: 'AVAILABLE TO ASSIGN',
+    client_prog_lib_available: 'Available to assign',
     pb_title: 'PROGRAMME BUILDER',
     pb_add_session: '+ Add session',
     pb_save_draft: 'Save to library',
@@ -10607,18 +10635,28 @@ const STRINGS = {
     client_ai_review_save: 'Save review',
     client_prog_loading: 'Loading programmes…',
     client_prog_active_badge: 'ACTIVE',
-    client_prog_set_active: 'SET AS ACTIVE',
-    client_prog_workout: 'WORKOUT PLAN',
-    client_prog_ai_pill: 'AI PLAN',
-    client_prog_coach_pill: 'COACH PLAN',
     client_prog_ai_title: 'AI PLAN',
     client_prog_coach_title: 'COACH PLAN',
     client_prog_edit_ai: 'EDIT AI PLAN',
     client_prog_edit_coach: 'EDIT COACH PLAN',
     client_prog_no_ai: 'No AI plan generated yet.',
     client_prog_no_coach: 'No coach plan assigned yet',
-    client_prog_create: 'Create plan',
     client_prog_ai_generate: 'Generate with AI',
+    client_prog_view: 'View',
+    client_prog_active_heading: 'ACTIVE PLAN',
+    client_prog_create_heading: 'CREATE A NEW PLAN',
+    client_prog_build_manual: 'Build it manually',
+    client_prog_ai_sub: 'Describe it in a sentence.',
+    client_prog_manual_sub_workout: 'Add days and exercises.',
+    client_prog_manual_sub_nutrition: 'Add meals and foods.',
+    client_prog_assigned_on: 'Assigned {date}',
+    client_prog_status_workout: '{name} is training on {plan}.',
+    client_prog_status_workout_none: '{name} has no workout plan assigned.',
+    client_prog_status_nutrition: '{name} is eating {kcal}.',
+    client_prog_status_nutrition_none: '{name} has no nutrition plan assigned.',
+    client_prog_src_ai: '{name}\'s AI plan',
+    client_prog_src_coach: 'Coach plan',
+    client_prog_fold_for_client: 'Plans for {name}',
     aiprog_title: 'GENERATE WITH AI',
     aiprog_explain: "Describe the programme — the AI will use this client's profile for their stats, experience and available days.",
     aiprog_placeholder: '4-day upper/lower split, 45 min sessions, work around a shoulder issue',
@@ -10674,9 +10712,6 @@ const STRINGS = {
     client_prog_lib_delete_blocked: 'That programme is assigned to a client — remove it from the client first',
     client_prog_assign: 'Assign',
     client_prog_assigned: 'Assigned',
-    client_prog_nutrition: 'NUTRITION',
-    client_prog_ai_nutrition_pill: 'AI NUTRITION',
-    client_prog_coach_nutrition_pill: 'COACH NUTRITION',
     client_prog_ai_nutrition_title: 'AI NUTRITION',
     client_prog_coach_nutrition_title: 'COACH NUTRITION',
     client_prog_edit_ai_nutrition: 'EDIT AI NUTRITION',
@@ -11482,8 +11517,7 @@ const STRINGS = {
     nb_toast_assigned: 'Plan nutrition assigné',
     nb_toast_saved_not_assigned: 'Enregistré dans la bibliothèque, mais l\'assignation a échoué',
     client_prog_nutrition_library: 'BIBLIOTHÈQUE NUTRITION',
-    client_prog_lib_for_client: 'PROGRAMMES POUR CE CLIENT',
-    client_prog_lib_available: 'DISPONIBLES À ASSIGNER',
+    client_prog_lib_available: 'Disponibles à assigner',
     pb_title: 'CRÉATEUR DE PROGRAMME',
     pb_add_session: '+ Ajouter une séance',
     pb_save_draft: 'Enregistrer dans la bibliothèque',
@@ -11660,18 +11694,28 @@ const STRINGS = {
     client_ai_review_save: 'Enregistrer le bilan',
     client_prog_loading: 'Chargement des programmes…',
     client_prog_active_badge: 'ACTIF',
-    client_prog_set_active: 'DÉFINIR COMME ACTIF',
-    client_prog_workout: 'PROGRAMME D\'ENTRAÎNEMENT',
-    client_prog_ai_pill: 'PLAN IA',
-    client_prog_coach_pill: 'PLAN COACH',
     client_prog_ai_title: 'PLAN IA',
     client_prog_coach_title: 'PLAN COACH',
     client_prog_edit_ai: 'MODIFIER LE PLAN IA',
     client_prog_edit_coach: 'MODIFIER LE PLAN COACH',
     client_prog_no_ai: 'Aucun plan IA généré pour l\'instant.',
     client_prog_no_coach: 'Aucun plan coach assigné',
-    client_prog_create: 'Créer un plan',
     client_prog_ai_generate: 'Générer avec l\'IA',
+    client_prog_view: 'Voir',
+    client_prog_active_heading: 'PLAN ACTIF',
+    client_prog_create_heading: 'CRÉER UN NOUVEAU PLAN',
+    client_prog_build_manual: 'Le construire à la main',
+    client_prog_ai_sub: 'Décris-le en une phrase.',
+    client_prog_manual_sub_workout: 'Ajoute des jours et des exercices.',
+    client_prog_manual_sub_nutrition: 'Ajoute des repas et des aliments.',
+    client_prog_assigned_on: 'Assigné le {date}',
+    client_prog_status_workout: '{name} s\'entraîne sur {plan}.',
+    client_prog_status_workout_none: '{name} n\'a aucun programme d\'entraînement assigné.',
+    client_prog_status_nutrition: '{name} mange {kcal}.',
+    client_prog_status_nutrition_none: '{name} n\'a aucun plan nutrition assigné.',
+    client_prog_src_ai: 'Plan IA de {name}',
+    client_prog_src_coach: 'Plan coach',
+    client_prog_fold_for_client: 'Plans de {name}',
     aiprog_title: 'GÉNÉRER AVEC L\'IA',
     aiprog_explain: 'Décris le programme — l\'IA utilisera le profil de ce client pour ses mesures, son expérience et ses jours disponibles.',
     aiprog_placeholder: 'Split haut/bas sur 4 jours, séances de 45 min, à adapter pour une épaule sensible',
@@ -11727,9 +11771,6 @@ const STRINGS = {
     client_prog_lib_delete_blocked: 'Ce programme est assigné à un client — retire-le du client d\'abord',
     client_prog_assign: 'Assigner',
     client_prog_assigned: 'Assigné',
-    client_prog_nutrition: 'NUTRITION',
-    client_prog_ai_nutrition_pill: 'NUTRITION IA',
-    client_prog_coach_nutrition_pill: 'NUTRITION COACH',
     client_prog_ai_nutrition_title: 'NUTRITION IA',
     client_prog_coach_nutrition_title: 'NUTRITION COACH',
     client_prog_edit_ai_nutrition: 'MODIFIER LA NUTRITION IA',
@@ -13627,23 +13668,30 @@ async function saveCoachNotes(content) {
 }
 
 // ── PROGRAMME TAB → WORKOUT TAB + NUTRITION TAB ───────
-// REDESIGNED: AI/Coach plan toggle with SET AS ACTIVE. Two pill-toggled sections each for
-// workout and nutrition. The ACTIVE badge marks whichever the client is currently using
-// (clientPlan.coach_assigned). The pill toggles only the VIEW; SET AS ACTIVE changes the live plan.
-//
-// BUILD 1/2 — the single Programme tab is now two tabs. This is a ROUTING split only: the data
-// load, the derived state and every line of markup below are unchanged. Both tabs run the SAME
+// BUILD 1/2 — the single Programme tab became two tabs. That was a ROUTING split only: the data
+// load, the derived state and every line of markup were unchanged. Both tabs run the SAME
 // loader and write the SAME shared state, so the five handlers that read
 // _currentClientDetail.programmes — and the two that read .progView — find exactly what they
 // found when this was one tab, whichever of the two tabs the coach is standing on. Splitting the
 // load in half instead would have left editCoachNutrition() reading a progView with no nutrition
 // in it whenever the coach had only opened the Workout tab, and the `if (!pv) return` in those
-// handlers would have swallowed it silently. The layout redesign is Build 2.
+// handlers would have swallowed it silently.
+//
+// BUILD 2/2 — the layout. Both tabs now render the SAME shape, top to bottom: a plain-language
+// status callout, the ACTIVE PLAN card, two CREATE A NEW PLAN cards, then two collapsed folds
+// ("Plans for {name}" and "Available to assign"). From 760px the active card and the create
+// cards sit side by side; below that they stack.
+//
+// The AI/COACH pills are GONE. Both plans are now permanently on screen: whichever the client
+// is on is the active card, and both appear as rows in the first fold, where Assign calls
+// setActiveWorkout()/setActiveNutrition() rather than assignFromLibrary(). That is also what
+// keeps SET ACTIVE reachable for a coach plan that exists but is not the live one. The two
+// libraries, previously hidden behind the COACH pill, are always visible.
 
 // Shared loader for both tabs. Fetches the three endpoints, derives every value either half
-// needs, and writes the FULL _currentClientDetail contract: .programmes, .nutritionPlan,
-// .progView (both halves), .planView and .nutriView. Returns null when the render has gone
-// stale, so the caller renders nothing.
+// needs, and writes the _currentClientDetail contract: .programmes, .nutritionPlan and
+// .progView (both halves). Returns null when the render has gone stale, so the caller renders
+// nothing.
 async function _loadClientProgrammeState(cid, forTab) {
   const [res, npRes, planRes] = await Promise.all([
     api('/api/coach/programmes'),
@@ -13719,16 +13767,29 @@ async function _loadClientProgrammeState(cid, forTab) {
     // silently reverting to the "Nutrition — <client>" default on every save.
     coachNutritionName: assignedNutri?.nutrition_data ? (assignedNutri.name || '') : '',
   };
-  if (_currentClientDetail.planView == null) _currentClientDetail.planView = workoutActive;
-  if (_currentClientDetail.nutriView == null) _currentClientDetail.nutriView = nutritionActive;
-  const planView = _currentClientDetail.planView;
-  const nutriView = _currentClientDetail.nutriView;
+  // BUILD 2/2: planView and nutriView are no longer derived, returned or read. The AI/COACH
+  // pills that consumed them are gone and both halves of each tab now render unconditionally.
+  // Six handlers still WRITE the two properties (setActiveWorkout, setActiveNutrition,
+  // assignNutritionFromLibrary, and three save paths in the nutrition builder). Those writes
+  // are left exactly as they were: they are inert now, and removing them would mean editing
+  // handler bodies this build is not allowed to touch.
+
+  // Names and assignment dates for the new active-plan card and the "Plans for {name}" fold.
+  // ADDITIVE ONLY — .progView above and every field the five library handlers read are
+  // untouched, so the data contract this loader publishes is unchanged.
+  const clientName = _currentClientDetail.overview?.profile?.name || t('client_detail_title_default');
+  // The AI plan's own name, read from wherever the AI plan currently lives: the live plan when
+  // the client is on it, the backup the coach plan displaced when they are not.
+  const aiWorkoutName = (clientPlan?.coach_assigned ? clientPlan?._ai_backup?.split_name : clientPlan?.split_name) || '';
 
   return {
     activeSourceId, activeNutriSourceId,
+    clientName, aiWorkoutName,
+    // Assign COPIES, so created_at on the assigned row is the moment it was assigned.
+    assignedName: assigned?.name || '', assignedAt: assigned?.created_at || null,
+    assignedNutriName: assignedNutri?.name || '', assignedNutriAt: assignedNutri?.created_at || null,
     workoutActive, aiWorkoutDays, coachWorkoutDays, libraryForClient, libraryAvailable,
     nutritionActive, aiNutrition, coachNutrition, nutritionForClient, nutritionAvailable,
-    planView, nutriView,
   };
 }
 
@@ -13742,53 +13803,83 @@ function _coachProgHelpers(ctx) {
   const sectionLabel = (txt, mt) => `<div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin:${mt || '0'} 0 8px;">${txt}</div>`;
   const planTitle = (title, active) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;">${title}</span>${active ? _activeBadge() : ''}</div>`;
   const editBtn = (label, fn) => `<button onclick="${fn}" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">${label}</button>`;
-  const activeBtn = (isActive, fn) => isActive
-    ? `<button disabled style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;cursor:default;">✓ ${t('client_prog_active_badge')}</button>`
-    : `<button onclick="${fn}" style="flex:1;padding:12px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;">${t('client_prog_set_active')}</button>`;
   const emptyCard = (msg) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;color:var(--muted);font-size:13px;">${msg}</div>`;
-  const ctaBtn = (label, fn) => `<button onclick="${fn}" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">${label}</button>`;
-  // Secondary, full-width. Styled like editBtn (surface2 + border) rather than the
-  // accent-filled ctaBtn so the manual builder stays the primary action in both states.
-  const aiCtaBtn = (label, fn) => `<button onclick="${fn}" style="width:100%;padding:13px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">${label}</button>`;
+  // BUILD 2/2 removed three helpers that the new layout has no slot for: activeBtn (SET AS
+  // ACTIVE now lives on a row's Assign button), ctaBtn and aiCtaBtn (the two full-width CTAs
+  // are now the two create CARDS below). No handler they invoked was changed — only where it
+  // is invoked from. See the control table in the deployment checklist.
   // One row in the programme library — an unassigned programme, draft or template. Assign
   // stays the primary action; Edit reopens it in the builder, Delete removes it after a
   // confirm. The badge is what tells a reusable template apart from a one-off draft, since
   // both now live in the same list.
   const libRowBtn = (label, fn, danger) => `<button onclick="${fn}" style="padding:8px 12px;background:transparent;border:1px solid var(--border);color:${danger ? 'var(--red, #ff4444)' : 'var(--text)'};border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;">${label}</button>`;
-  const libraryRow = (p) => {
-    const count = (p.programme_data?.sessions || []).length;
+  // BUILD 2/2 — every row in both folds is now this ONE card: the client's AI plan, their coach
+  // plan, and each library entry. Same shape, same button order, so the four kinds of row are
+  // one idea to learn. What used to be a Template/Draft BADGE is now the source LABEL under the
+  // name, which is what carries "Marie's AI plan" and "Coach plan" as well.
+  // editFn and deleteFn are optional — the AI and coach rows have no library row to delete.
+  const rowCard = (o) => {
+    // Same green fill / dark text as _activeBadge(), sized to this row's badge idiom.
     const badgeStyle = 'font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;border-radius:5px;padding:2px 6px;flex-shrink:0;';
-    const badge = p.is_template
-      ? `<span style="${badgeStyle}color:var(--accent);border:1px solid var(--accent);">${t('client_prog_badge_template')}</span>`
-      : `<span style="${badgeStyle}color:var(--muted);border:1px solid var(--border);">${t('client_prog_badge_draft')}</span>`;
-    // Same green fill / dark text as _activeBadge(), sized to this row's badge idiom so it
-    // sits beside the template/draft badge. Only ever one row per client: it keys off the
-    // single assigned programme's source_programme_id.
-    const isActiveRow = !!(activeSourceId && p.id === activeSourceId);
-    const activeBadge = isActiveRow
-      ? `<span style="${badgeStyle}background:var(--green,#39d98a);color:#04210f;font-weight:700;">${t('client_prog_active_badge')}</span>`
+    const activeBadge = o.isActive
+      ? `<span style="${badgeStyle}background:var(--green,#39d98a);color:#04210f;font-weight:700;">${escHtml(t('client_prog_active_badge'))}</span>`
       : '';
-    // The live row's primary button reads "Assigned" and drops to the secondary treatment
-    // (surface2 + border + muted) so the one programme the client is actually on is obvious
-    // without reading the badge. It stays tappable — re-assigning the same programme is a
-    // harmless no-op, and disabling it would strip the only recovery path if the copy ever
-    // drifts from its library source.
-    const assignBtn = isActiveRow
-      ? `<button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${escHtml(t('client_prog_assigned'))}</button>`
-      : `<button onclick="assignFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_prog_assign')}</button>`;
-    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-        <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name || '')}</div>
+    // Unchanged rule from the old library row: the live row reads "Assigned" and drops to the
+    // secondary treatment so the plan the client is actually on is obvious without reading the
+    // badge. It stays TAPPABLE — re-assigning is a harmless no-op, and disabling it would strip
+    // the only recovery path if an assigned copy ever drifts from its source.
+    const assignBtn = `<button onclick="${o.assignFn}" class="cprog-row-assign${o.isActive ? ' is-assigned' : ''}">${escHtml(o.isActive ? t('client_prog_assigned') : t('client_prog_assign'))}</button>`;
+    return `<div class="cprog-row">
+      <div class="cprog-row-top">
+        <div class="cprog-row-name">${escHtml(o.name || '')}</div>
         ${activeBadge}
-        ${badge}
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}</div>
-      <div style="display:flex;gap:6px;">
+      <div class="cprog-row-src">${escHtml(o.source || '')}${o.meta ? ' · ' + escHtml(o.meta) : ''}</div>
+      <div class="cprog-row-actions">
         ${assignBtn}
-        ${libRowBtn(t('client_prog_lib_edit'), `openProgrammeBuilder('${p.id}', true)`, false)}
-        ${libRowBtn(t('client_prog_lib_delete'), `deleteLibraryProgramme('${p.id}')`, true)}
+        ${libRowBtn(escHtml(t('client_prog_view')), o.viewFn, false)}
+        ${o.editFn ? libRowBtn(escHtml(t('client_prog_lib_edit')), o.editFn, false) : ''}
+        ${o.deleteFn ? libRowBtn(escHtml(t('client_prog_lib_delete')), o.deleteFn, true) : ''}
       </div>
     </div>`;
+  };
+
+  // ── BUILD 2/2 layout helpers ─────────────────────────
+  // The one-line status at the top of the tab. Tinted with surface2 plus an accent rule so it
+  // reads as a status line, not another card. Caller passes pre-escaped text.
+  const statusCallout = (msg) => `<div class="cprog-callout">${msg}</div>`;
+  // The ACTIVE PLAN card — accent-bordered, title, ACTIVE badge, one meta line, View + Edit.
+  const activeCard = (title, meta, viewFn, editLabel, editFn) => `<div class="cprog-active-card">
+      ${planTitle(escHtml(title), true)}
+      <div class="cprog-meta">${escHtml(meta)}</div>
+      <div class="cprog-actions">${editBtn(escHtml(t('client_prog_view')), viewFn)}${editBtn(escHtml(editLabel), editFn)}</div>
+    </div>`;
+  // One of the two CREATE A NEW PLAN cards.
+  const createCard = (title, sub, fn) => `<button onclick="${fn}" class="cprog-create-card tap-anim">
+      <span class="cprog-create-title">${escHtml(title)}</span>
+      <span class="cprog-create-sub">${escHtml(sub)}</span>
+    </button>`;
+  // A collapsed fold with a count in the header. Callers skip empty folds entirely, so a fold
+  // with no rows is never rendered rather than rendered empty.
+  const fold = (label, count, rows) => `<details class="cprog-fold">
+      <summary class="cprog-fold-head tap-anim"><span class="cprog-fold-label">${escHtml(label)}</span><span class="cprog-fold-count">${escHtml(String(count))}</span></summary>
+      <div class="cprog-fold-body">${rows}</div>
+    </details>`;
+
+  const libraryRow = (p) => {
+    const count = (p.programme_data?.sessions || []).length;
+    return rowCard({
+      name: p.name || '',
+      source: p.is_template ? t('client_prog_badge_template') : t('client_prog_badge_draft'),
+      meta: `${count} ${count === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}`,
+      // Only ever one row per client: it keys off the single assigned programme's
+      // source_programme_id.
+      isActive: !!(activeSourceId && p.id === activeSourceId),
+      assignFn: `assignFromLibrary('${p.id}')`,
+      viewFn: `openCoachPlanView('workout','lib','${p.id}')`,
+      editFn: `openProgrammeBuilder('${p.id}', true)`,
+      deleteFn: `deleteLibraryProgramme('${p.id}')`,
+    });
   };
 
   // The nutrition twin of libraryRow. Same card, same three actions, same Active/Assigned
@@ -13803,33 +13894,20 @@ function _coachProgHelpers(ctx) {
     const nd = p.nutrition_data || {};
     const cals = nd.calories ?? nd.daily_calories ?? 0;
     const mealCount = (nd.meals || []).length;
-    const badgeStyle = 'font-family:\'DM Mono\',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;border-radius:5px;padding:2px 6px;flex-shrink:0;';
-    const badge = p.is_template
-      ? `<span style="${badgeStyle}color:var(--accent);border:1px solid var(--accent);">${escHtml(t('client_prog_badge_template'))}</span>`
-      : `<span style="${badgeStyle}color:var(--muted);border:1px solid var(--border);">${escHtml(t('client_prog_badge_draft'))}</span>`;
-    const isActiveRow = !!(activeNutriSourceId && p.id === activeNutriSourceId);
-    const activeBadge = isActiveRow
-      ? `<span style="${badgeStyle}background:var(--green,#39d98a);color:#04210f;font-weight:700;">${escHtml(t('client_prog_active_badge'))}</span>`
-      : '';
-    const assignBtn = isActiveRow
-      ? `<button onclick="assignNutritionFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${escHtml(t('client_prog_assigned'))}</button>`
-      : `<button onclick="assignNutritionFromLibrary('${p.id}')" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${escHtml(t('client_prog_assign'))}</button>`;
-    return `<div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-        <div style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(p.name || '')}</div>
-        ${activeBadge}
-        ${badge}
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">${escHtml(String(cals))} KCAL · ${escHtml(String(mealCount))} ${escHtml(t('meals_label')).toUpperCase()}</div>
-      <div style="display:flex;gap:6px;">
-        ${assignBtn}
-        ${libRowBtn(escHtml(t('client_prog_lib_edit')), `editNutritionLibrary('${p.id}')`, false)}
-        ${libRowBtn(escHtml(t('client_prog_lib_delete')), `deleteLibraryProgramme('${p.id}')`, true)}
-      </div>
-    </div>`;
+    return rowCard({
+      name: p.name || '',
+      source: p.is_template ? t('client_prog_badge_template') : t('client_prog_badge_draft'),
+      meta: `${cals} ${t('client_prog_kcal')} · ${mealCount} ${t('meals_label').toUpperCase()}`,
+      isActive: !!(activeNutriSourceId && p.id === activeNutriSourceId),
+      assignFn: `assignNutritionFromLibrary('${p.id}')`,
+      viewFn: `openCoachPlanView('nutrition','lib','${p.id}')`,
+      editFn: `editNutritionLibrary('${p.id}')`,
+      deleteFn: `deleteLibraryProgramme('${p.id}')`,
+    });
   };
 
-  return { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, libRowBtn, libraryRow, nutritionLibraryRow };
+  return { sectionLabel, planTitle, editBtn, emptyCard, libRowBtn, libraryRow, nutritionLibraryRow,
+           rowCard, statusCallout, activeCard, createCard, fold };
 }
 
 async function renderClientWorkoutTab(body) {
@@ -13837,47 +13915,70 @@ async function renderClientWorkoutTab(body) {
   const cid = _currentClientDetail.clientId;
   const st = await _loadClientProgrammeState(cid, 'workout');
   if (!st) return; // client changed or tab switched mid-fetch
-  const { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, libraryRow } = _coachProgHelpers(st);
-  const { planView, workoutActive, aiWorkoutDays, coachWorkoutDays, libraryForClient, libraryAvailable } = st;
+  const { sectionLabel, emptyCard, libraryRow, rowCard, statusCallout, activeCard, createCard, fold } = _coachProgHelpers(st);
+  const { workoutActive, aiWorkoutDays, coachWorkoutDays, libraryForClient, libraryAvailable,
+          clientName, aiWorkoutName, assignedName, assignedAt } = st;
 
-  let html = '';
+  const hasAi = aiWorkoutDays.length > 0;
+  const hasCoach = coachWorkoutDays.length > 0;
+  const aiName = aiWorkoutName || t('client_prog_ai_title');
+  const coachName = assignedName || t('client_prog_coach_title');
+  const sessions = (n) => `${n} ${n === 1 ? t('client_prog_session_one') : t('client_prog_sessions')}`;
+  const activeHas = workoutActive === 'ai' ? hasAi : hasCoach;
 
-  // ── WORKOUT ──
-  html += sectionLabel(t('client_prog_workout'));
-  html += `<div style="display:flex;gap:8px;margin-bottom:14px;">${_coachPill(planView === 'ai', t('client_prog_ai_pill'), "setCoachPlanView('ai')")}${_coachPill(planView === 'coach', t('client_prog_coach_pill'), "setCoachPlanView('coach')")}</div>`;
-  if (planView === 'ai') {
-    html += planTitle(t('client_prog_ai_title'), workoutActive === 'ai');
-    if (aiWorkoutDays.length) {
-      html += _coachRenderWorkoutDays(aiWorkoutDays);
-      html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_ai'), "editCoachWorkout('ai')")}${activeBtn(workoutActive === 'ai', "setActiveWorkout('ai')")}</div>`;
-    } else {
-      html += emptyCard(t('client_prog_no_ai'));
-    }
+  // 1 — status callout. This tab speaks about TRAINING only; nutrition has its own line on
+  // its own tab, so neither tab makes the coach read past a half they did not open.
+  let html = statusCallout(escHtml(activeHas
+    ? t('client_prog_status_workout', { name: clientName, plan: workoutActive === 'ai' ? aiName : coachName })
+    : t('client_prog_status_workout_none', { name: clientName })));
+
+  // 2 — ACTIVE PLAN. The empty state is exactly this: the callout above saying nothing is
+  // assigned, plus an empty slot here. Create plan and Generate with AI are NOT lost with it —
+  // item 3 below renders in both states, which is what let the old empty-state-only CTAs go.
+  let activeHtml = sectionLabel(escHtml(t('client_prog_active_heading')));
+  if (activeHas) {
+    activeHtml += workoutActive === 'ai'
+      ? activeCard(aiName, sessions(aiWorkoutDays.length),
+          "openCoachPlanView('workout','ai')", t('client_prog_edit_ai'), "editCoachWorkout('ai')")
+      : activeCard(coachName,
+          sessions(coachWorkoutDays.length) + (assignedAt ? ' · ' + t('client_prog_assigned_on', { date: formatDateSession(assignedAt) }) : ''),
+          "openCoachPlanView('workout','coach')", t('client_prog_edit_coach'), "editCoachWorkout('coach')");
   } else {
-    html += planTitle(t('client_prog_coach_title'), workoutActive === 'coach');
-    if (coachWorkoutDays.length) {
-      html += _coachRenderWorkoutDays(coachWorkoutDays);
-      html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_coach'), "editCoachWorkout('coach')")}${activeBtn(workoutActive === 'coach', "setActiveWorkout('coach')")}</div>`;
-      html += `<div style="height:8px;"></div>` + aiCtaBtn(t('client_prog_ai_generate'), 'openAiProgrammeSheet()');
-    } else {
-      html += emptyCard(t('client_prog_no_coach'));
-      html += ctaBtn(t('client_prog_create'), "editCoachWorkout('coach')");
-      html += aiCtaBtn(t('client_prog_ai_generate'), 'openAiProgrammeSheet()');
-    }
-    // The library renders in BOTH states, not just the empty one. With a plan already
-    // assigned this is the only route to switching the client onto a different saved
-    // programme — which is what makes "build several, assign one at a time" work.
-    // Two shelves, rendered this-client-first so the coach's own work for the person they are
-    // looking at is what they land on. An empty section renders NOTHING — not an empty block —
-    // so a coach with no scoped programmes sees the shared shelf exactly as before.
-    if (libraryForClient.length) {
-      html += sectionLabel(escHtml(t('client_prog_lib_for_client')), '18px');
-      html += libraryForClient.map(libraryRow).join('');
-    }
-    if (libraryAvailable.length) {
-      html += sectionLabel(escHtml(t('client_prog_lib_available')), '18px');
-      html += libraryAvailable.map(libraryRow).join('');
-    }
+    activeHtml += emptyCard(escHtml(workoutActive === 'ai' ? t('client_prog_no_ai') : t('client_prog_no_coach')));
+  }
+
+  // 3 — CREATE A NEW PLAN. Two cards, always visible.
+  const createHtml = sectionLabel(escHtml(t('client_prog_create_heading')))
+    + `<div class="cprog-create-grid">${createCard(t('client_prog_ai_generate'), t('client_prog_ai_sub'), 'openAiProgrammeSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_workout'), "editCoachWorkout('coach')")}</div>`;
+
+  html += `<div class="cprog-cols"><div>${activeHtml}</div><div>${createHtml}</div></div>`;
+
+  // 4 — the two folds. The library is no longer hidden behind a pill: both shelves render in
+  // every state, this-client-first. An empty fold renders NOTHING — not an empty block.
+  //
+  // Fold 1 leads with the client's two NAMED plans. The AI row is what the AI pill used to be,
+  // and the coach row is what the COACH pill used to be — including the one control that has
+  // nowhere else to live: SET ACTIVE (coach), for the case where a coach plan exists but the
+  // client is still on their AI plan. Both rows' Assign calls setActiveWorkout(), NOT
+  // assignFromLibrary() — neither is a library row and neither should be copied.
+  const ownRows = [];
+  if (hasAi) ownRows.push(rowCard({
+    name: aiName, source: t('client_prog_src_ai', { name: clientName }), meta: sessions(aiWorkoutDays.length),
+    isActive: workoutActive === 'ai',
+    assignFn: "setActiveWorkout('ai')", viewFn: "openCoachPlanView('workout','ai')", editFn: "editCoachWorkout('ai')",
+  }));
+  if (hasCoach) ownRows.push(rowCard({
+    name: coachName, source: t('client_prog_src_coach'), meta: sessions(coachWorkoutDays.length),
+    isActive: workoutActive === 'coach',
+    assignFn: "setActiveWorkout('coach')", viewFn: "openCoachPlanView('workout','coach')", editFn: "editCoachWorkout('coach')",
+  }));
+  const forClientRows = ownRows.concat(libraryForClient.map(libraryRow));
+  if (forClientRows.length) {
+    html += `<div style="height:18px;"></div>`;
+    html += fold(t('client_prog_fold_for_client', { name: clientName }), forClientRows.length, forClientRows.join(''));
+  }
+  if (libraryAvailable.length) {
+    html += fold(t('client_prog_lib_available'), libraryAvailable.length, libraryAvailable.map(libraryRow).join(''));
   }
 
   body.innerHTML = `<div style="padding-bottom:8px;">${html}</div>`;
@@ -13888,57 +13989,79 @@ async function renderClientNutritionTab(body) {
   const cid = _currentClientDetail.clientId;
   const st = await _loadClientProgrammeState(cid, 'nutrition');
   if (!st) return; // client changed or tab switched mid-fetch
-  const { sectionLabel, planTitle, editBtn, activeBtn, emptyCard, ctaBtn, aiCtaBtn, nutritionLibraryRow } = _coachProgHelpers(st);
-  const { nutriView, nutritionActive, aiNutrition, coachNutrition, nutritionForClient, nutritionAvailable } = st;
+  const { sectionLabel, emptyCard, nutritionLibraryRow, rowCard, statusCallout, activeCard, createCard, fold } = _coachProgHelpers(st);
+  const { nutritionActive, aiNutrition, coachNutrition, nutritionForClient, nutritionAvailable,
+          clientName, assignedNutriName, assignedNutriAt } = st;
 
-  let html = '';
+  // Same emptiness test the old pills used, lifted into one predicate so the callout, the
+  // active card and the rows can never disagree about whether a plan exists.
+  const hasPlan = (np) => !!(np && (np.calories || np.daily_calories || (np.meals || []).length));
+  const hasAi = hasPlan(aiNutrition);
+  const hasCoach = hasPlan(coachNutrition);
+  const kcalOf = (np) => `${(np && (np.calories ?? np.daily_calories)) || 0} kcal`;
+  const macrosOf = (np) => `${np?.protein_g ?? np?.protein ?? 0}${t('client_prog_macro_p')} / ${np?.carbs_g ?? np?.carbs ?? 0}${t('client_prog_macro_c')} / ${np?.fat_g ?? np?.fat ?? 0}${t('client_prog_macro_f')}`;
+  const mealsOf = (np) => { const n = (np?.meals || []).length; return `${n} ${n === 1 ? t('client_prog_meal_one') : t('client_prog_meals')}`; };
+  const aiName = t('client_prog_ai_nutrition_title');
+  const coachName = assignedNutriName || t('client_prog_coach_nutrition_title');
+  const activeNp = nutritionActive === 'ai' ? aiNutrition : coachNutrition;
+  const activeHas = nutritionActive === 'ai' ? hasAi : hasCoach;
 
-  // ── NUTRITION ──
-  html += sectionLabel(t('client_prog_nutrition'), '26px');
-  html += `<div style="display:flex;gap:8px;margin-bottom:14px;">${_coachPill(nutriView === 'ai', t('client_prog_ai_nutrition_pill'), "setCoachNutriView('ai')")}${_coachPill(nutriView === 'coach', t('client_prog_coach_nutrition_pill'), "setCoachNutriView('coach')")}</div>`;
-  if (nutriView === 'ai') {
-    html += planTitle(t('client_prog_ai_nutrition_title'), nutritionActive === 'ai');
-    if (aiNutrition && (aiNutrition.calories || aiNutrition.daily_calories || (aiNutrition.meals || []).length)) {
-      html += _coachNutritionCard(aiNutrition);
-      html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_ai_nutrition'), "editCoachNutrition('ai')")}${activeBtn(nutritionActive === 'ai', "setActiveNutrition('ai')")}</div>`;
-    } else {
-      html += emptyCard(t('client_prog_no_ai_nutrition'));
-    }
+  // 1 — status callout. This tab speaks about FOOD only.
+  let html = statusCallout(escHtml(activeHas
+    ? t('client_prog_status_nutrition', { name: clientName, kcal: kcalOf(activeNp) })
+    : t('client_prog_status_nutrition_none', { name: clientName })));
+
+  // 2 — ACTIVE PLAN. Empty state mirrors the workout tab exactly: callout plus an empty slot,
+  // with the create options below carrying Create plan and Generate with AI in both states.
+  let activeHtml = sectionLabel(escHtml(t('client_prog_active_heading')));
+  if (activeHas) {
+    const meta = `${macrosOf(activeNp)} · ${mealsOf(activeNp)}`;
+    activeHtml += nutritionActive === 'ai'
+      ? activeCard(aiName, meta,
+          "openCoachPlanView('nutrition','ai')", t('client_prog_edit_ai_nutrition'), "editCoachNutrition('ai')")
+      : activeCard(coachName,
+          meta + (assignedNutriAt ? ' · ' + t('client_prog_assigned_on', { date: formatDateSession(assignedNutriAt) }) : ''),
+          "openCoachPlanView('nutrition','coach')", t('client_prog_edit_coach_nutrition'), "editCoachNutrition('coach')");
   } else {
-    html += planTitle(t('client_prog_coach_nutrition_title'), nutritionActive === 'coach');
-    if (coachNutrition && (coachNutrition.calories || coachNutrition.daily_calories || (coachNutrition.meals || []).length)) {
-      html += _coachNutritionCard(coachNutrition);
-      html += `<div style="display:flex;gap:8px;margin:12px 0 4px;">${editBtn(t('client_prog_edit_coach_nutrition'), "editCoachNutrition('coach')")}${activeBtn(nutritionActive === 'coach', "setActiveNutrition('coach')")}</div>`;
-      // Secondary treatment (aiCtaBtn), below the manual actions — same placement and weight
-      // the workout side gives its generate button, so the manual builder stays first-class.
-      html += `<div style="height:8px;"></div>` + aiCtaBtn(t('ainutri_cta'), 'openAiNutritionSheet()');
-    } else {
-      html += emptyCard(t('client_prog_no_coach_nutrition'));
-      html += ctaBtn(t('client_prog_create'), "editCoachNutrition('coach')");
-      html += aiCtaBtn(t('ainutri_cta'), 'openAiNutritionSheet()');
-    }
-    // Same placement as the workout library — inside the coach view, in BOTH states. With a
-    // plan already assigned this is the only route to switching the client onto a different
-    // saved meal plan, which is what makes "build several, assign one at a time" work here too.
-    // Same two-section split as the workout shelf above — same headings, same order, same
-    // empty-section handling — so the two libraries stay one idea to learn.
-    if (nutritionForClient.length) {
-      html += sectionLabel(escHtml(t('client_prog_lib_for_client')), '18px');
-      html += nutritionForClient.map(nutritionLibraryRow).join('');
-    }
-    if (nutritionAvailable.length) {
-      html += sectionLabel(escHtml(t('client_prog_lib_available')), '18px');
-      html += nutritionAvailable.map(nutritionLibraryRow).join('');
-    }
+    activeHtml += emptyCard(escHtml(nutritionActive === 'ai' ? t('client_prog_no_ai_nutrition') : t('client_prog_no_coach_nutrition')));
+  }
+
+  // 3 — CREATE A NEW PLAN. Same two cards, same order and weight as the workout tab.
+  const createHtml = sectionLabel(escHtml(t('client_prog_create_heading')))
+    + `<div class="cprog-create-grid">${createCard(t('ainutri_cta'), t('client_prog_ai_sub'), 'openAiNutritionSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_nutrition'), "editCoachNutrition('coach')")}</div>`;
+
+  html += `<div class="cprog-cols"><div>${activeHtml}</div><div>${createHtml}</div></div>`;
+
+  // 4 — the two folds. Same structure, same order and the same empty-fold handling as the
+  // workout tab, so the two shelves stay one idea to learn. The AI and coach rows carry
+  // setActiveNutrition() rather than assignNutritionFromLibrary(): neither is a library row.
+  const ownRows = [];
+  if (hasAi) ownRows.push(rowCard({
+    name: aiName, source: t('client_prog_src_ai', { name: clientName }), meta: `${kcalOf(aiNutrition)} · ${mealsOf(aiNutrition)}`,
+    isActive: nutritionActive === 'ai',
+    assignFn: "setActiveNutrition('ai')", viewFn: "openCoachPlanView('nutrition','ai')", editFn: "editCoachNutrition('ai')",
+  }));
+  if (hasCoach) ownRows.push(rowCard({
+    name: coachName, source: t('client_prog_src_coach'), meta: `${kcalOf(coachNutrition)} · ${mealsOf(coachNutrition)}`,
+    isActive: nutritionActive === 'coach',
+    assignFn: "setActiveNutrition('coach')", viewFn: "openCoachPlanView('nutrition','coach')", editFn: "editCoachNutrition('coach')",
+  }));
+  const forClientRows = ownRows.concat(nutritionForClient.map(nutritionLibraryRow));
+  if (forClientRows.length) {
+    html += `<div style="height:18px;"></div>`;
+    html += fold(t('client_prog_fold_for_client', { name: clientName }), forClientRows.length, forClientRows.join(''));
+  }
+  if (nutritionAvailable.length) {
+    html += fold(t('client_prog_lib_available'), nutritionAvailable.length, nutritionAvailable.map(nutritionLibraryRow).join(''));
   }
 
   body.innerHTML = `<div style="padding-bottom:8px;">${html}</div>`;
 }
 
 // ── Coach Programme tab — render helpers ──────────────
-function _coachPill(active, label, onclick) {
-  return `<button onclick="${onclick}" class="tap-anim" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;border:none;cursor:pointer;background:${active ? 'var(--accent)' : 'var(--surface2)'};color:${active ? 'var(--bg)' : 'var(--muted)'};">${label}</button>`;
-}
+// BUILD 2/2 removed _coachPill(). It rendered the AI/COACH toggle at the top of each tab and
+// had no other call site. Both plans are now always on screen — as the active card and as rows
+// in "Plans for {name}" — so there is nothing left to toggle between.
 
 function _activeBadge() {
   return `<span style="display:inline-block;background:var(--green,#39d98a);color:#04210f;font-family:'DM Mono',monospace;font-size:8px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:6px;text-transform:uppercase;">${t('client_prog_active_badge')}</span>`;
@@ -14004,9 +14127,66 @@ function _coachNutritionCard(np) {
   return h;
 }
 
-// View toggles — change which section is shown, not which plan is active.
-function setCoachPlanView(v) { if (_currentClientDetail) { _currentClientDetail.planView = v; renderClientTab(); } }
-function setCoachNutriView(v) { if (_currentClientDetail) { _currentClientDetail.nutriView = v; renderClientTab(); } }
+// ── READ-ONLY PLAN VIEW (Build 2/2) ───────────────────
+// Replaces setCoachPlanView / setCoachNutriView. The pills used to show a plan by swapping the
+// whole tab; View shows one in a dismissible overlay and leaves the tab standing behind it.
+//
+// This builds NO new viewer. The body is whatever _coachRenderWorkoutDays() or
+// _coachNutritionCard() already renders — the exact markup the old pills showed — so a plan
+// looks the same wherever it is opened from.
+//
+// No dynamic data rides in the onclick attributes: `src` is one of three literals, and the
+// library case carries only a row id that is looked up here, the same contract
+// assignFromLibrary() and deleteLibraryProgramme() already use.
+//   type: 'workout' | 'nutrition'
+//   src:  'ai' | 'coach' (read from .progView) | 'lib' (looked up by id in .programmes)
+function openCoachPlanView(type, src, id) {
+  const pv = _currentClientDetail?.progView; if (!pv) return;
+  let title = '';
+  let bodyHtml = '';
+  if (type === 'workout') {
+    let days = [];
+    if (src === 'ai') { days = pv.aiWorkoutDays || []; title = t('client_prog_ai_title'); }
+    else if (src === 'coach') { days = pv.coachWorkoutDays || []; title = t('client_prog_coach_title'); }
+    else {
+      const p = (_currentClientDetail?.programmes || []).find(x => x.id === id);
+      if (!p) return;
+      // Library rows store sessions; normalise through the same helper the tab uses.
+      days = _sessionsToDays(p.programme_data?.sessions);
+      title = p.name || t('client_prog_coach_title');
+    }
+    bodyHtml = _coachRenderWorkoutDays(days);
+  } else {
+    let np = null;
+    if (src === 'ai') { np = pv.aiNutrition; title = t('client_prog_ai_nutrition_title'); }
+    else if (src === 'coach') { np = pv.coachNutrition; title = t('client_prog_coach_nutrition_title'); }
+    else {
+      const p = (_currentClientDetail?.programmes || []).find(x => x.id === id);
+      if (!p) return;
+      np = p.nutrition_data || null;
+      title = p.name || t('client_prog_coach_nutrition_title');
+    }
+    bodyHtml = np ? _coachNutritionCard(np) : '';
+  }
+  if (!bodyHtml) bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;color:var(--muted);font-size:13px;">${escHtml(t(type === 'workout' ? 'client_prog_no_coach' : 'client_prog_no_coach_nutrition'))}</div>`;
+
+  document.getElementById('coachPlanViewOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'coachPlanViewOverlay';
+  // 9400 sits above the client detail overlay (9000) and below the builders and AI sheets
+  // (9500+), so opening a plan from a row never covers a builder the coach already has open.
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9400;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:1;padding-top:max(env(safe-area-inset-top),44px);">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px 14px;">
+        <button ontouchstart="" onclick="document.getElementById('coachPlanViewOverlay')?.remove()"
+          style="background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;-webkit-tap-highlight-color:transparent;">←</button>
+        <div style="flex:1;min-width:0;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(title)}</div>
+      </div>
+    </div>
+    <div style="padding:16px 18px 40px;flex:1;">${bodyHtml}</div>`;
+  document.body.appendChild(overlay);
+}
 
 function editCoachWorkout(kind) {
   const pv = _currentClientDetail?.progView; if (!pv) return;
