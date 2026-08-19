@@ -14105,10 +14105,61 @@ function _coachRenderWorkoutDays(days) {
   }).join('');
 }
 
+// Per-day meal lookup for a plan passed IN as an argument. Deliberately NOT getMealsForDay():
+// that helper reads the global userPlan, which on a coach's device is the COACH'S OWN nutrition
+// plan, so reusing it here would render the coach's meals under the client's name.
+//
+// Resolution order matches the client exactly — weekly_meals[day] first, flat `meals` as the
+// fallback — including how an emptied day behaves: [] is truthy, so a day the coach cleared
+// stays empty rather than falling back to the flat array.
+function _coachMealsForDay(np, dayIdx) {
+  const weekly = np && np.weekly_meals;
+  if (weekly && weekly[String(dayIdx)]) return weekly[String(dayIdx)];
+  return (np && np.meals) || [];
+}
+
+// The client's meal card, rendered for the coach's preview. Structure and CSS classes are taken
+// straight from renderMealCards() (.meal-card / .meal-head / .meal-top / .meal-macros-row /
+// .meal-foods / .food-row), so a meal looks identical wherever it is opened from. No new CSS.
+//
+// renderMealCards() is NOT reused directly and NOT modified, because it cannot read the coach's
+// meal format:
+//   kcal — renderMealCards() reads m.kcal only. The nutrition builder's in-memory shape
+//     (nbNormaliseMeals) names it `calories`, and coach rows written before saveNutritionPlan()
+//     started stamping both keys carry `calories` alone. Those render as "undefined" through the
+//     client's helper. `m.kcal ?? m.calories ?? 0` covers all three shapes. This is the only
+//     field the two formats actually spell differently — name / time / protein_g / carbs_g /
+//     fat_g / notes / foods[].name / foods[].amount are identical in both.
+//   missing values — renderMealCards() interpolates raw, so a half-filled coach draft prints
+//     "undefined". Every field here degrades to 0 or an empty string instead. A part-built plan
+//     is a normal thing for a coach to preview.
+// Plan-level `protein`/`carbs`/`fat` aliases are accepted per meal too, mirroring the aliases
+// _coachNutritionCard already tolerates on the plan header.
+function _coachMealCards(meals) {
+  return (Array.isArray(meals) ? meals : []).map(m => `
+    <div class="meal-card">
+      <div class="meal-head">
+        <div class="meal-top">
+          <div><div class="meal-name">${escHtml(m.name || t('client_prog_meal_fallback'))}</div><div class="meal-time">${escHtml(m.time || '')}</div></div>
+          <div class="meal-kcal">${escHtml(String(m.kcal ?? m.calories ?? 0))}</div>
+        </div>
+        <div class="meal-macros-row">
+          <div class="meal-macro"><strong>${escHtml(String(m.protein_g ?? m.protein ?? 0))}g</strong> ${t('macro_protein').toLowerCase()}</div>
+          <div class="meal-macro"><strong>${escHtml(String(m.carbs_g ?? m.carbs ?? 0))}g</strong> ${t('macro_carbs').toLowerCase()}</div>
+          <div class="meal-macro"><strong>${escHtml(String(m.fat_g ?? m.fat ?? 0))}g</strong> ${t('macro_fat').toLowerCase()}</div>
+        </div>
+      </div>
+      <div class="meal-foods">
+        ${(Array.isArray(m.foods) ? m.foods : []).map(f => `<div class="food-row"><span>${escHtml((f && f.name) || '')}</span><span class="food-amt">${escHtml((f && f.amount) || '')}</span></div>`).join('')}
+      </div>
+      ${m.notes ? `<div style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;line-height:1.5;padding:2px 0 0;font-style:italic;">${escHtml(m.notes)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
 function _coachNutritionCard(np) {
   const cals = np.calories ?? np.daily_calories ?? 0;
   const p = np.protein_g ?? np.protein ?? 0, c = np.carbs_g ?? np.carbs ?? 0, f = np.fat_g ?? np.fat ?? 0;
-  const meals = np.meals || [];
   // The note the coach wrote for this client. This preview never showed it, so a coach had no
   // way to confirm the note they typed was actually attached to the plan. Gated on the note
   // alone, not coach_assigned: this card only ever renders a coach plan, and coach_assigned is
@@ -14118,12 +14169,44 @@ function _coachNutritionCard(np) {
   let h = coachNoteBlockHtml(np.coach_notes, 'nb_notes_client');
   h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;">
       <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text);letter-spacing:0.3px;">${cals} ${t('client_prog_kcal')} · ${p}${t('client_prog_macro_p')} / ${c}${t('client_prog_macro_c')} / ${f}${t('client_prog_macro_f')}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;letter-spacing:0.3px;">${meals.length} ${meals.length === 1 ? t('client_prog_meal_one') : t('client_prog_meals')}</div>
     </div>`;
-  h += meals.map(m => `<div style="display:flex;justify-content:space-between;gap:8px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px;color:var(--text);">
-      <span style="min-width:0;">${escHtml(m.name || t('client_prog_meal_fallback'))}${m.time ? `<span style="color:var(--muted);"> · ${escHtml(m.time)}</span>` : ''}</span>
-      <span style="color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;">${escHtml(String(m.kcal ?? m.calories ?? 0))} kcal</span>
-    </div>`).join('');
+  // The whole week, not one flat list. This used to render np.meals — the array the generation
+  // prompt itself calls "just a fallback" — as a single strip of name / time / kcal. A coach
+  // previewing a 7-day AI plan therefore saw one day's meals, with no macros, no foods and no
+  // notes, and no way to tell which day they were looking at.
+  //
+  // Layout mirrors the client's Macros tab (renderNutritionPanel's _dayBlock): today first and
+  // expanded, the other six collapsed below it, each summary carrying the day name and that
+  // day's meal count. Same <details class="day-meals"> markup and the same .dm-today /
+  // .dm-custom / .dm-count / .dm-body classes — no new CSS, so it themes exactly as that tab
+  // already does.
+  //
+  // The plan-level meal count that sat under the macros is gone: it counted the flat fallback
+  // array, which is the bug this fixes. Every day now carries its own count instead.
+  //
+  // ✎ marks a day that has its own weekly_meals entry. A coach-built plan seeds all 7 days from
+  // one flat array, so it legitimately shows the same meals — and the same ✎ — seven times over.
+  // That is rendered honestly and NOT collapsed: a plan where every day is identical is a real
+  // property of the plan, and hiding it would hide it from the one person who can change it.
+  // A legacy row with no weekly_meals at all shows seven unmarked days, which is the signal that
+  // the plan has no per-day meals.
+  const _dayKeys = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  const todayIdx = nbTodayIndex();   // 0=Mon..6=Sun, same convention as the client
+  const _dayBlockFor = (i) => {
+    const dm = _coachMealsForDay(np, i);
+    const custom = !!(np.weekly_meals && np.weekly_meals[String(i)]);
+    const isToday = i === todayIdx;
+    return `
+      <details class="day-meals"${isToday ? ' open' : ''}>
+        <summary>
+          <span>${isToday ? `<span class="dm-today">${t('today')}</span> · ` : ''}${t('day_' + _dayKeys[i])}${custom ? ' <span class="dm-custom">✎</span>' : ''}</span>
+          <span class="dm-count">${dm.length} ${t('meals_label')}</span>
+        </summary>
+        <div class="dm-body">${_coachMealCards(dm)}</div>
+      </details>`;
+  };
+  h += _dayBlockFor(todayIdx);
+  for (let i = 0; i < 7; i++) { if (i !== todayIdx) h += _dayBlockFor(i); }
   return h;
 }
 
