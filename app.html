@@ -13948,8 +13948,26 @@ async function renderClientWorkoutTab(body) {
   }
 
   // 3 — CREATE A NEW PLAN. Two cards, always visible.
+  //
+  // openProgrammeBuilder() with NO id, not editCoachWorkout('coach'). editCoachWorkout is a
+  // load-or-empty handler — `if (kind === 'coach' && pv.assignedWorkoutId) openProgrammeBuilder(
+  // pv.assignedWorkoutId)` — and it only ever produced an empty builder because the OLD layout
+  // rendered its CTA inside the `else` of `if (coachWorkoutDays.length)`, where by definition no
+  // assigned row existed. This build made the card unconditional and the guard went with the
+  // else, so "Build it manually" opened the client's LIVE assigned programme with
+  // _builderState.id set to that row. Saving then PATCHed it, and the server writes an assigned
+  // row straight through to plans.workout_plan, wipes translations and pushes "Your coach has
+  // updated your programme" — while the builder toasted "Programme assigned", which reads as a
+  // NEW plan landing. A coach doing exactly what the card says destroyed their client's
+  // programme, recoverable only if a library copy happened to exist.
+  //
+  // A falsy id short-circuits the row lookup in openProgrammeBuilder, so this yields id:null,
+  // isLibraryRow:false and one blank Day 1 — and saving takes the create-new path (POST library
+  // row, then POST the assigned copy) instead of PATCHing anything that already exists.
+  // The ACTIVE PLAN card's Edit button above still calls editCoachWorkout('coach'): editing the
+  // live plan is exactly what Edit is for, and it is the only control that should load it.
   const createHtml = sectionLabel(escHtml(t('client_prog_create_heading')))
-    + `<div class="cprog-create-grid">${createCard(t('client_prog_ai_generate'), t('client_prog_ai_sub'), 'openAiProgrammeSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_workout'), "editCoachWorkout('coach')")}</div>`;
+    + `<div class="cprog-create-grid">${createCard(t('client_prog_ai_generate'), t('client_prog_ai_sub'), 'openAiProgrammeSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_workout'), 'openProgrammeBuilder()')}</div>`;
 
   html += `<div class="cprog-cols"><div>${activeHtml}</div><div>${createHtml}</div></div>`;
 
@@ -14027,8 +14045,24 @@ async function renderClientNutritionTab(body) {
   }
 
   // 3 — CREATE A NEW PLAN. Same two cards, same order and weight as the workout tab.
+  //
+  // The nutrition twin of the workout fix above, and the same bug: editCoachNutrition('coach')
+  // passes pv.coachNutritionId, so this card opened the client's LIVE assigned nutrition row
+  // with _nbProgrammeId set, and saving PATCHed it straight through to plans.nutrition_plan.
+  //
+  // Every argument here is load-bearing. `{}` is NOT optional: openNutritionBuilder falls back
+  // to `_currentClientDetail?.nutritionPlan` whenever prefillPlan is not an object, and that is
+  // the client's live plan — so openNutritionBuilder(cid) is prefilled, not empty. An explicit
+  // {} takes the first branch and opens blank. programmeId null makes the save POST a new row
+  // rather than PATCH an existing one; isLibraryRow false keeps it off the library-edit path;
+  // draftOnly false leaves both Save buttons available, since this is a deliberate new build
+  // and not the AI plan being used as a starting point; name '' lets _nbName seed to
+  // "Nutrition — <client>" instead of inheriting the assigned plan's name.
+  // cid is the tab's own client id, declared at the top of this function.
+  // The ACTIVE PLAN card's Edit button above still calls editCoachNutrition('coach').
+  const manualNutritionFn = `openNutritionBuilder('${cid}', {}, { programmeId: null, isLibraryRow: false, draftOnly: false, name: '' })`;
   const createHtml = sectionLabel(escHtml(t('client_prog_create_heading')))
-    + `<div class="cprog-create-grid">${createCard(t('ainutri_cta'), t('client_prog_ai_sub'), 'openAiNutritionSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_nutrition'), "editCoachNutrition('coach')")}</div>`;
+    + `<div class="cprog-create-grid">${createCard(t('ainutri_cta'), t('client_prog_ai_sub'), 'openAiNutritionSheet()')}${createCard(t('client_prog_build_manual'), t('client_prog_manual_sub_nutrition'), manualNutritionFn)}</div>`;
 
   html += `<div class="cprog-cols"><div>${activeHtml}</div><div>${createHtml}</div></div>`;
 
@@ -14096,10 +14130,58 @@ function _sessionsToDays(sessions) {
   }));
 }
 
+// The weekday sub-line under a day's heading in the read-only plan view. View rendered the
+// session title, its muscles and its exercises but never WHICH DAYS the session was set for,
+// so the only place a coach could see a schedule was Edit — the one screen where a stray tap
+// edits the live plan. The data was never missing: it arrives intact on all three View paths
+// (_sessionsToDays copies scheduled_days, and the server stamps it onto plans.workout_plan.days
+// for the no-library-row case). The renderer simply never read it.
+//
+// Two sources, deliberately NOT merged into one resolver:
+//   COACH days — scheduled_days, and the WHOLE array. A session set Monday AND Thursday shows
+//     both. _resolveDayWeekday() is NOT used here: it returns a single index off
+//     scheduled_days[0], so routing coach days through it would silently drop every day but the
+//     first — the same class of quiet loss this whole line exists to fix.
+//   AI days   — carry day_index + day_name and NEVER scheduled_days (see
+//     openProgrammeBuilderFromDays), so the weekday comes from day_name through
+//     _resolveDayWeekday(), which matches every weekday name and abbreviation the app ships in
+//     every language it ships.
+//   Neither   — empty string, and the caller renders nothing. No placeholder and no guess: an
+//     unscheduled session is a real state, and -1 is exactly what _resolveDayWeekday returns
+//     rather than inventing a day from the sequential day_index.
+//
+// Labels go through t(), never key.slice(0,3). scheduled_days stores canonical ENGLISH keys, so
+// slicing would print "MON · THU" to a French coach whose own builder pills read "LUN · JEU".
+// Rendered in week order rather than stored order: toggleBuilderSessionDay() pushes in the order
+// the coach tapped the pills, which is arbitrary, while the pill row itself reads Mon→Sun.
+//
+// Declared after WK_KEYS / _wkNormalise / _resolveDayWeekday in source order, which is safe for
+// the same reason _wkTable() gives: every call reaches here from a coach UI interaction, long
+// after this script block has evaluated.
+const _WK_SHORT_KEYS = ['day_mon_short','day_tue_short','day_wed_short','day_thu_short','day_fri_short','day_sat_short','day_sun_short'];
+
+function _coachDaySchedule(d) {
+  if (!d) return '';
+  if (Array.isArray(d.scheduled_days) && d.scheduled_days.length) {
+    const idxs = [];
+    d.scheduled_days.forEach(sd => {
+      const wd = WK_KEYS.indexOf(_wkNormalise(sd));
+      if (wd !== -1 && idxs.indexOf(wd) === -1) idxs.push(wd);
+    });
+    // An entry that resolves to nothing is dropped rather than printed raw:
+    // toggleBuilderSessionDay() only ever writes WK_KEYS values and the server passes them
+    // through unchanged, so an unresolvable entry is corrupt data, not a weekday worth showing.
+    return idxs.sort((a, b) => a - b).map(i => t(_WK_SHORT_KEYS[i])).join(' · ');
+  }
+  const wd = _resolveDayWeekday(d);
+  return wd !== -1 ? t(_WK_SHORT_KEYS[wd]) : '';
+}
+
 function _coachRenderWorkoutDays(days) {
   if (!Array.isArray(days) || !days.length) return '';
   return days.map(d => {
     const muscles = Array.isArray(d.muscles) ? d.muscles.join(' · ') : (d.muscles || '');
+    const sched = _coachDaySchedule(d);
     const exs = (d.exercises || []).map(e => {
       const sr = `${escHtml(String(e.sets ?? ''))} × ${escHtml(String(e.reps ?? ''))}`;
       const meta = [];
@@ -14113,6 +14195,7 @@ function _coachRenderWorkoutDays(days) {
     }).join('');
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
       <div style="font-size:13px;color:var(--text);font-weight:600;">${escHtml(d.label || d.day_name || t('ob_day'))}</div>
+      ${sched ? `<div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:2px;">${escHtml(sched)}</div>` : ''}
       ${muscles ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;margin:2px 0 6px;text-transform:uppercase;">${escHtml(muscles)}</div>` : '<div style="height:6px;"></div>'}
       ${exs || '<div style="font-size:12px;color:var(--muted);">' + t('client_rest_day') + '</div>'}
     </div>`;
