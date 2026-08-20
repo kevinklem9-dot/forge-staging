@@ -14072,9 +14072,23 @@ function _activeBadge() {
 function _sessionsToDays(sessions) {
   return (sessions || []).map((s, i) => ({
     label: s.name || t('pb_day_n', { n: i + 1 }),
-    day_name: s.name || t('pb_day_n', { n: i + 1 }),
+    // day_name is deliberately NOT set from s.name. A coach session is titled "Push A" or
+    // "Legs" — not a weekday — and writing that into day_name poisoned every day_name-based
+    // weekday resolver downstream: _resolveDayWeekday() would be handed "Push A" as if it were
+    // a day of the week. The title lives in `label`, which is what both consumers of this
+    // output already read FIRST (`d.label || d.day_name || …` in _coachRenderWorkoutDays and in
+    // openProgrammeBuilderFromDays), so nothing loses its heading. Checked: those two are the
+    // only readers of day_name on a _sessionsToDays result — every other day_name reference in
+    // the file works off userPlan.workout_plan.days or _cbDays, neither of which comes through
+    // here.
     muscles: '',
     coach_note: s.note || '',
+    // The coach's real weekday assignment, previously dropped on the floor. This was the second
+    // way a schedule went missing: opening an assigned coach programme through the client detail
+    // screen reopened the builder with every day-pill blank, and saving then wrote that blank
+    // schedule back over the days the coach had set. Copied, not aliased — the builder mutates
+    // scheduled_days in place via toggleBuilderSessionDay().
+    scheduled_days: Array.isArray(s.scheduled_days) ? s.scheduled_days.slice() : [],
     exercises: (s.exercises || []).map(e => ({
       name: e.name, sets: e.sets, reps: e.reps,
       rest: e.rest || null, rpe: e.rpe || null, note: e.note || null,
@@ -14278,18 +14292,116 @@ function editCoachWorkout(kind) {
   openProgrammeBuilderFromDays(days, kind === 'ai' ? 'Custom programme' : 'Coach programme');
 }
 
+// ── WEEKDAY RESOLUTION FOR PLAN DAYS ──────────────────
+// Canonical weekday keys, 0=Mon..6=Sun. These are the exact strings scheduled_days stores and
+// toggleBuilderSessionDay() writes, so an index into this array round-trips through the builder.
+const WK_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+// Fold a weekday string to a comparable token: lowercase, accents stripped, non-letters removed.
+// "Lundi" → "lundi", " MER. " → "mer", "Monday" → "monday".
+function _wkNormalise(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z]/g, '');
+}
+
+// token → 0..6, built ONCE and memoised.
+//
+// Harvested from the STRINGS tables rather than hardcoded, so it covers exactly the languages
+// the app ships — today en + fr — and picks up any language added later with no edit here. Both
+// the full weekday (day_monday…day_sunday) and the short form (day_mon_short…day_sun_short) are
+// registered for every language.
+//
+// English is seeded from WK_KEYS FIRST and registration is first-wins, which is a safety
+// property, not an ordering accident: a language added later can add new tokens but can never
+// silently re-point a token that already means a different day. Verified no collisions between
+// the two shipped languages (en mon/tue/wed/thu/fri/sat/sun vs fr lun/mar/mer/jeu/ven/sam/dim).
+//
+// Built lazily: STRINGS is a `const` declared further down this same script block, so touching
+// it during initial evaluation would hit the temporal dead zone. Every caller here runs from a
+// coach UI interaction, long after evaluation — and the try/catch means the table degrades to
+// English-only rather than throwing if that ever stops being true.
+let _wkLookup = null;
+function _wkTable() {
+  if (_wkLookup) return _wkLookup;
+  const map = Object.create(null);
+  const add = (tok, idx) => { const k = _wkNormalise(tok); if (k && !(k in map)) map[k] = idx; };
+  WK_KEYS.forEach((k, i) => { add(k, i); add(k.slice(0, 3), i); });
+  try {
+    const FULL  = ['day_monday','day_tuesday','day_wednesday','day_thursday','day_friday','day_saturday','day_sunday'];
+    const SHORT = ['day_mon_short','day_tue_short','day_wed_short','day_thu_short','day_fri_short','day_sat_short','day_sun_short'];
+    Object.keys(STRINGS || {}).forEach(lang => {
+      const tbl = STRINGS[lang] || {};
+      FULL.forEach((k, i) => add(tbl[k], i));
+      SHORT.forEach((k, i) => add(tbl[k], i));
+    });
+  } catch (_) { /* STRINGS unreachable — the English-only table still stands */ }
+  _wkLookup = map;
+  return map;
+}
+
+// Resolve a plan day to a real weekday index (0=Mon..6=Sun), or -1 when it cannot be resolved
+// CONFIDENTLY. Precedence:
+//
+//   1. scheduled_days[0] — coach plans. The only field in the schema that actually means
+//      "this session happens on this weekday".
+//   2. day_name — AI plans, matched against every weekday name and abbreviation the app ships,
+//      in every language it ships. The AI generates day_name in the CLIENT'S language, so a
+//      French client's plan holds "Lundi"; matching English-only returned no match for every
+//      day of every French plan.
+//   3. Nothing. -1.
+//
+// day_index is deliberately NOT consulted, and that is the whole point of returning -1 here.
+// day_index is SEQUENTIAL on both plan types — a Mon/Wed/Fri plan stores [0,1,2], not [0,2,4] —
+// so reading it as a weekday does not fail loudly, it ticks Mon/Tue/Wed: three wrong days
+// presented as three right ones. Downstream of this resolver a coach SAVES what the pills show,
+// so a wrong tick writes a wrong schedule onto a real client's plan. An unticked pill is a coach
+// noticing and setting the days; a wrongly ticked pill is a coach confirming a lie. If it is
+// ever wanted back, it is one branch: `if (typeof d.day_index === 'number') return d.day_index;`
+// immediately before the final return.
+function _resolveDayWeekday(d) {
+  if (!d) return -1;
+  if (Array.isArray(d.scheduled_days) && d.scheduled_days.length) {
+    const wd = WK_KEYS.indexOf(_wkNormalise(d.scheduled_days[0]));
+    if (wd !== -1) return wd;
+  }
+  if (d.day_name) {
+    const wd = _wkTable()[_wkNormalise(d.day_name)];
+    if (wd !== undefined) return wd;
+  }
+  return -1;
+}
+
 // Open the programme builder pre-filled from a `days` array (e.g. the client's AI plan).
 function openProgrammeBuilderFromDays(days, name) {
-  const sessions = (days || []).map((d, i) => ({
-    name: d.label || d.day_name || `Day ${i + 1}`,
-    note: d.coach_note || '',
-    scheduled_days: d.scheduled_days || [],
-    exercises: (d.exercises || []).map(e => ({
-      name: e.name || '', sets: e.sets ?? 3, reps: e.reps ?? '',
-      rpe: e.rpe || '', rest: e.rest || '', note: e.note || '',
-      cardio: e.cardio || false,
-    })),
-  }));
+  const sessions = (days || []).map((d, i) => {
+    // scheduled_days used to be a straight pass-through — `d.scheduled_days || []`. That is a
+    // conversion, not a copy: AI plan days carry day_index + day_name and NEVER scheduled_days,
+    // which is a coach-only field, so every session opened with an empty array and all 7 pills
+    // blank even though the AI had assigned specific days.
+    //
+    // A coach day that already has scheduled_days passes through UNCHANGED. Multi-select is the
+    // coach's: a session set to Monday AND Thursday keeps both. Only a day with nothing set gets
+    // one derived, and an AI day resolves to exactly one weekday — hence the one-element array.
+    // Unresolvable stays empty rather than guessing; see _resolveDayWeekday on why.
+    //
+    // .slice() rather than the array itself: toggleBuilderSessionDay() mutates
+    // session.scheduled_days in place, and the source day object here is live plan data held on
+    // _currentClientDetail. Sharing the reference meant tapping a pill edited the client's
+    // in-memory plan behind the builder, whether or not the coach ever saved.
+    const hasCoachDays = Array.isArray(d.scheduled_days) && d.scheduled_days.length > 0;
+    const wd = hasCoachDays ? -1 : _resolveDayWeekday(d);
+    return {
+      name: d.label || d.day_name || `Day ${i + 1}`,
+      note: d.coach_note || '',
+      scheduled_days: hasCoachDays ? d.scheduled_days.slice() : (wd !== -1 ? [WK_KEYS[wd]] : []),
+      exercises: (d.exercises || []).map(e => ({
+        name: e.name || '', sets: e.sets ?? 3, reps: e.reps ?? '',
+        rpe: e.rpe || '', rest: e.rest || '', note: e.note || '',
+        cardio: e.cardio || false,
+      })),
+    };
+  });
   _builderState = {
     // id null and isLibraryRow false: this is always a NEW programme seeded from a `days` array
     // (the AI plan, a coach plan with no library row, or an AI generation result), never an edit
