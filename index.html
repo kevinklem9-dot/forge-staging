@@ -235,10 +235,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .save-badge{background:rgba(232,255,61,0.12);color:var(--accent);font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,61,0.25)}
 
 /* Two cards, not three. The track is sized to the cards and centred, rather than the cards
-   being stretched to fill a three-column track. align-items:stretch — the default, which
-   this rule used to override with start — is what gives both cards the full row height, so
-   Iron's 4 feature rows and Forge's 17 end on the same baseline. */
-.tier-cards{display:grid;grid-template-columns:repeat(2,minmax(0,var(--tier-card-max)));justify-content:center;gap:20px;align-items:stretch}
+   being stretched to fill a three-column track. align-items:start keeps each card at its
+   natural height and tops them off the same line — Iron ends where its 4 feature rows end,
+   beside Forge's 17, rather than being padded out to match. */
+.tier-cards{display:grid;grid-template-columns:repeat(2,minmax(0,var(--tier-card-max)));justify-content:center;gap:20px;align-items:start}
 .tier-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:all .25s ease;display:flex;flex-direction:column}
 .tier-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 30px 60px -25px rgba(0,0,0,0.7)}
 .tier-card.recommended{
@@ -274,11 +274,6 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .tier-card.recommended .tier-price-period{color:var(--muted2)}
 .tier-price-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
 .tier-features{display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
-/* Iron's 4 rows leave ~500px spare in a slot stretched to match Forge's 17. Centring the
-   short list splits that gap above and below the rows, so it reads as deliberate space
-   rather than a list that stopped early. Recommended card is excluded — Forge's long list
-   stays top-aligned, and when it fills the slot centring would be a no-op anyway. */
-.tier-card:not(.recommended) .tier-features{justify-content:center}
 .tier-feature{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--text);line-height:1.5}
 .tier-check{color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px;font-size:13px}
 .tier-btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:auto}
