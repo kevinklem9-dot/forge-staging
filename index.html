@@ -58,6 +58,10 @@
   --shadow-glow:0 0 60px rgba(232,255,61,0.18);
   --shadow-card:0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.6);
   --grid-color:rgba(255,255,255,0.025);
+  /* Pricing card widths. 366px is what one card measured in the retired three-up track
+     ((1140 - 2 gaps) / 3), so the two remaining cards keep their original proportions
+     instead of stretching to half the container each. */
+  --tier-card-max:366px;--tier-card-stack-max:460px;
 }
 html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;min-height:100vh;width:100%;max-width:100vw}
@@ -230,7 +234,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .toggle-pill.monthly .toggle-knob{right:calc(100% - 24px)}
 .save-badge{background:rgba(232,255,61,0.12);color:var(--accent);font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,61,0.25)}
 
-.tier-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+/* Two cards, not three. The track is sized to the cards and centred, rather than the cards
+   being stretched to fill a three-column track. align-items:stretch — the default, which
+   this rule used to override with start — is what gives both cards the full row height, so
+   Iron's 4 feature rows and Forge's 17 end on the same baseline. */
+.tier-cards{display:grid;grid-template-columns:repeat(2,minmax(0,var(--tier-card-max)));justify-content:center;gap:20px;align-items:stretch}
 .tier-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:all .25s ease;display:flex;flex-direction:column}
 .tier-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 30px 60px -25px rgba(0,0,0,0.7)}
 .tier-card.recommended{
@@ -251,6 +259,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .tier-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--text);margin-bottom:6px}
 .tier-tagline{font-size:13px;color:var(--muted2);margin-bottom:24px;line-height:1.5;min-height:38px}
 
+/* The headline price had no base font-size — only a 42px rule inside the 720px query — so it
+   rendered at the inherited 16px on desktop and 42px on mobile, smaller on the larger screen.
+   38px is the largest size that holds the widest combination (CHF monthly Forge: struck
+   "CHF 11.99" + "CHF 6.99" + "/mo") inside the 308px card interior, with 14.6px to spare.
+   42px overflows it by 2.2px. The 720px override still wins on mobile. */
+.tier-price-main{font-size:38px}
 .tier-price-was{font-family:'DM Mono',monospace;font-size:16px;color:var(--muted);text-decoration:line-through;letter-spacing:0.5px;margin-right:10px;vertical-align:middle}
 .tier-card.recommended .tier-price-was{color:var(--muted2)}
 .tf-soon{background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;white-space:nowrap}
@@ -260,7 +274,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .tier-card.recommended .tier-price-period{color:var(--muted2)}
 .tier-price-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
 .tier-features{display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
-.tier-card:not(.recommended) .tier-features{min-height:340px}
+/* Iron's 4 rows leave ~500px spare in a slot stretched to match Forge's 17. Centring the
+   short list splits that gap above and below the rows, so it reads as deliberate space
+   rather than a list that stopped early. Recommended card is excluded — Forge's long list
+   stays top-aligned, and when it fills the slot centring would be a no-op anyway. */
+.tier-card:not(.recommended) .tier-features{justify-content:center}
 .tier-feature{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--text);line-height:1.5}
 .tier-check{color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px;font-size:13px}
 .tier-btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:auto}
@@ -329,7 +347,9 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 
 /* ── RESPONSIVE ── */
 @media (max-width: 900px){
-  .tier-cards{grid-template-columns:1fr;gap:24px}
+  /* Stack. One centred column, still capped, so a lone card never runs the full container
+     width. justify-content:center carries over from the base rule. */
+  .tier-cards{grid-template-columns:minmax(0,var(--tier-card-stack-max));gap:24px}
   .tier-card.recommended{transform:none;order:-1}
   .tier-card.recommended:hover{transform:translateY(-4px)}
 }
@@ -362,8 +382,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .obj-a{padding-left:28px;font-size:14px}
   .tier-card{padding:30px 22px}
   .tier-name{font-size:28px}
-  .tier-price-main{font-size:42px}
-  .tier-card:not(.recommended) .tier-features{min-height:0}
+  /* Was a flat 42px, which wrapped every CHF price onto two lines below ~430px. The struck
+     price (16px) and /mo (13px) are a fixed ~133px of the card interior, so the headline has
+     only what is left: at 320px it can be 22px, at 390px 38px. This tracks the card, which is
+     viewport-led here (interior = 100vw - 94px), and keeps ~10% headroom for a fallback font.
+     Reaches the original 42px at 430px and holds it up to the 720px edge. */
+  .tier-price-main{font-size:clamp(20px,20vw - 44px,42px)}
   .footer{padding:48px 18px 32px}
   .footer-inner{flex-direction:column;align-items:center;text-align:center;gap:24px}
   .footer-right{gap:18px;flex-wrap:wrap;justify-content:center}
