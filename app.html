@@ -4063,7 +4063,7 @@ function openExpiredPaywall() {
   document.body.appendChild(overlay);
 
   // Load promo status then render the sheet — remove the close button
-  loadLaunchPricingStatus().then(() => {
+  Promise.all([loadLaunchPricingStatus(), loadFoundingSlots()]).then(() => {
     renderUpgradeSheetContent();
     // Remove the "Continue with limited access" close button — not allowed when expired
     const closeBtn = sheetWrap.querySelector('.us-close');
@@ -4417,49 +4417,76 @@ async function openFoundingMemberPage() {
   if (existing) { existing.remove(); return; }
   // Slots endpoint returns forge_total/forge_sold as of the two-tier restructure.
   const slots = await api('/api/founding-member/slots');
+  // Re-prime the teaser cache so the upgrade sheet's lifetime line agrees with this page.
+  if (slots) { _foundingSlots = slots; cacheSet('founding-slots', slots); }
   const ironLeft = (slots?.iron_total || 500) - (slots?.iron_sold || 0);
   const forgeLeft = (slots?.forge_total || 250) - (slots?.forge_sold || 0);
   const totalLeft = ironLeft + forgeLeft;
   const totalSlots = (slots?.iron_total || 500) + (slots?.forge_total || 250);
   const sheet = document.createElement('div');
   sheet.id = 'foundingMemberSheet';
-  sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;';
-  const ironFeatures = ['AI-generated workout programme','AI-generated 7-day nutrition plan','Workout logging (per-set)','Streak tracking & badges','Personal records detection','Daily push reminders','7 app themes · 2 languages','AI coach — 20 messages/month'];
-  const forgeFeatures = ['Everything in Iron','Unlimited AI coach messages','Weekly AI performance review','Post-workout AI check-in','Progressive overload tracker','Body metrics & AI insights','Plan editing via AI chat','Deload detection & alerts','Weekly shopping list','Multiple saved programmes','Monthly AI deep-dive review','Exercise video demonstrations'];
+  // z-index MUST sit above the upgrade sheet (10000) and the expired paywall (10002) —
+  // this page is opened FROM those surfaces, and at its previous 9999 it rendered behind
+  // them, so the link looked like it did nothing. 10004 also clears
+  // coachTrialExpiredOverlay (10003).
+  sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10004;overflow-y:auto;';
+  // Feature lists reuse the SAME i18n keys as the upgrade sheet rather than duplicating
+  // twenty strings — the two surfaces describe the same tiers and must not drift.
+  const ironFeatures = [
+    t('feat_iron_programme'), t('feat_iron_nutrition'), t('feat_iron_logging'),
+    t('feat_iron_streak'), t('feat_iron_prs'), t('feat_iron_push'),
+    t('feat_iron_themes'), t('feat_iron_coach_limit'),
+  ];
+  const forgeFeatures = [
+    t('feat_everything_iron'), t('feat_forge_coach'), t('feat_forge_weekly'),
+    t('feat_forge_checkin'), t('feat_forge_overload'), t('feat_forge_metrics'),
+    t('feat_forge_editing'), t('feat_forge_deload'), t('feat_forge_shopping'),
+    t('feat_forge_programmes'), t('feat_forge_monthly'), t('feat_forge_video'),
+  ];
   const featureList = (items) => items.map(f => `<div style="display:flex;gap:8px;padding:3px 0;font-size:13px;"><span style="color:var(--accent);">✓</span><span>${escHtml(f)}</span></div>`).join('');
+  const soldOutBtn = `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">${t('fm_sold_out')}</button>`;
   sheet.innerHTML = `
     <div style="max-width:480px;margin:0 auto;padding:32px 20px 60px;">
       <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--accent);">FOUNDING MEMBER</div>
-        <div style="font-size:14px;color:var(--text);margin-top:6px;">Pay once. Train forever. ${totalSlots} slots total.</div>
-        ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${totalLeft} of ${totalSlots} slots remaining</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">Founding Member access is now closed.</div>`}
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--accent);">${t('fm_title')}</div>
+        <div style="font-size:14px;color:var(--text);margin-top:6px;">${t('fm_sub', { total: totalSlots })}</div>
+        ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${t('fm_slots_remaining', { n: totalLeft, total: totalSlots })}</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">${t('fm_closed')}</div>`}
       </div>
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
-        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">⚙️ Iron — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At the standard CHF 49/year, this pays for itself in 37 months.</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Everything in Iron. Forever. No monthly fees.</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.iron })}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_iron_payback')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_iron_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
-        ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Iron Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
+        ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Iron' })}</button>` : soldOutBtn}
       </div>
       <div style="border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface2);">
-        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔥 Forge — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At the standard CHF 79/year, this pays for itself in 38 months.</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">The full coaching system. Forever.</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.forge })}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_forge_payback')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_forge_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(forgeFeatures)}</div>
-        ${forgeLeft > 0 ? `<button onclick="claimFoundingMember('forge')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Forge Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
+        ${forgeLeft > 0 ? `<button onclick="claimFoundingMember('forge')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Forge' })}</button>` : soldOutBtn}
       </div>
-      <div style="text-align:center;font-size:12px;color:var(--muted);margin:12px 0;">Same 30-day money-back guarantee. Same product. One payment.</div>
-      ` : `<div style="text-align:center;padding:20px;"><button onclick="openUpgradeSheet()" style="padding:13px 24px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">See monthly and annual plans</button></div>`}
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin:12px 0;">${t('fm_guarantee')}</div>
+      ` : `<div style="text-align:center;padding:20px;"><button onclick="closeFoundingMemberPage(true)" style="padding:13px 24px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_see_plans')}</button></div>`}
       <div style="text-align:center;margin-top:8px;">
-        <button onclick="document.getElementById('foundingMemberSheet').remove();openUpgradeSheet();" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">See monthly and annual plans instead</button>
+        <button onclick="closeFoundingMemberPage(true)" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">${t('fm_see_plans_instead')}</button>
       </div>
       <div style="text-align:center;margin-top:16px;">
-        <button onclick="document.getElementById('foundingMemberSheet').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 24px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Close</button>
+        <button onclick="closeFoundingMemberPage(false)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 24px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_close')}</button>
       </div>
     </div>
   `;
   document.body.appendChild(sheet);
+}
+
+// Closing the founding sheet must NOT blow away the surface underneath. The old markup
+// called openUpgradeSheet() directly, which removes any element with id 'upgradeSheet' —
+// and the expired paywall reuses exactly that id for its inner wrapper, so that path
+// would have destroyed the non-dismissible paywall and stranded the user.
+function closeFoundingMemberPage(reopenPlans) {
+  document.getElementById('foundingMemberSheet')?.remove();
+  if (reopenPlans && !document.getElementById('upgradeSheet')) openUpgradeSheet();
 }
 
 async function claimFoundingMember(tier) {
@@ -4506,14 +4533,21 @@ function shareReferralLink(url) {
   }
 }
 
-// Load testimonial from backend dynamically
+// Testimonial copy, fetched from GET /api/testimonial (backend data, admin-editable via
+// PATCH /api/admin/testimonial — there is no admin UI for it in this file).
+// Held in module state: renderUpgradeSheetContent() rebuilds sheet.innerHTML on every
+// billing toggle and every language switch, and nothing re-fetched afterwards, so a
+// fetched quote was silently reverted to the hardcoded English fallback the first time
+// the user toggled monthly/annual.
+let _upgradeTestimonial = null;
 async function loadUpgradeTestimonial() {
   const res = await api('/api/testimonial');
   if (res?.quote) {
+    _upgradeTestimonial = { quote: res.quote, attribution: res.attribution || '' };
     const q = document.getElementById('upgradeTestimonialQuote');
     const a = document.getElementById('upgradeTestimonialAttr');
-    if (q) q.textContent = '"' + res.quote + '"';
-    if (a) a.textContent = res.attribution || '';
+    if (q) q.textContent = '"' + _upgradeTestimonial.quote + '"';
+    if (a) a.textContent = _upgradeTestimonial.attribution;
   }
 }
 
@@ -7970,6 +8004,28 @@ async function loadLaunchPricingStatus() {
   } catch(e) {}
 }
 
+// Founding-member slot counts, used ONLY for the scarcity line on the upgrade sheet's
+// lifetime link. Cached on the same TTL as launch pricing so opening the sheet costs one
+// extra GET at most. openFoundingMemberPage() re-fetches fresh and re-primes this cache —
+// the teaser is a hint, the page itself is authoritative.
+let _foundingSlots = null;
+async function loadFoundingSlots() {
+  try {
+    const cached = cacheGet('founding-slots');
+    if (cached) { _foundingSlots = cached; return; }
+    const res = await api('/api/founding-member/slots');
+    if (res) { _foundingSlots = res; cacheSet('founding-slots', res); }
+  } catch(e) {}
+}
+// Total lifetime slots left across both tiers, or null when the count is not loaded yet
+// (the sheet then renders the link without a count rather than showing a wrong number).
+function foundingSlotsLeft() {
+  if (!_foundingSlots) return null;
+  const iron = Math.max(0, (_foundingSlots.iron_total || 0) - (_foundingSlots.iron_sold || 0));
+  const forge = Math.max(0, (_foundingSlots.forge_total || 0) - (_foundingSlots.forge_sold || 0));
+  return { left: iron + forge, total: (_foundingSlots.iron_total || 0) + (_foundingSlots.forge_total || 0) };
+}
+
 function openUpgradeSheet(highlightTier) {
   _upgradeHighlightTier = highlightTier || null;
   const existing = document.getElementById('upgradeSheet');
@@ -7981,7 +8037,7 @@ function openUpgradeSheet(highlightTier) {
   document.body.appendChild(sheet);
   sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
   // Load promo status then render
-  loadLaunchPricingStatus().then(() => renderUpgradeSheetContent(highlightTier));
+  Promise.all([loadLaunchPricingStatus(), loadFoundingSlots()]).then(() => renderUpgradeSheetContent(highlightTier));
   // Load dynamic testimonial
   loadUpgradeTestimonial();
 }
@@ -8025,6 +8081,28 @@ function renderUpgradeSheetContent(highlightTier) {
   const ironPricing  = pricingFor('iron', ironPromo);
   const forgePricing = pricingFor('forge', forgePromo);
 
+  // Testimonial: prefer the fetched value, fall back to the seeded English default (which
+  // matches the server's own fallback). escHtml'd at the render site because this is
+  // admin-supplied data going into innerHTML, not textContent.
+  // Confirmed by Kevin as marketing copy, not a real customer's words, so it IS translated.
+  // A backend value still wins: set one via PATCH /api/admin/testimonial and it overrides
+  // both languages (that override is single-language by design — see known-bugs.md).
+  const _tmQuote = _upgradeTestimonial?.quote || t('upgrade_testimonial_quote');
+  const _tmAttr  = _upgradeTestimonial?.attribution || t('upgrade_testimonial_attr');
+
+  // ── LIFETIME ENTRY POINT ────────────────────────────────────────────────────────
+  // One understated link, deliberately NOT a third card — the Iron/Forge decision has to
+  // stay a two-way choice. openFoundingMemberPage() had ZERO call sites before this, so
+  // lifetime checkout worked end-to-end but nothing in the app could reach it.
+  // Rendered by BOTH surfaces, because openExpiredPaywall() reuses this same function.
+  // Hidden entirely once every slot is gone.
+  const _fmSlots = foundingSlotsLeft();
+  const lifetimeLink = (_fmSlots && _fmSlots.left <= 0) ? '' : `
+      <button class="us-lifetime" onclick="openFoundingMemberPage()">
+        <span class="us-lifetime-main">${t('upgrade_lifetime_link')}</span>
+        ${_fmSlots ? `<span class="us-lifetime-slots">${t('upgrade_lifetime_slots', { n: _fmSlots.left, total: _fmSlots.total })}</span>` : ''}
+      </button>`;
+
   sheet.innerHTML = `
     <style>
       #upgradeSheet .us-sheet {
@@ -8063,6 +8141,10 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-btn-current:active { transform:none; }
       #upgradeSheet .us-btn-forge { background:var(--accent);color:var(--bg);box-shadow:0 4px 20px rgba(0,0,0,0.18); }
       #upgradeSheet .us-btn-ghost { background:var(--surface2);color:var(--text);border:1px solid var(--border); }
+      #upgradeSheet .us-lifetime { display:block;width:100%;padding:12px;background:transparent;border:1px dashed var(--border);border-radius:10px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;cursor:pointer;text-align:center;margin-top:2px;transition:all 0.15s; }
+      #upgradeSheet .us-lifetime:active { transform:scale(0.98); }
+      #upgradeSheet .us-lifetime-main { color:var(--text);font-weight:600; }
+      #upgradeSheet .us-lifetime-slots { display:block;margin-top:3px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px; }
       #upgradeSheet .us-close { display:block;width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px;font-family:'DM Sans',sans-serif;transition:all 0.15s; }
       #upgradeSheet .us-close:active { transform:scale(0.98); }
     .coach-focusable:focus { border-color: var(--accent); outline: none; }
@@ -8084,8 +8166,8 @@ function renderUpgradeSheetContent(highlightTier) {
       <!-- PT anchor + testimonial -->
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">${t('upgrade_pt_compare')}</div>
       <div id="upgradeTestimonial" style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;background:var(--surface);">
-        <div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;" id="upgradeTestimonialQuote">"Built me a full programme in under 2 minutes. I've tried four other apps. This is the first one that felt like it actually knew what I needed."</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="upgradeTestimonialAttr">— James, training for football season</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;" id="upgradeTestimonialQuote">"${escHtml(_tmQuote)}"</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="upgradeTestimonialAttr">${escHtml(_tmAttr)}</div>
       </div>
 
       ${renderUpgradeTierCard('iron', '⚙️ Iron', ironPricing, [
@@ -8120,6 +8202,8 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_forge_support'),
         t('feat_forge_early'),
       ].filter(Boolean), highlightTier === 'forge' || !highlightTier, true, forgePromo ? t('upgrade_launch_pricing') : null)}
+
+      ${lifetimeLink}
 
       <button class="us-close" onclick="this.style.transform='scale(0.9)';setTimeout(()=>{this.style.transform='';triggerGracePeriod();document.getElementById('upgradeSheet')?.remove();},150)">${t('upgrade_close')}</button>
     </div>
@@ -10896,6 +10980,26 @@ const STRINGS = {
     upgrade_recommended: 'RECOMMENDED',
     upgrade_headline: 'Your trial has ended. Keep your progress.',
     upgrade_close: 'Continue with limited access',
+    upgrade_testimonial_quote: 'Built me a full programme in under 2 minutes. I\'ve tried four other apps. This is the first one that felt like it actually knew what I needed.',
+    upgrade_testimonial_attr: '— James, training for football season',
+    upgrade_lifetime_link: 'Pay once instead. Lifetime access from CHF 149',
+    upgrade_lifetime_slots: '{n} of {total} founding slots left',
+    fm_title: 'FOUNDING MEMBER',
+    fm_sub: 'Pay once. Train forever. {total} slots total.',
+    fm_slots_remaining: '{n} of {total} slots remaining',
+    fm_closed: 'Founding Member access is now closed.',
+    fm_card_title: '{tier} — Founding Member',
+    fm_one_time: 'one-time',
+    fm_iron_payback: 'At the standard CHF 49/year, this pays for itself in 37 months.',
+    fm_forge_payback: 'At the standard CHF 79/year, this pays for itself in 38 months.',
+    fm_iron_desc: 'Everything in Iron. Forever. No monthly fees.',
+    fm_forge_desc: 'The full coaching system. Forever.',
+    fm_claim: 'Claim {tier} Lifetime',
+    fm_sold_out: 'Sold out',
+    fm_guarantee: 'Same 30-day money-back guarantee. Same product. One payment.',
+    fm_see_plans: 'See monthly and annual plans',
+    fm_see_plans_instead: 'See monthly and annual plans instead',
+    fm_close: 'Close',
     upgrade_billed_year: 'billed {amount}/year',
     upgrade_if_annual: '{price}/mo if annual',
     coach_limit_title: 'AI COACH',
@@ -11950,6 +12054,26 @@ const STRINGS = {
     upgrade_recommended: 'RECOMMANDÉ',
     upgrade_headline: 'Votre essai est terminé. Gardez vos progrès.',
     upgrade_close: 'Continuer avec un accès limité',
+    upgrade_testimonial_quote: 'Il m\'a construit un programme complet en moins de 2 minutes. J\'ai essayé quatre autres applis. C\'est la première qui avait vraiment l\'air de savoir ce qu\'il me fallait.',
+    upgrade_testimonial_attr: '— James, en prépa pour la saison de foot',
+    upgrade_lifetime_link: 'Paie une seule fois. Accès à vie dès CHF 149',
+    upgrade_lifetime_slots: '{n} places fondateur restantes sur {total}',
+    fm_title: 'MEMBRE FONDATEUR',
+    fm_sub: 'Paie une fois. Entraîne-toi à vie. {total} places au total.',
+    fm_slots_remaining: '{n} places restantes sur {total}',
+    fm_closed: 'L\'accès Membre Fondateur est maintenant fermé.',
+    fm_card_title: '{tier} — Membre Fondateur',
+    fm_one_time: 'paiement unique',
+    fm_iron_payback: 'Au tarif standard de CHF 49/an, c\'est rentabilisé en 37 mois.',
+    fm_forge_payback: 'Au tarif standard de CHF 79/an, c\'est rentabilisé en 38 mois.',
+    fm_iron_desc: 'Tout Iron. À vie. Aucun abonnement.',
+    fm_forge_desc: 'Le système de coaching complet. À vie.',
+    fm_claim: 'Prendre {tier} à vie',
+    fm_sold_out: 'Épuisé',
+    fm_guarantee: 'Même garantie 30 jours satisfait ou remboursé. Même produit. Un seul paiement.',
+    fm_see_plans: 'Voir les formules mensuelles et annuelles',
+    fm_see_plans_instead: 'Voir plutôt les formules mensuelles et annuelles',
+    fm_close: 'Fermer',
     upgrade_billed_year: 'facturé {amount}/an',
     upgrade_if_annual: '{price}/mois si annuel',
     coach_limit_title: 'COACH IA',
