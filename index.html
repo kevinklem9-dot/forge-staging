@@ -163,6 +163,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px 8px;border-radius:6px;transition:background .15s}
 .pw-toggle:hover{background:var(--surface2)}
 .auth-error{color:var(--red);font-size:12px;margin:8px 0;display:none;font-family:'DM Mono',monospace;letter-spacing:0.5px}
+/* Required Terms + Privacy consent. Deliberately NOT .field-label / .auth-note —
+   applyLandingLanguage() maps both of those positionally and a new node would shift it. */
+.consent-row{display:flex;align-items:flex-start;gap:9px;margin:12px 0 10px}
+.consent-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex:0 0 auto;margin-top:1px}
+.consent-text{font-family:'DM Mono',monospace;font-size:10px;line-height:1.6;color:var(--muted);cursor:pointer;letter-spacing:0.3px}
+.consent-text a{color:var(--accent);text-decoration:underline}
 .auth-btn{width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;margin-top:8px;transition:all .2s;position:relative;overflow:hidden}
 .auth-btn:hover:not(:disabled){background:var(--accent-pressed);box-shadow:0 10px 30px rgba(232,255,61,0.3),0 0 0 1px rgba(232,255,61,0.5);transform:translateY(-1px)}
 .auth-btn:disabled{opacity:0.6;cursor:not-allowed}
@@ -445,6 +451,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
         <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
         <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
         <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="hero-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="consent-row">
+          <input type="checkbox" id="hero-consent">
+          <label class="consent-text" for="hero-consent" data-i18n="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+        </div>
         <div class="auth-error" id="hero-signup-error"></div>
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
         <div class="auth-note">7 days free. No card required, cancel anytime.</div>
@@ -627,6 +637,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div class="field-group"><div class="field-label">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
           <div class="field-group"><div class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
           <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="final-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+          <div class="consent-row">
+            <input type="checkbox" id="final-consent">
+            <label class="consent-text" for="final-consent" data-i18n="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+          </div>
           <div class="auth-error" id="final-signup-error"></div>
           <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
           <div class="auth-note">7 days free. No card required, cancel anytime.</div>
@@ -668,8 +682,8 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <div class="footer-right">
       <button type="button" class="footer-link footer-link-btn" id="contactToggle" data-i18n="footer_contact"
               aria-expanded="false" aria-controls="contactPanel" onclick="toggleContactPanel()">Contact</button>
-      <a class="footer-link" href="/privacy.html" data-i18n="footer_privacy">Privacy</a>
-      <a class="footer-link" href="/terms.html" data-i18n="footer_terms">Terms</a>
+      <a class="footer-link" href="privacy.html" data-i18n="footer_privacy">Privacy</a>
+      <a class="footer-link" href="terms.html" data-i18n="footer_terms">Terms</a>
     </div>
   </div>
   <!-- Contact panel — revealed by the Contact button above. The address is
@@ -905,11 +919,14 @@ async function doSignup(instance) {
   const email = document.getElementById(instance + '-email').value.trim();
   const password = document.getElementById(instance + '-password').value;
   const code = document.getElementById(instance + '-code')?.value.trim() || '';
+  const consent = document.getElementById(instance + '-consent')?.checked === true;
   const errId = instance + '-signup-error';
 
   if (!name) return showError(errId, 'Please enter your name.');
   if (!email) return showError(errId, 'Please enter your email.');
   if (!password || password.length < 6) return showError(errId, 'Password must be at least 6 characters.');
+  // UX guard only. /api/signup re-checks accepted_terms because it is a public endpoint.
+  if (!consent) return showError(errId, (LANDING_STRINGS[currentLang] || LANDING_STRINGS.en).consent_required || LANDING_STRINGS.en.consent_required);
   showError(errId, '');
 
   const btn = document.querySelector('#form-signup-' + instance + ' .auth-btn');
@@ -919,7 +936,7 @@ async function doSignup(instance) {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, code, language: currentLang })
+      body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent })
     });
     const data = await res.json();
     btn.disabled = false; btn.textContent = 'Start your free trial';
@@ -1320,6 +1337,8 @@ const LANDING_STRINGS = {
     footer_tag:"AI Performance Coach",
     footer_privacy:"Privacy", footer_terms:"Terms", footer_contact:"Contact",
     lang_saved:"language saved. Your app will open in this language.",
+    consent_label:'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
+    consent_required:"Accept the Terms of Service and Privacy Policy to continue.",
   },
   fr: {
     hero_eyebrow:"Coach Performance IA",
@@ -1414,6 +1433,8 @@ const LANDING_STRINGS = {
     footer_tag:"Coach Performance IA",
     footer_privacy:"Confidentialité", footer_terms:"CGU", footer_contact:"Contact",
     lang_saved:"langue enregistrée. Ton app s'ouvrira dans cette langue.",
+    consent_label:'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
+    consent_required:"Accepte les CGU et la Politique de confidentialité pour continuer.",
   },
 };
 
@@ -1447,6 +1468,9 @@ function applyLandingLanguage(code) {
   // Auth tabs — update both instances
   document.querySelectorAll('[data-i18n="auth_tab_signup"]').forEach(el => el.textContent = s.auth_tab_signup);
   document.querySelectorAll('[data-i18n="auth_tab_signin"]').forEach(el => el.textContent = s.auth_tab_signin);
+
+  // Consent labels (hero + final) — carry links, so set as HTML.
+  document.querySelectorAll('[data-i18n="consent_label"]').forEach(el => { if (s.consent_label) el.innerHTML = s.consent_label; });
 
   // Auth buttons
   document.querySelectorAll('.auth-btn').forEach(btn => {

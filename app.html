@@ -305,6 +305,13 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; overscroll-behavior
 .auth-btn:active { transform:scale(0.98); box-shadow:none; }
 .auth-btn:disabled { background:var(--border); color:var(--muted); box-shadow:none; }
 .auth-error { color:var(--red); font-size:12px; font-family:'DM Mono',monospace; margin-top:10px; text-align:center; display:none; }
+/* Required Terms + Privacy consent, shown between the password field and Create Account. */
+.consent-row { display:flex; align-items:flex-start; gap:9px; margin:14px 0 4px; }
+.consent-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto; margin-top:1px; }
+.consent-text { font-family:'DM Mono',monospace; font-size:10px; line-height:1.6; color:var(--muted); cursor:pointer; letter-spacing:0.3px; }
+.consent-text a { color:var(--accent); text-decoration:underline; }
+/* Inline under-age warning on the onboarding stats step. */
+.ob-age-warning { font-family:'DM Mono',monospace; font-size:10px; line-height:1.5; color:var(--red); margin:6px 2px 0; display:none; }
 
 /* ── ONBOARDING (Style B — Coach Intake) ── */
 /* #screen-onboarding keeps .screen's display toggling (.screen.active → flex).
@@ -1178,6 +1185,10 @@ input:focus, textarea:focus, select:focus { outline: none; }
             <button type="button" onclick="togglePw('signup-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1">👁</button>
           </div>
         </div>
+        <div class="consent-row">
+          <input type="checkbox" id="signup-consent">
+          <label class="consent-text" for="signup-consent" id="signup-consent-label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+        </div>
         <button class="auth-btn" onclick="signUp()">Create Account</button>
         <div style="margin-top:12px;text-align:center;">
           <input id="signup-code" type="text" placeholder="Have a code? Enter it here" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;text-align:center;box-sizing:border-box;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
@@ -1660,6 +1671,10 @@ if (isPWA) {
 const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
 const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+// Minimum age to hold a FORGE account. Mirrors MIN_SIGNUP_AGE in server.js and the
+// wording in terms.html section 03 / privacy.html section 10. Client-side use is UX only
+// — the enforcement is the age check in PATCH /api/profile.
+const FORGE_MIN_AGE = 18;
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TRVSaCP6MFAx438rHQRzgOhIr68s1Bd8KqXZBKtPmU2BVuyUeVEhpEnGPHpdrrOWTrs7UOlCRb6sE7QU3AbBrJG00eXfkbMZM';
 // ══ END ENVIRONMENT CONFIG ══
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
@@ -2241,9 +2256,13 @@ async function signUp() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const code = document.getElementById('signup-code')?.value.trim().toUpperCase() || '';
+  const consent = document.getElementById('signup-consent')?.checked === true;
 
   if (!name || !email || !password) return showAuthError('Fill in all fields.');
   if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
+  // Blocking the submit here is UX. /api/signup re-checks accepted_terms because it is a
+  // public endpoint and a client-side guard is not enforcement.
+  if (!consent) return showAuthError(t('consent_required'));
 
   // Validate code if entered
   if (code) {
@@ -2265,7 +2284,7 @@ async function signUp() {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, code })
+      body: JSON.stringify({ email, password, name, code, accepted_terms: consent })
     });
     const data = await res.json();
     btn.disabled = false; btn.textContent = 'Create Account';
@@ -3140,7 +3159,8 @@ function renderObStep() {
     body.innerHTML = `
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_age')}</div>
-        <div class="ob-input-card"><input type="number" id="ob-age" inputmode="numeric" placeholder="—" value="${obData.age || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_years')}</span></div>
+        <div class="ob-input-card"><input type="number" id="ob-age" inputmode="numeric" min="18" max="100" placeholder="—" value="${obData.age || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_years')}</span></div>
+        <div class="ob-age-warning" id="ob-age-warning"></div>
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_height')}</div>
@@ -3450,7 +3470,28 @@ function checkStats() {
   if (age) obData.age = parseInt(age);
   if (height) obData.height_cm = parseFloat(height);
   if (weight) obData.weight_kg = parseFloat(weight);
-  document.getElementById('ob-next').disabled = !(age && height && weight && obData.sex);
+
+  // Age range check. This is UX — it keeps Next disabled and says why, instead of letting
+  // the user complete onboarding and hit a rejection at submit. The enforcement is the
+  // server gate in PATCH /api/profile, which runs whatever this does.
+  // A `type=number` input reports '' for unparseable text, so an empty box shows nothing.
+  const ageNum = parseInt(age, 10);
+  const hasAge = age !== '' && age !== null && age !== undefined;
+  const ageOk = hasAge && !isNaN(ageNum) && ageNum >= FORGE_MIN_AGE && ageNum <= 100;
+  const warn = document.getElementById('ob-age-warning');
+  if (warn) {
+    if (!hasAge || ageOk) {
+      warn.textContent = '';
+      warn.style.display = 'none';
+    } else {
+      warn.textContent = (!isNaN(ageNum) && ageNum >= 1 && ageNum < FORGE_MIN_AGE)
+        ? t('ob_age_min', { min: FORGE_MIN_AGE })
+        : t('ob_age_invalid');
+      warn.style.display = 'block';
+    }
+  }
+
+  document.getElementById('ob-next').disabled = !(ageOk && height && weight && obData.sex);
 }
 
 function selectSportSessions(el, val) {
@@ -3542,6 +3583,38 @@ function obBack() {
   if (obStep > 0) { obStep--; renderObStep(); }
 }
 
+// ── UNDER-AGE: TERMINAL REJECTION ─────────────────────
+// An under-age PATCH is a permanent refusal, not a transient failure. Retrying cannot
+// help and the old path surfaced it as toast_profile_save_failed ("check connection")
+// before dropping the user back on the onboarding form — an unexplained infinite loop.
+// This replaces the generating screen with a stated reason and a single way out. The
+// user is NEVER returned to the form.
+function showAgeBlockedScreen(minAge) {
+  const min = minAge || FORGE_MIN_AGE;
+  const wrap = document.querySelector('#screen-generating .ob-generating');
+  showScreen('generating');
+  if (!wrap) { showToast(t('age_blocked_title', { min }), 'error', 6000); return; }
+  wrap.innerHTML = `
+    <div class="ob-generating-logo">FORGE</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--red);margin:20px 0 14px;">${t('age_blocked_title', { min })}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;color:var(--muted);max-width:330px;margin:0 auto 24px;">${t('age_blocked_body', { min })}</div>
+    <button onclick="exitAgeBlocked()" style="background:transparent;border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;border-radius:10px;padding:13px 26px;cursor:pointer;">${t('age_blocked_exit')}</button>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:16px;line-height:1.6;">${t('age_blocked_contact')}</div>
+  `;
+}
+
+// Same teardown as signOut() minus the confirm() prompt — there is nothing to confirm,
+// the session is already over.
+function exitAgeBlocked() {
+  if (window._subPollInterval) { clearInterval(window._subPollInterval); window._subPollInterval = null; }
+  localStorage.removeItem('forge-session');
+  localStorage.removeItem('forge-cached-profile');
+  localStorage.removeItem('forge-cached-plan');
+  sessionStorage.removeItem('forge-session-temp');
+  currentUser = null; userProfile = null; userPlan = null;
+  window.location.href = window.location.href.replace(/\/app\.html.*$/, '/').replace(/\/app$/, '/');
+}
+
 async function submitOnboarding() {
   showScreen('generating');
   document.getElementById('gen-status').textContent = t('saving_profile');
@@ -3597,6 +3670,22 @@ async function submitOnboarding() {
       profileSaved = true;
       break;
     }
+
+    // Terminal rejections — checked BEFORE the retry, because a second identical request
+    // gets an identical 400. Falling through to the retry and then to the generic
+    // "check connection" toast is what produced the no-exit loop.
+    if (profileRes?.error === 'under_minimum_age') {
+      showAgeBlockedScreen(profileRes.minimum);
+      return;
+    }
+    if (profileRes?.error === 'invalid_age') {
+      // Recoverable: the value is nonsense rather than too young, so the form is the
+      // right place to land — with a message that names the actual problem.
+      showToast(t('ob_age_invalid'), 'error', 5000);
+      showScreen('onboarding');
+      return;
+    }
+
     if (attempt < 2) await delay(800);
   }
 
@@ -9358,9 +9447,9 @@ function renderAccount() {
       <div style="margin-top:18px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.5px;color:var(--muted);">
         <a href="mailto:support@klemforge.com" style="color:var(--muted);text-decoration:none;font-family:'DM Mono',monospace;font-size:11px">support@klemforge.com</a>
         ·
-        <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;margin:0 8px;">${t('acc_privacy')}</a>
+        <a href="privacy.html" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;margin:0 8px;">${t('acc_privacy')}</a>
         ·
-        <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;margin:0 8px;">${t('acc_terms')}</a>
+        <a href="terms.html" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;margin:0 8px;">${t('acc_terms')}</a>
       </div>
 
     </div>
@@ -11320,6 +11409,16 @@ const STRINGS = {
     expired_coach_prompt: 'Coaching clients?',
     expired_coach_cta: 'Set up a coach account',
     expired_coach_cta_returning: 'Reactivate your coach plan',
+
+    /* === Terms/Privacy consent + minimum age (18) === */
+    consent_label: 'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
+    consent_required: 'Accept the Terms of Service and Privacy Policy to continue.',
+    ob_age_min: 'You must be {min} or over to use FORGE.',
+    ob_age_invalid: 'Enter a valid age.',
+    age_blocked_title: 'YOU MUST BE {min} OR OVER',
+    age_blocked_body: 'FORGE accounts are for people aged {min} and over, as set out in our Terms of Service. Your profile has not been saved and no programme has been created.',
+    age_blocked_exit: 'Sign out',
+    age_blocked_contact: 'Think this is wrong? Email support@klemforge.com',
 },
   fr: {
     /* === Translation Batch 7 — coach client Overview tab (FR) === */
@@ -12392,6 +12491,16 @@ const STRINGS = {
     expired_coach_prompt: 'Tu coaches des clients ?',
     expired_coach_cta: 'Configurer un compte coach',
     expired_coach_cta_returning: 'Réactive ton abonnement coach',
+
+    /* === Consentement CGU/Confidentialité + âge minimum (18) === */
+    consent_label: 'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
+    consent_required: 'Accepte les CGU et la Politique de confidentialité pour continuer.',
+    ob_age_min: 'Tu dois avoir {min} ans ou plus pour utiliser FORGE.',
+    ob_age_invalid: 'Entre un âge valide.',
+    age_blocked_title: 'TU DOIS AVOIR {min} ANS OU PLUS',
+    age_blocked_body: 'Les comptes FORGE sont réservés aux personnes de {min} ans ou plus, comme indiqué dans nos CGU. Ton profil n\'a pas été enregistré et aucun programme n\'a été créé.',
+    age_blocked_exit: 'Se déconnecter',
+    age_blocked_contact: 'Tu penses que c\'est une erreur ? Écris à support@klemforge.com',
 },
 };
 
@@ -12434,6 +12543,10 @@ function applyLanguage() {
   // Remember me label
   const rememberLabel = document.querySelector('label[for="remember-me"]');
   if (rememberLabel) rememberLabel.textContent = t('remember_me');
+
+  // Terms + Privacy consent label — carries two links, so it is set as HTML.
+  const consentLabel = document.getElementById('signup-consent-label');
+  if (consentLabel) consentLabel.innerHTML = t('consent_label');
 
   // Forgot password link
   const forgotBtn = document.querySelector('[onclick="showForgotPassword()"]');
