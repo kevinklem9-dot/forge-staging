@@ -250,7 +250,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .tier-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2.5px;padding:5px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(232,255,61,0.4),0 1px 0 rgba(255,107,53,0.6) inset,0 -2px 0 var(--accent2) inset}
 .tier-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--text);margin-bottom:6px}
 .tier-tagline{font-size:13px;color:var(--muted2);margin-bottom:24px;line-height:1.5;min-height:38px}
-.tier-price-main{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:1.5px;color:var(--text);line-height:1;margin-bottom:6px}
+
+.tier-price-was{font-family:'DM Mono',monospace;font-size:16px;color:var(--muted);text-decoration:line-through;letter-spacing:0.5px;margin-right:10px;vertical-align:middle}
+.tier-card.recommended .tier-price-was{color:var(--muted2)}
+.tf-soon{background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;white-space:nowrap}
+.pricing-micro{text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:28px}
 .tier-card.recommended .tier-price-main{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.3)}
 .tier-price-period{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);letter-spacing:1px;margin-left:6px;font-weight:400}
 .tier-card.recommended .tier-price-period{color:var(--muted2)}
@@ -505,7 +509,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 
 <!-- PT ANCHOR BAR -->
 <div class="pt-bar">
-  <div class="pt-bar-line1 reveal">One PT session costs more than <span class="pt-highlight">a year</span> of FORGE Steel.</div>
+  <div class="pt-bar-line1 reveal">One PT session costs more than <span class="pt-highlight">a full year</span> of FORGE.</div>
   <div class="pt-bar-line2 reveal">Sixty minutes of a trainer's time. Or twelve months of an AI coach that's online at 2am.</div>
 </div>
 
@@ -521,65 +525,53 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <div class="billing-toggle reveal">
       <span class="toggle-label" id="lbl-monthly">Monthly</span>
       <div class="toggle-pill" id="billingToggle" onclick="toggleBilling()"><div class="toggle-knob"></div></div>
-      <span class="toggle-label active" id="lbl-annual">Annual <span class="save-badge">2 months free</span></span>
+      <span class="toggle-label active" id="lbl-annual">Annual <span class="save-badge">Save 40%+</span></span>
     </div>
     <div class="tier-cards reveal-stagger">
       <!-- IRON -->
       <div class="tier-card">
         <div class="tier-name">⚙️ Iron</div>
         <div class="tier-tagline">Start training with a real plan.</div>
-        <div class="tier-price-main" id="iron-price">CHF 6.99<span class="tier-price-period">/mo</span></div>
-        <div class="tier-price-note" id="iron-note">billed CHF 83.88/year</div>
+        <div class="tier-price-main" id="iron-price"><span class="tier-price-was">CHF 4.08</span>CHF 2.92<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="iron-note">billed CHF 35/year</div>
         <div class="tier-features" id="iron-features">
-          <div class="tier-feature"><span class="tier-check">✓</span><span>AI fitness agent — 20 messages/month</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>AI-generated workout programme</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>AI-generated nutrition plan</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Workout logging (per-set)</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Streak tracking &amp; badges</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Personal records detection</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>7 themes · 2 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personalised AI training plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personalised AI nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI coach — up to 20 messages/month</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Progress tracking, streaks &amp; badges</span></div>
         </div>
         <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
       </div>
-      <!-- STEEL -->
+      <!-- FORGE -->
       <div class="tier-card recommended">
-        <div class="tier-badge">RECOMMENDED</div>
-        <div class="tier-name">🔩 Steel</div>
-        <div class="tier-tagline">Full coaching. No PT required.</div>
-        <div class="tier-price-main" id="steel-price">CHF 9.99<span class="tier-price-period">/mo</span></div>
-        <div class="tier-price-note" id="steel-note">billed CHF 119.88/year</div>
-        <div class="tier-features" id="steel-features">
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Iron</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Unlimited AI fitness agent messages</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Weekly AI performance review</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Post-workout AI check-in</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Progressive overload tracker</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Body metrics &amp; AI insights</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Plan editing via AI chat</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Deload detection &amp; alerts</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Weekly shopping list</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Multiple saved programmes</span></div>
+        <div class="tier-badge">MOST POPULAR</div>
+        <div class="tier-name">🔥 Forge</div>
+        <div class="tier-tagline">The whole system. Nothing held back.</div>
+        <div class="tier-price-main" id="forge-price"><span class="tier-price-was">CHF 6.58</span>CHF 4.08<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="forge-note">billed CHF 49/year</div>
+        <div class="tier-features" id="forge-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Everything in Iron</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Uncapped AI coach — unlimited daily messages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Full exercise video demonstration library</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">The Forge Audit — monthly performance deep-dive</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Progress trend report</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Programme recalibration</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Goal trajectory forecast</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Recovery &amp; consistency scoring</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Weekly AI performance review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Post-workout AI check-in</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Progressive overload tracker</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Body metrics &amp; AI insights</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Plan editing via AI chat</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Deload detection &amp; alerts</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Weekly shopping list</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Multiple saved programmes</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Apple Health sync · Garmin sync · Nutrition barcode scanner · Priority support · Early access</span> <span class="tf-soon">SOON</span></div>
         </div>
         <button class="tier-btn primary" onclick="scrollToAuth()">Start free trial</button>
       </div>
-      <!-- FORGE -->
-      <div class="tier-card">
-        <div class="tier-name">🔥 Forge</div>
-        <div class="tier-tagline">Everything. Monthly AI performance review included.</div>
-        <div class="tier-price-main" id="forge-price">CHF 13.99<span class="tier-price-period">/mo</span></div>
-        <div class="tier-price-note" id="forge-note">billed CHF 167.88/year</div>
-        <div class="tier-features" id="forge-features">
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Everything in Steel</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Monthly AI deep-dive coaching review</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Exercise video demonstrations</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Nutrition barcode scanner <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px">SOON</span></span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Wearable sync — Apple / Garmin <span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px">SOON</span></span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Priority support</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span>Early access to new features</span></div>
-        </div>
-        <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
-      </div>
     </div>
+    <div class="pricing-micro reveal" id="pricingMicro">7-day free trial · No card required · Cancel anytime</div>
   </div>
 </section>
 
@@ -713,12 +705,26 @@ async function supabaseAuth(endpoint, body) {
 }
 
 // ── CURRENCY ──────────────────────────────────────────
+// Two tiers, standard AND launch, in four DISPLAY currencies.
+// Annual values are the YEARLY TOTAL; the headline in annual mode is that total / 12.
+// This mirrors app.html's TIER_PRICING so the landing page and the in-app upgrade sheet
+// cannot drift.
+//
+// DISPLAY ONLY. Stripe charges CHF for every currency — the "Transactions processed in
+// CHF" note under the toggle is the disclosure and must stay visible. GBP/EUR are the
+// existing map's ratios (x0.90 / x0.95) reapplied to the new CHF numbers so relative
+// pricing stays coherent; USD tracks CHF 1:1, as it did before.
 const PRICES = {
-  CHF: { sym:'CHF ', iron:{mo:9.99,ann:6.99,billed:83.88}, steel:{mo:13.99,ann:9.99,billed:119.88}, forge:{mo:19.99,ann:13.99,billed:167.88} },
-  GBP: { sym:'£',   iron:{mo:8.99,ann:5.99,billed:71.88},  steel:{mo:11.99,ann:8.99,billed:107.88}, forge:{mo:17.99,ann:12.99,billed:155.88} },
-  EUR: { sym:'€',   iron:{mo:9.49,ann:6.49,billed:77.88},  steel:{mo:12.99,ann:8.99,billed:107.88}, forge:{mo:18.99,ann:13.49,billed:161.88} },
-  USD: { sym:'$',   iron:{mo:9.99,ann:6.99,billed:83.88},  steel:{mo:13.99,ann:9.99,billed:119.88}, forge:{mo:19.99,ann:13.99,billed:167.88} },
+  CHF: { sym:'CHF ', iron:{ std:{mo:6.99, ann:49}, launch:{mo:4.99, ann:35} }, forge:{ std:{mo:11.99, ann:79}, launch:{mo:6.99, ann:49} } },
+  GBP: { sym:'£',    iron:{ std:{mo:6.29, ann:44}, launch:{mo:4.49, ann:32} }, forge:{ std:{mo:10.79, ann:71}, launch:{mo:6.29, ann:44} } },
+  EUR: { sym:'€',    iron:{ std:{mo:6.69, ann:47}, launch:{mo:4.79, ann:33} }, forge:{ std:{mo:11.39, ann:75}, launch:{mo:6.69, ann:47} } },
+  USD: { sym:'$',    iron:{ std:{mo:6.99, ann:49}, launch:{mo:4.99, ann:35} }, forge:{ std:{mo:11.99, ann:79}, launch:{mo:6.99, ann:49} } },
 };
+
+// Launch pricing on the landing page is a hardcoded marketing switch. It does NOT read
+// GET /api/launch-pricing — this page is unauthenticated and makes no API calls. Flip this
+// to false when launch pricing ends, in the same change as the admin toggle in-app.
+const LAUNCH_PRICING_LIVE = true;
 
 let currency = 'CHF';
 let isAnnual = true;
@@ -740,20 +746,36 @@ function toggleBilling() {
 
 function fmt(sym, n) { return sym + n.toFixed(2).replace('.00',''); }
 
+// Landing string lookup with a TDZ guard: updatePrices() runs at INIT (further down this
+// block) before LANDING_STRINGS is declared, and `typeof` on a const in its temporal dead
+// zone throws rather than returning 'undefined'. Falls back to the English literal.
+function _ls(key, fallback) {
+  try {
+    const s = LANDING_STRINGS[currentLang] || LANDING_STRINGS.en;
+    return (s && s[key]) || fallback;
+  } catch (e) { return fallback; }
+}
+
 function updatePrices() {
   const p = PRICES[currency];
   const s = p.sym;
-  ['iron','steel','forge'].forEach(tier => {
+  ['iron','forge'].forEach(tier => {
     const t = p[tier];
+    if (!t) return;
     const priceEl = document.getElementById(tier + '-price');
-    const noteEl = document.getElementById(tier + '-note');
-    if (isAnnual) {
-      priceEl.innerHTML = fmt(s, t.ann) + '<span class="tier-price-period">/mo</span>';
-      noteEl.textContent = 'billed ' + fmt(s, t.billed) + '/year';
-    } else {
-      priceEl.innerHTML = fmt(s, t.mo) + '<span class="tier-price-period">/mo</span>';
-      noteEl.textContent = fmt(s, t.ann) + '/mo if annual';
-    }
+    const noteEl  = document.getElementById(tier + '-note');
+    if (!priceEl || !noteEl) return;
+    const live = LAUNCH_PRICING_LIVE ? t.launch : t.std;
+    // Headline is per-month in both modes; in annual mode it is the yearly total / 12.
+    const headline = isAnnual ? live.ann / 12 : live.mo;
+    const wasHead  = isAnnual ? t.std.ann / 12 : t.std.mo;
+    const struck = LAUNCH_PRICING_LIVE
+      ? '<span class="tier-price-was">' + fmt(s, wasHead) + '</span>'
+      : '';
+    priceEl.innerHTML = struck + fmt(s, headline) + '<span class="tier-price-period">/mo</span>';
+    noteEl.textContent = isAnnual
+      ? _ls('price_billed_year', 'billed {amount}/year').replace('{amount}', fmt(s, live.ann))
+      : _ls('price_if_annual', '{price}/mo if annual').replace('{price}', fmt(s, live.ann / 12));
   });
 }
 
@@ -1229,41 +1251,41 @@ const LANDING_STRINGS = {
     test_3_ctx:"Intermediate lifter, hypertrophy goal",
     test_4:'"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."',
     test_4_ctx:"Fitness and body composition",
-    pt_line1:"One PT session costs more than 14 months of FORGE Steel annual.",
-    pt_line2:"Sixty minutes of a trainer's time. Or fourteen months of an AI coach that's online at 2am.",
+    pt_line1:"One PT session costs more than a full year of FORGE.",
+    pt_line2:"Sixty minutes of a trainer's time. Or twelve months of an AI coach that's online at 2am.",
     price_label:"Pricing", price_h2:"Choose your level.",
     price_sub:"Start free for 7 days. No commitment until you're ready.",
     price_iron_tag:"Start training with a real plan.",
-    price_steel_tag:"Full coaching. No PT required.",
-    price_forge_tag:"Everything. Monthly AI performance review included.",
-    price_btn:"Start free trial", price_recommended:"RECOMMENDED",
+    price_forge_tag:"The whole system. Nothing held back.",
+    price_btn:"Start free trial", price_recommended:"MOST POPULAR",
     billing_monthly:"Monthly", billing_annual:"Annual",
+    price_save_badge:"Save 40%+",
+    price_billed_year:"billed {amount}/year",
+    price_if_annual:"{price}/mo if annual",
+    price_micro:"7-day free trial · No card required · Cancel anytime",
     showing_prices:"Showing prices in", change_currency:"change currency",
     currency_chf_note:"Transactions processed in CHF",
-    feat_iron_1:"AI fitness agent — 20 messages/month",
-    feat_iron_2:"AI-generated workout programme",
-    feat_iron_3:"AI-generated nutrition plan",
-    feat_iron_4:"Workout logging (per-set)",
-    feat_iron_5:"Streak tracking & badges",
-    feat_iron_6:"Personal records detection",
-    feat_iron_7:"7 themes · 2 languages",
-    feat_steel_0:"Everything in Iron",
-    feat_steel_1:"Unlimited AI fitness agent messages",
-    feat_steel_2:"Weekly AI performance review",
-    feat_steel_3:"Post-workout AI check-in",
-    feat_steel_4:"Progressive overload tracker",
-    feat_steel_5:"Body metrics & AI insights",
-    feat_steel_6:"Plan editing via AI chat",
-    feat_steel_7:"Deload detection & alerts",
-    feat_steel_8:"Weekly shopping list",
-    feat_steel_9:"Multiple saved programmes",
-    feat_forge_0:"Everything in Steel",
-    feat_forge_1:"Monthly AI deep-dive coaching review",
-    feat_forge_2:"Exercise video demonstrations",
-    feat_forge_3:"Nutrition barcode scanner",
-    feat_forge_4:"Wearable sync — Apple / Garmin",
-    feat_forge_5:"Priority support",
-    feat_forge_6:"Early access to new features",
+    feat_iron_1:"Personalised AI training plan",
+    feat_iron_2:"Personalised AI nutrition plan",
+    feat_iron_3:"AI coach — up to 20 messages/month",
+    feat_iron_4:"Progress tracking, streaks & badges",
+    feat_forge_0:"Everything in Iron",
+    feat_forge_1:"Uncapped AI coach — unlimited daily messages",
+    feat_forge_2:"Full exercise video demonstration library",
+    feat_forge_3:"The Forge Audit — monthly performance deep-dive",
+    feat_forge_4:"Progress trend report",
+    feat_forge_5:"Programme recalibration",
+    feat_forge_6:"Goal trajectory forecast",
+    feat_forge_7:"Recovery & consistency scoring",
+    feat_forge_8:"Weekly AI performance review",
+    feat_forge_9:"Post-workout AI check-in",
+    feat_forge_10:"Progressive overload tracker",
+    feat_forge_11:"Body metrics & AI insights",
+    feat_forge_12:"Plan editing via AI chat",
+    feat_forge_13:"Deload detection & alerts",
+    feat_forge_14:"Weekly shopping list",
+    feat_forge_15:"Multiple saved programmes",
+    feat_forge_16:"Apple Health sync · Garmin sync · Nutrition barcode scanner · Priority support · Early access",
     obj_label:"Common questions",
     obj_h2:"The things people ask before they sign up.",
     obj_1_q:'"I\'ve been burned by personalised apps before. They all give everyone the same thing."',
@@ -1323,20 +1345,41 @@ const LANDING_STRINGS = {
     test_3_ctx:"Pratiquant intermédiaire, objectif hypertrophie",
     test_4:'"Le plan nutritionnel fonctionne autour de mes jours d\'entraînement. Ce n\'est pas un plan générique — il sait quand je m\'entraîne."',
     test_4_ctx:"Fitness et composition corporelle",
-    pt_line1:"Une séance de coach coûte plus que 14 mois de FORGE Steel annuel.",
-    pt_line2:"Soixante minutes du temps d'un coach. Ou quatorze mois d'un coach IA disponible à 2h du matin.",
+    pt_line1:"Une séance de coach coûte plus qu'une année complète de FORGE.",
+    pt_line2:"Soixante minutes du temps d'un coach. Ou douze mois d'un coach IA disponible à 2h du matin.",
     price_label:"Tarifs", price_h2:"Choisis ton niveau.",
     price_sub:"Essai gratuit 7 jours. Sans engagement jusqu'à ce que tu sois prêt.",
     price_iron_tag:"Commence à t'entraîner avec un vrai programme.",
-    price_steel_tag:"Coaching complet. Sans coach perso.",
-    price_forge_tag:"Tout. Bilan mensuel de performance IA inclus.",
-    price_btn:"Essai gratuit", price_recommended:"RECOMMANDÉ",
+    price_forge_tag:"Le système complet. Rien en moins.",
+    price_btn:"Essai gratuit", price_recommended:"LE PLUS CHOISI",
     billing_monthly:"Mensuel", billing_annual:"Annuel",
+    price_save_badge:"Économise 40%+",
+    price_billed_year:"facturé {amount}/an",
+    price_if_annual:"{price}/mois en annuel",
+    price_micro:"7 jours d'essai gratuit · Sans carte bancaire · Annule quand tu veux",
     showing_prices:"Prix en", change_currency:"changer la devise",
     currency_chf_note:"Transactions traitées en CHF",
-    feat_iron_1:"Agent fitness IA — 20 messages/mois",feat_iron_2:"Programme d'entraînement généré par IA",feat_iron_3:"Plan nutritionnel généré par IA",feat_iron_4:"Journal d'entraînement (par série)",feat_iron_5:"Suivi des séries et badges",feat_iron_6:"Détection des records personnels",feat_iron_7:"7 thèmes · 2 langues",
-    feat_steel_0:"Tout d'Iron",feat_steel_1:"Messages illimités avec l'agent IA",feat_steel_2:"Bilan hebdomadaire de performance IA",feat_steel_3:"Check-in post-entraînement IA",feat_steel_4:"Suivi de la surcharge progressive",feat_steel_5:"Métriques corporelles et insights IA",feat_steel_6:"Modification du plan via chat IA",feat_steel_7:"Alertes de décharge",feat_steel_8:"Liste de courses hebdomadaire",feat_steel_9:"Plusieurs programmes sauvegardés",
-    feat_forge_0:"Tout de Steel",feat_forge_1:"Bilan mensuel approfondi IA",feat_forge_2:"Vidéos de démonstration des exercices",feat_forge_3:"Scanner de code-barres nutritionnel",feat_forge_4:"Sync wearables — Apple / Garmin",feat_forge_5:"Support prioritaire",feat_forge_6:"Accès anticipé aux nouvelles fonctionnalités",
+    feat_iron_1:"Programme d'entraînement IA personnalisé",
+    feat_iron_2:"Plan nutritionnel IA personnalisé",
+    feat_iron_3:"Coach IA — jusqu'à 20 messages/mois",
+    feat_iron_4:"Suivi des progrès, séries et badges",
+    feat_forge_0:"Tout d'Iron",
+    feat_forge_1:"Coach IA sans limite — messages illimités chaque jour",
+    feat_forge_2:"Bibliothèque complète de vidéos de démonstration",
+    feat_forge_3:"Le Forge Audit — bilan mensuel approfondi",
+    feat_forge_4:"Rapport de tendance des progrès",
+    feat_forge_5:"Recalibrage du programme",
+    feat_forge_6:"Projection de trajectoire vers ton objectif",
+    feat_forge_7:"Score de récupération et de régularité",
+    feat_forge_8:"Bilan hebdomadaire de performance IA",
+    feat_forge_9:"Check-in post-entraînement",
+    feat_forge_10:"Suivi de surcharge progressive",
+    feat_forge_11:"Métriques corporelles et insights IA",
+    feat_forge_12:"Modification du plan via chat IA",
+    feat_forge_13:"Détection de décharge et alertes",
+    feat_forge_14:"Liste de courses hebdomadaire",
+    feat_forge_15:"Plusieurs programmes sauvegardés",
+    feat_forge_16:"Apple Health · Garmin · Scanner de code-barres · Support prioritaire · Accès anticipé",
     obj_label:"Questions fréquentes",
     obj_h2:"Ce que les gens demandent avant de s'inscrire.",
     obj_1_q:'"J\'ai été déçu par des apps personnalisées. Elles donnent toutes la même chose."',
@@ -1455,11 +1498,11 @@ function applyLandingLanguage(code) {
   if (ptLine1 && s.pt_line1) ptLine1.textContent = s.pt_line1;
   if (ptLine2 && s.pt_line2) ptLine2.textContent = s.pt_line2;
 
-  // Pricing taglines
+  // Pricing taglines — two tiers now, Steel retired
   const taglines = document.querySelectorAll('.tier-tagline');
-  ['price_iron_tag','price_steel_tag','price_forge_tag'].forEach((k, i) => { if (taglines[i] && s[k]) taglines[i].textContent = s[k]; });
+  ['price_iron_tag','price_forge_tag'].forEach((k, i) => { if (taglines[i] && s[k]) taglines[i].textContent = s[k]; });
 
-  // RECOMMENDED badge
+  // MOST POPULAR badge
   const recBadge = document.querySelector('.tier-badge');
   if (recBadge && s.price_recommended) recBadge.textContent = s.price_recommended;
 
@@ -1472,20 +1515,29 @@ function applyLandingLanguage(code) {
   if (toggleLabels[1] && s.billing_annual) {
     const badge = toggleLabels[1].querySelector('.save-badge');
     toggleLabels[1].childNodes[0].textContent = s.billing_annual + ' ';
-    // keep badge
+    if (badge && s.price_save_badge) badge.textContent = s.price_save_badge;
   }
 
-  // Feature lists — Iron
-  const ironFeats = document.querySelectorAll('#iron-features .tier-feature span:last-child');
-  ['feat_iron_1','feat_iron_2','feat_iron_3','feat_iron_4','feat_iron_5','feat_iron_6','feat_iron_7'].forEach((k,i) => { if (ironFeats[i] && s[k]) ironFeats[i].textContent = s[k]; });
+  // Microcopy under the cards
+  const micro = document.getElementById('pricingMicro');
+  if (micro && s.price_micro) micro.textContent = s.price_micro;
 
-  // Feature lists — Steel
-  const steelFeats = document.querySelectorAll('#steel-features .tier-feature span:last-child');
-  ['feat_steel_0','feat_steel_1','feat_steel_2','feat_steel_3','feat_steel_4','feat_steel_5','feat_steel_6','feat_steel_7','feat_steel_8','feat_steel_9','feat_steel_10'].forEach((k,i) => { if (steelFeats[i] && s[k]) steelFeats[i].textContent = s[k]; });
+  // Feature lists. Selector is .tf-text, NOT span:last-child: the Forge coming-soon row
+  // carries a sibling SOON badge, and textContent on a last-child span would have wiped it.
+  // Each array MUST have exactly one key per rendered row — a short array leaves the tail
+  // rows in English and the `s[k]` guard makes that silent.
+  const ironFeats = document.querySelectorAll('#iron-features .tf-text');
+  ['feat_iron_1','feat_iron_2','feat_iron_3','feat_iron_4']
+    .forEach((k,i) => { if (ironFeats[i] && s[k]) ironFeats[i].textContent = s[k]; });
 
-  // Feature lists — Forge
-  const forgeFeats = document.querySelectorAll('#forge-features .tier-feature span:last-child');
-  ['feat_forge_0','feat_forge_1','feat_forge_2','feat_forge_3','feat_forge_4','feat_forge_5','feat_forge_6'].forEach((k,i) => { if (forgeFeats[i] && s[k]) forgeFeats[i].textContent = s[k]; });
+  const forgeFeats = document.querySelectorAll('#forge-features .tf-text');
+  ['feat_forge_0','feat_forge_1','feat_forge_2','feat_forge_3','feat_forge_4','feat_forge_5',
+   'feat_forge_6','feat_forge_7','feat_forge_8','feat_forge_9','feat_forge_10','feat_forge_11',
+   'feat_forge_12','feat_forge_13','feat_forge_14','feat_forge_15','feat_forge_16']
+    .forEach((k,i) => { if (forgeFeats[i] && s[k]) forgeFeats[i].textContent = s[k]; });
+
+  // Prices carry translated notes ("billed X/year"), so re-render them in the new language.
+  if (typeof updatePrices === 'function') updatePrices();
 
   // Objection cards
   const objQs = document.querySelectorAll('.obj-q');
