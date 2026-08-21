@@ -1967,17 +1967,20 @@ function refreshWeightDisplays() {
   if (document.getElementById('panel-progress')?.classList.contains('active') && typeof renderProgress === 'function') renderProgress();
 }
 
-// Frontend feature access check — uses accessTier from server (single source of truth)
+// Frontend feature access check — uses accessTier from server (single source of truth).
+// HAND-MAINTAINED TWIN of server.js TIER_FEATURES. Two tiers: iron, forge. Every paid
+// feature now gates on 'forge'; the two lists are kept separate only because they read
+// as two product groups, not because they gate differently. If you change one, change
+// TIER_FEATURES in server.js in the same commit.
 function canAccess(feature) {
   if (!userSubscription) return false;
   const { accessTier, isExempt, status } = userSubscription;
   if (isExempt) return true;
   // Expired trial — block everything until paid
   if (status === 'expired') return false;
-  const steelFeatures = ['unlimited_coach','weekly_review','checkin','overload_tracker','body_metrics','plan_editing','deload','shopping_list','multiple_programmes','export_history'];
+  const coreFeatures = ['unlimited_coach','weekly_review','checkin','overload_tracker','body_metrics','plan_editing','deload','shopping_list','multiple_programmes','export_history'];
   const forgeFeatures = ['video_demos','barcode_scanner','wearable_sync','monthly_review','priority_support','early_access'];
-  if (steelFeatures.includes(feature)) return accessTier === 'steel' || accessTier === 'forge';
-  if (forgeFeatures.includes(feature)) return accessTier === 'forge';
+  if (coreFeatures.includes(feature) || forgeFeatures.includes(feature)) return accessTier === 'forge';
   return true;
 }
 
@@ -4071,8 +4074,8 @@ function openExpiredPaywall() {
 
 async function startCheckoutFromExpired(tier) {
   await loadLaunchPricingStatus();
-  const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
-                  (tier === 'forge' && _launchPromo.forge_active);
+  const isPromo = (tier === 'iron'  && !!_launchPromo.iron_active) ||
+                  (tier === 'forge' && !!_launchPromo.forge_active);
   startCheckout(tier, 'annual', isPromo);
 }
 
@@ -4412,38 +4415,39 @@ async function submitFeedback() {
 async function openFoundingMemberPage() {
   const existing = document.getElementById('foundingMemberSheet');
   if (existing) { existing.remove(); return; }
+  // Slots endpoint returns forge_total/forge_sold as of the two-tier restructure.
   const slots = await api('/api/founding-member/slots');
   const ironLeft = (slots?.iron_total || 500) - (slots?.iron_sold || 0);
-  const steelLeft = (slots?.steel_total || 250) - (slots?.steel_sold || 0);
-  const totalLeft = ironLeft + steelLeft;
-  const totalSlots = (slots?.iron_total || 500) + (slots?.steel_total || 250);
+  const forgeLeft = (slots?.forge_total || 250) - (slots?.forge_sold || 0);
+  const totalLeft = ironLeft + forgeLeft;
+  const totalSlots = (slots?.iron_total || 500) + (slots?.forge_total || 250);
   const sheet = document.createElement('div');
   sheet.id = 'foundingMemberSheet';
   sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;';
   const ironFeatures = ['AI-generated workout programme','AI-generated 7-day nutrition plan','Workout logging (per-set)','Streak tracking & badges','Personal records detection','Daily push reminders','7 app themes · 2 languages','AI coach — 20 messages/month'];
-  const steelFeatures = ['Everything in Iron','Unlimited AI coach messages','Weekly AI performance review','Post-workout AI check-in','Progressive overload tracker','Body metrics & AI insights','Plan editing via AI chat','Deload detection & alerts','Weekly shopping list','Multiple saved programmes'];
-  const featureList = (items) => items.map(f => `<div style="display:flex;gap:8px;padding:3px 0;font-size:13px;"><span style="color:var(--accent);">✓</span><span>${f}</span></div>`).join('');
+  const forgeFeatures = ['Everything in Iron','Unlimited AI coach messages','Weekly AI performance review','Post-workout AI check-in','Progressive overload tracker','Body metrics & AI insights','Plan editing via AI chat','Deload detection & alerts','Weekly shopping list','Multiple saved programmes','Monthly AI deep-dive review','Exercise video demonstrations'];
+  const featureList = (items) => items.map(f => `<div style="display:flex;gap:8px;padding:3px 0;font-size:13px;"><span style="color:var(--accent);">✓</span><span>${escHtml(f)}</span></div>`).join('');
   sheet.innerHTML = `
     <div style="max-width:480px;margin:0 auto;padding:32px 20px 60px;">
       <div style="text-align:center;margin-bottom:28px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--accent);">FOUNDING MEMBER</div>
-        <div style="font-size:14px;color:var(--text);margin-top:6px;">Pay once. Train forever. Limited to the first 500 members.</div>
+        <div style="font-size:14px;color:var(--text);margin-top:6px;">Pay once. Train forever. ${totalSlots} slots total.</div>
         ${totalLeft > 0 ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;display:inline-block;">${totalLeft} of ${totalSlots} slots remaining</div>` : `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:10px;">Founding Member access is now closed.</div>`}
       </div>
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">⚙️ Iron — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At CHF 6.99/mo annual, this pays for itself in 22 months.</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At the standard CHF 49/year, this pays for itself in 37 months.</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Everything in Iron. Forever. No monthly fees.</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
         ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Iron Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
       </div>
-      <div style="border:2px solid rgba(232,255,61,0.3);border-radius:14px;padding:20px;margin-bottom:16px;background:rgba(232,255,61,0.03);">
-        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔩 Steel — Founding Member</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${_launchPromo.steel_active ? 'At CHF 8.99/mo launch annual, this pays for itself in 28 months.' : 'At CHF 9.99/mo annual, this pays for itself in 25 months.'}</div>
+      <div style="border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface2);">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">🔥 Forge — Founding Member</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">one-time</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">At the standard CHF 79/year, this pays for itself in 38 months.</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">The full coaching system. Forever.</div>
-        <div style="margin-bottom:16px;">${featureList(steelFeatures)}</div>
-        ${steelLeft > 0 ? `<button onclick="claimFoundingMember('steel')" style="width:100%;padding:13px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Steel Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
+        <div style="margin-bottom:16px;">${featureList(forgeFeatures)}</div>
+        ${forgeLeft > 0 ? `<button onclick="claimFoundingMember('forge')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Claim Forge Lifetime</button>` : `<button disabled style="width:100%;padding:13px;background:var(--border);color:var(--muted);border:none;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:not-allowed;">Sold out</button>`}
       </div>
       <div style="text-align:center;font-size:12px;color:var(--muted);margin:12px 0;">Same 30-day money-back guarantee. Same product. One payment.</div>
       ` : `<div style="text-align:center;padding:20px;"><button onclick="openUpgradeSheet()" style="padding:13px 24px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">See monthly and annual plans</button></div>`}
@@ -5511,7 +5515,7 @@ async function saveLog(btn) {
       return `${ex.name} — ${setsStr}`;
     }).join('\n');
 
-    // Trigger post-workout check-in after a short delay — Steel+ only (Iron users would
+    // Trigger post-workout check-in after a short delay — Forge only (Iron users would
     // otherwise see the check-in UI then hit a server error on submit). Trial = full access.
     if (canAccess('checkin')) {
       setTimeout(() => triggerPostWorkoutCheckin(summary), 1200);
@@ -5827,10 +5831,10 @@ function renderShoppingList() {
   if (!el) return;
 
   if (!canAccess('shopping_list')) {
-    el.innerHTML = `<div onclick="showLockedFeature('Weekly Shopping List','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
+    el.innerHTML = `<div onclick="showLockedFeature('Weekly Shopping List','forge')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
       <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_shopping')}</div>
-      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_forge_badge')}</div>
     </div>`;
     return;
   }
@@ -5949,7 +5953,7 @@ function clearShoppingTicks() {
 
 function copyShoppingList() {
   if (!canAccess('shopping_list')) {
-    showLockedFeature('Shopping List', 'steel');
+    showLockedFeature('Shopping List', 'forge');
     return;
   }
   // Copy must match what renderShoppingList() DISPLAYS: read the ACTIVE nutrition
@@ -6728,10 +6732,10 @@ async function renderWeeklyReview() {
 
   if (!canAccess('weekly_review')) {
     section.style.display = '';
-    if (card) card.innerHTML = `<div onclick="showLockedFeature('Weekly AI Review','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
+    if (card) card.innerHTML = `<div onclick="showLockedFeature('Weekly AI Review','forge')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
       <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_weekly_review')}</div>
-      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_forge_badge')}</div>
     </div>`;
     return;
   }
@@ -6940,10 +6944,10 @@ async function renderAdherence() {
   if (!el) return;
 
   if (!canAccess('overload_tracker')) {
-    el.innerHTML = `<div onclick="showLockedFeature('Plan Adherence','steel')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
+    el.innerHTML = `<div onclick="showLockedFeature('Plan Adherence','forge')" style="background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin:8px 0;">
       <div style="font-size:24px;margin-bottom:8px;">🔒</div>
       <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${t('locked_adherence')}</div>
-      <div style="font-size:12px;color:var(--muted);">${t('locked_steel_badge')}</div>
+      <div style="font-size:12px;color:var(--muted);">${t('locked_forge_badge')}</div>
     </div>`;
     return;
   }
@@ -7761,8 +7765,25 @@ document.getElementById('chatInput').addEventListener('input', function () {
 // SUBSCRIPTION SYSTEM
 // ═══════════════════════════════════════════════════════
 
-const TIER_LABELS = { iron: '⚙️ Iron', steel: '🔩 Steel', forge: '🔥 Forge' };
+const TIER_LABELS = { iron: '⚙️ Iron', forge: '🔥 Forge' };
 const IRON_COACH_LIMIT = 20;
+
+// ── PRICE FORMATTING ──────────────────────────────────
+// CHF. Whole numbers render bare (CHF 49), fractions to two places (CHF 6.99).
+// Annual prices are stored as the YEARLY TOTAL; the per-month headline and the
+// "billed X/year" line are both DERIVED from it. The previous build kept a
+// string-keyed annualBilled map that fell back to '' on a miss, so any price change
+// silently rendered "billed /year" with a blank amount.
+function fmtCHF(n) {
+  return 'CHF ' + (Number.isInteger(n) ? String(n) : Number(n).toFixed(2));
+}
+function monthlyFromAnnual(annualTotal) { return annualTotal / 12; }
+
+// Single source of truth for subscription pricing in the app (CHF).
+const TIER_PRICING = {
+  iron:  { std: { monthly: 6.99,  annual: 49 }, launch: { monthly: 4.99, annual: 35 } },
+  forge: { std: { monthly: 11.99, annual: 79 }, launch: { monthly: 6.99, annual: 49 } },
+};
 
 // ── TRIAL BANNER ─────────────────────────────────────
 async function renderTrialBanner() {
@@ -7816,6 +7837,7 @@ async function renderTrialBanner() {
 }
 
 // ── COACH MESSAGE COUNTER ─────────────────────────────
+// ── COACH MESSAGE COUNTER ─────────────────────────────
 function injectCoachLimitMessage() {
   const div = document.createElement('div');
   div.style.cssText = 'margin-bottom:16px;';
@@ -7823,7 +7845,7 @@ function injectCoachLimitMessage() {
   const btn = document.createElement('button');
   btn.textContent = t('coach_limit_btn');
   btn.style.cssText = 'display:block;width:100%;padding:11px;background:var(--accent);color:var(--bg);border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;margin-top:12px;';
-  btn.onclick = function() { openUpgradeSheet('steel'); };
+  btn.onclick = function() { openUpgradeSheet('forge'); };
   const wrapper = document.createElement('div');
   wrapper.appendChild(div);
   wrapper.appendChild(btn);
@@ -7915,7 +7937,14 @@ function applyCoachLimitUI(isAtLimit) {
 
 // ── UPGRADE SHEET ─────────────────────────────────────
 let _upgradeAnnual = true; // toggle state — default annual
-let _launchPromo = { steel_active: false, steel_sold: 0, forge_active: false, forge_sold: 0 }; // loaded from server
+// Which tier card to highlight. Held in module state because toggleUpgradeBilling()
+// re-renders the sheet and previously read a [data-ht] attribute that nothing ever set,
+// so every billing toggle silently dropped the highlight.
+let _upgradeHighlightTier = null;
+// Launch pricing state. Mirrors GET /api/launch-pricing, which as of the two-tier
+// restructure returns { iron_active, iron_sold, forge_active, forge_sold } — no steel,
+// no *_threshold. There is no headcount cap: only the admin toggle ends launch pricing.
+let _launchPromo = { iron_active: false, iron_sold: 0, forge_active: false, forge_sold: 0 };
 
 // Load launch pricing status from backend
 // ── SIMPLE IN-MEMORY CACHE (TTL) ───────────────────────
@@ -7942,6 +7971,7 @@ async function loadLaunchPricingStatus() {
 }
 
 function openUpgradeSheet(highlightTier) {
+  _upgradeHighlightTier = highlightTier || null;
   const existing = document.getElementById('upgradeSheet');
   if (existing) existing.remove();
 
@@ -7959,6 +7989,7 @@ function openUpgradeSheet(highlightTier) {
 function renderUpgradeSheetContent(highlightTier) {
   const sheet = document.getElementById('upgradeSheet');
   if (!sheet) return;
+  _upgradeHighlightTier = (highlightTier !== undefined) ? (highlightTier || null) : _upgradeHighlightTier;
 
   // FIX 5: headline depends on trial state. During an ACTIVE trial, invite the user to
   // lock in a plan — don't tell them the trial "has ended" when it hasn't. Trial state
@@ -7972,32 +8003,27 @@ function renderUpgradeSheetContent(highlightTier) {
     ? t('upgrade_days_left').replace('{n}', _daysLeft)
     : t('upgrade_subline_ended');
 
-  // Full pricing (never changes)
-  const monthly = { iron: 'CHF 9.99', steel: 'CHF 13.99', forge: 'CHF 19.99' };
-  const annual  = { iron: 'CHF 6.99',  steel: 'CHF 9.99',  forge: 'CHF 13.99' };
+  // ── ACTIVE PRICING ──────────────────────────────────────────────────────────────
+  // Launch pricing runs on BOTH tiers and is admin-toggled only. There is no headcount
+  // cap, so the old "500 - sold spots remaining" maths is gone along with the unused
+  // promoBilled / promoSavings maps. When a tier's launch price is live the standard
+  // price is shown struck through above it.
+  const ironPromo  = !!_launchPromo.iron_active;
+  const forgePromo = !!_launchPromo.forge_active;
 
-  // Promo pricing (active until thresholds hit)
-  const promoMonthly = { steel: 'CHF 11.99', forge: 'CHF 16.99' };
-  const promoAnnual  = { steel: 'CHF 8.99',  forge: 'CHF 11.99' };
-  const promoBilled  = { steel: 'CHF 107.88', forge: 'CHF 143.88' };
-  const promoSavings = { steel: 'Save CHF 2/mo versus full price. Locked in forever.', forge: 'Save CHF 3/mo versus full price. Locked in forever.' };
-
-  // Active prices — use promo if active
-  const steelPromo = _launchPromo.steel_active;
-  const forgePromo = _launchPromo.forge_active;
-  const steelRemaining = (_launchPromo.steel_active) ? (500 - (_launchPromo.steel_sold || 0)) : 0;
-  const forgeRemaining = (_launchPromo.forge_active) ? (500 - (_launchPromo.forge_sold || 0)) : 0;
-
-  const activeMonthly = {
-    iron: monthly.iron,
-    steel: steelPromo ? promoMonthly.steel : monthly.steel,
-    forge: forgePromo ? promoMonthly.forge : monthly.forge,
+  const pricingFor = (tier, promoActive) => {
+    const p = TIER_PRICING[tier];
+    const active = promoActive ? p.launch : p.std;
+    return {
+      monthly: active.monthly,
+      annual: active.annual,
+      stdMonthly: p.std.monthly,
+      stdAnnual: p.std.annual,
+      isPromo: !!promoActive,
+    };
   };
-  const activeAnnual = {
-    iron: annual.iron,
-    steel: steelPromo ? promoAnnual.steel : annual.steel,
-    forge: forgePromo ? promoAnnual.forge : annual.forge,
-  };
+  const ironPricing  = pricingFor('iron', ironPromo);
+  const forgePricing = pricingFor('forge', forgePromo);
 
   sheet.innerHTML = `
     <style>
@@ -8018,8 +8044,8 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-launch-badge { background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.5);border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:#ff6b35;letter-spacing:0.5px;text-align:center;display:block;width:100%;box-sizing:border-box;margin-bottom:12px; }
       #upgradeSheet .us-card { border:2px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;background:var(--surface);transition:all 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.3); }
       #upgradeSheet .us-card.us-current { border-color:var(--border);opacity:0.75; }
-      #upgradeSheet .us-card.us-recommended { border-color:var(--border);background:var(--surface2);box-shadow:0 4px 30px rgba(0,0,0,0.1),0 0 0 1px rgba(0,0,0,0.1) inset;transform:scale(1.02); }
-      #upgradeSheet .us-card.us-forge { border-color:rgba(232,255,61,0.3);background:rgba(232,255,61,0.03);box-shadow:0 4px 24px rgba(232,255,61,0.06),0 0 0 1px rgba(232,255,61,0.08) inset; }
+      #upgradeSheet .us-card.us-recommended { background:var(--surface2);box-shadow:0 4px 30px rgba(0,0,0,0.1),0 0 0 1px rgba(0,0,0,0.1) inset;transform:scale(1.02); }
+      #upgradeSheet .us-card.us-forge { border-color:var(--accent);background:var(--surface2); }
       #upgradeSheet .us-badge { position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;letter-spacing:1px;white-space:nowrap; }
       #upgradeSheet .us-badge-current { background:var(--accent);color:var(--bg); }
       #upgradeSheet .us-badge-rec { background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;box-shadow:0 2px 12px rgba(255,215,0,0.4); }
@@ -8035,8 +8061,7 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-btn:active { transform:scale(0.98); }
       #upgradeSheet .us-btn-current { background:var(--surface2);color:var(--muted);border:2px solid var(--accent);cursor:default; }
       #upgradeSheet .us-btn-current:active { transform:none; }
-      #upgradeSheet .us-btn-steel { background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;box-shadow:0 4px 20px rgba(255,215,0,0.3); }
-      #upgradeSheet .us-btn-forge { background:var(--accent);color:var(--bg);box-shadow:0 4px 20px rgba(232,255,61,0.2); }
+      #upgradeSheet .us-btn-forge { background:var(--accent);color:var(--bg);box-shadow:0 4px 20px rgba(0,0,0,0.18); }
       #upgradeSheet .us-btn-ghost { background:var(--surface2);color:var(--text);border:1px solid var(--border); }
       #upgradeSheet .us-close { display:block;width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px;font-family:'DM Sans',sans-serif;transition:all 0.15s; }
       #upgradeSheet .us-close:active { transform:scale(0.98); }
@@ -8063,7 +8088,8 @@ function renderUpgradeSheetContent(highlightTier) {
         <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="upgradeTestimonialAttr">— James, training for football season</div>
       </div>
 
-      ${renderUpgradeTierCard('iron', '⚙️ Iron', monthly.iron, annual.iron, [
+      ${renderUpgradeTierCard('iron', '⚙️ Iron', ironPricing, [
+        ironPromo ? '__savings__' + t('upgrade_save_forever') : '',
         '__highlight__' + t('feat_iron_coach_limit'),
         t('feat_iron_programme'),
         t('feat_iron_nutrition'),
@@ -8072,34 +8098,28 @@ function renderUpgradeSheetContent(highlightTier) {
         t('feat_iron_prs'),
         t('feat_iron_push'),
         t('feat_iron_themes'),
-      ], highlightTier === 'iron', false, false, 0)}
+      ].filter(Boolean), highlightTier === 'iron', false, ironPromo ? t('upgrade_launch_pricing') : null)}
 
-      ${renderUpgradeTierCard('steel', '🔩 Steel', activeMonthly.steel, activeAnnual.steel, [
-        '__tagline__' + t('feat_steel_tagline'),
-        steelPromo ? '__savings__' + t('upgrade_save_forever').replace('{n}', '2') : '',
-        t('feat_everything_iron'),
-        t('feat_steel_coach'),
-        t('feat_steel_weekly'),
-        t('feat_steel_checkin'),
-        t('feat_steel_overload'),
-        t('feat_steel_metrics'),
-        t('feat_steel_editing'),
-        t('feat_steel_deload'),
-        t('feat_steel_shopping'),
-        t('feat_steel_programmes'),
-      ].filter(Boolean), highlightTier === 'steel' || !highlightTier, true, steelPromo, steelPromo ? monthly.steel : null, steelPromo ? t('upgrade_launch_pricing').replace('{n}', steelRemaining) : null)}
-
-      ${renderUpgradeTierCard('forge', '🔥 Forge', activeMonthly.forge, activeAnnual.forge, [
+      ${renderUpgradeTierCard('forge', '🔥 Forge', forgePricing, [
         '__tagline__' + t('feat_forge_tagline'),
-        forgePromo ? '__savings__' + t('upgrade_save_forever').replace('{n}', '3') : '',
-        t('feat_everything_steel'),
+        forgePromo ? '__savings__' + t('upgrade_save_forever') : '',
+        t('feat_everything_iron'),
+        t('feat_forge_coach'),
+        t('feat_forge_weekly'),
+        t('feat_forge_checkin'),
+        t('feat_forge_overload'),
+        t('feat_forge_metrics'),
+        t('feat_forge_editing'),
+        t('feat_forge_deload'),
+        t('feat_forge_shopping'),
+        t('feat_forge_programmes'),
         t('feat_forge_monthly'),
         t('feat_forge_video'),
         '__comingsoon__' + t('feat_forge_barcode'),
         '__comingsoon__' + t('feat_forge_wearable'),
         t('feat_forge_support'),
         t('feat_forge_early'),
-      ].filter(Boolean), highlightTier === 'forge', false, forgePromo, forgePromo ? monthly.forge : null, forgePromo ? t('upgrade_launch_pricing').replace('{n}', forgeRemaining) : null)}
+      ].filter(Boolean), highlightTier === 'forge' || !highlightTier, true, forgePromo ? t('upgrade_launch_pricing') : null)}
 
       <button class="us-close" onclick="this.style.transform='scale(0.9)';setTimeout(()=>{this.style.transform='';triggerGracePeriod();document.getElementById('upgradeSheet')?.remove();},150)">${t('upgrade_close')}</button>
     </div>
@@ -8108,12 +8128,15 @@ function renderUpgradeSheetContent(highlightTier) {
 
 function toggleUpgradeBilling() {
   _upgradeAnnual = !_upgradeAnnual;
-  const ht = document.querySelector('[data-ht]')?.dataset?.ht || null;
-  renderUpgradeSheetContent(ht);
+  // Re-render with the SAME highlight. The old build read a [data-ht] attribute that was
+  // never written anywhere, so every billing toggle silently dropped the highlighted tier.
+  renderUpgradeSheetContent(_upgradeHighlightTier);
 }
 
-function renderUpgradeTierCard(tier, label, monthly, annual, features, highlighted, recommended, isPromo, fullMonthlyPrice, launchBadgeText) {
-  const currentTier = userSubscription?.tier || 'iron';
+function renderUpgradeTierCard(tier, label, pricing, features, highlighted, recommended, launchBadgeText) {
+  // Anything that is not 'forge' resolves to 'iron' — a legacy stored 'steel' must not
+  // make every card look non-current.
+  const currentTier = userSubscription?.tier === 'forge' ? 'forge' : 'iron';
   const status = userSubscription?.status || 'trial';
   const isExpired = status === 'expired';
   // When expired, no tier is "current" — user must pick and pay
@@ -8124,65 +8147,62 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
     : (userSubscription?.trialDaysLeft || 0);
   const onTrial = status === 'trial';
 
-  // Card class
+  // Card class. Forge now carries BOTH the recommended treatment and its own accent
+  // border: us-recommended no longer sets a border-color, so the two compose instead of
+  // one silently winning on source order.
   let cardClass = 'us-card';
-  if (isCurrent)   cardClass += ' us-current';
-  else if (recommended && !isCurrent) cardClass += ' us-recommended';
-  else if (tier === 'forge') cardClass += ' us-forge';
+  if (isCurrent) {
+    cardClass += ' us-current';
+  } else {
+    if (recommended) cardClass += ' us-recommended';
+    if (tier === 'forge') cardClass += ' us-forge';
+  }
 
   // Badge
   let badge = '';
   if (isCurrent) {
     const label2 = onTrial ? t('upgrade_current_trial', {n: trialDays}) : t('upgrade_current_plan');
     badge = '<div class="us-badge us-badge-current">' + label2 + '</div>';
-  } else if (recommended && !isCurrent) {
+  } else if (recommended) {
     badge = '<div class="us-badge us-badge-rec">' + t('upgrade_recommended') + '</div>';
   }
 
   // Price colour — never hardcode hex. The card sits on --surface/--surface2, which
   // inverts per theme, so the numeral uses --text (always contrast-safe: near-black on
-  // light-warm/light-slate, near-white on the dark themes). Same treatment on all three
-  // tier cards so Iron/Steel/Forge stay consistent.
+  // light-warm/light-slate, near-white on the dark themes).
   const priceColor = 'var(--text)';
   const annualColor = 'var(--accent)';
 
   // Button
+  const tierWord = label.split(' ')[1] || label;
   let btnText, btnDisabled, btnClass;
   if (isCurrent) {
     btnText = onTrial ? t('upgrade_btn_current') + ' · ' + trialDays + ' days left' : t('upgrade_btn_current_paid');
     btnDisabled = true;
     btnClass = 'us-btn us-btn-current';
-  } else if (recommended && !isCurrent) {
-    btnText = onTrial ? t('upgrade_btn_switch', {tier: label.split(' ')[1]}) : t('upgrade_btn_choose', {tier: label.split(' ')[1]});
-    btnDisabled = false;
-    btnClass = 'us-btn us-btn-steel';
-  } else if (tier === 'forge') {
-    btnText = onTrial ? t('upgrade_btn_switch', {tier: 'Forge'}) : t('upgrade_btn_choose', {tier: 'Forge'});
-    btnDisabled = false;
-    btnClass = 'us-btn us-btn-forge';
   } else {
-    btnText = onTrial ? t('upgrade_btn_switch', {tier: label.split(' ')[1]}) : t('upgrade_btn_choose', {tier: label.split(' ')[1]});
+    btnText = onTrial ? t('upgrade_btn_switch', {tier: tierWord}) : t('upgrade_btn_choose', {tier: tierWord});
     btnDisabled = false;
-    btnClass = 'us-btn us-btn-ghost';
+    btnClass = (tier === 'forge') ? 'us-btn us-btn-forge' : 'us-btn us-btn-ghost';
   }
 
-  const price = _upgradeAnnual ? annual : monthly;
-  const annualBilled = {
-    'CHF 6.99': 'CHF 83.88', 'CHF 9.99': 'CHF 119.88', 'CHF 13.99': 'CHF 167.88',
-    'CHF 8.99': 'CHF 107.88', 'CHF 11.99': 'CHF 143.88'
-  };
-  const annualNote = _upgradeAnnual
-    ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: annualBilled[annual] || ''}) + '</div>'
-    : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: annual}) + '</div>';
+  // ── PRICES — all DERIVED, never looked up by string ──────────────────────────────
+  // `pricing.annual` is the YEARLY TOTAL. The headline in annual mode is its monthly
+  // equivalent; the "billed X/year" line is the total itself. The previous build kept a
+  // hardcoded map keyed by the formatted price string with a `|| ''` fallback, so any
+  // price that was not already a key rendered "billed /year" with a blank amount.
+  const showAnnual = _upgradeAnnual;
+  const activeVal = showAnnual ? monthlyFromAnnual(pricing.annual) : pricing.monthly;
+  const stdVal    = showAnnual ? monthlyFromAnnual(pricing.stdAnnual) : pricing.stdMonthly;
+  const price  = fmtCHF(activeVal);
+  const strike = pricing.isPromo ? fmtCHF(stdVal) : null;
 
-  // Promo strikethrough price display
-  const priceDisplay = isPromo && fullMonthlyPrice
-    ? `<div style="text-align:right">
-        <div style="font-size:13px;color:var(--muted);text-decoration:line-through;">${fullMonthlyPrice}<span style="font-size:10px">/mo</span></div>
-        <div class="us-price-val" style="color:${priceColor}">${price}<span class="us-price-period">${t('upgrade_per_mo')}</span></div>
-        ${annualNote}
-       </div>`
-    : `<div style="text-align:right">
+  const annualNote = showAnnual
+    ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: fmtCHF(pricing.annual)}) + '</div>'
+    : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: fmtCHF(monthlyFromAnnual(pricing.annual))}) + '</div>';
+
+  const priceDisplay = `<div style="text-align:right">
+        ${strike ? `<div style="font-size:13px;color:var(--muted);text-decoration:line-through;">${strike}<span style="font-size:10px">${t('upgrade_per_mo')}</span></div>` : ''}
         <div class="us-price-val" style="color:${priceColor}">${price}<span class="us-price-period">${t('upgrade_per_mo')}</span></div>
         ${annualNote}
        </div>`;
@@ -8200,7 +8220,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
           return '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4;">' + f.replace('__tagline__','') + '</div>';
         }
         if (f.startsWith('__savings__')) {
-          return '<div style="font-size:11px;color:#ff6b35;margin-bottom:10px;line-height:1.4;font-family:\'DM Mono\',monospace;">' + f.replace('__savings__','') + '</div>';
+          return '<div style="font-size:11px;color:var(--accent);margin-bottom:10px;line-height:1.4;font-family:\'DM Mono\',monospace;">' + f.replace('__savings__','') + '</div>';
         }
         if (f.startsWith('__highlight__')) {
           return '<div class="us-feature" style="margin-bottom:6px;"><span class="us-check">✓</span><span style="color:var(--accent);font-weight:600;">' + f.replace('__highlight__','') + '</span></div>';
@@ -8218,7 +8238,7 @@ function renderUpgradeTierCard(tier, label, monthly, annual, features, highlight
 async function handleUpgradeClick(tier) {
   const status = userSubscription?.status;
   const currentTier = userSubscription?.tier;
-  const tierRank = { iron: 0, steel: 1, forge: 2 };
+  const tierRank = { iron: 0, forge: 1 };
 
   // Already on this tier
   if (tier === currentTier && status === 'active') {
@@ -8230,8 +8250,8 @@ async function handleUpgradeClick(tier) {
   if (status === 'active' && userSubscription?.stripe_subscription_id) {
     document.getElementById('upgradeSheet')?.remove();
     // Show a clear switch tier confirmation
-    const currentLabel = currentTier === 'forge' ? '🔥 Forge' : currentTier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
-    const newLabel = tier === 'forge' ? '🔥 Forge' : tier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
+    const currentLabel = TIER_LABELS[currentTier] || TIER_LABELS.iron;
+    const newLabel = TIER_LABELS[tier] || TIER_LABELS.iron;
     const isDowngrade = tierRank[tier] < tierRank[currentTier];
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -8269,7 +8289,7 @@ async function handleUpgradeClick(tier) {
       ...userSubscription,
       tier,
       accessTier: userSubscription.status === 'trial' ? 'forge' : tier,
-      hasUnlimitedCoach: tier === 'steel' || tier === 'forge',
+      hasUnlimitedCoach: tier === 'forge',
     };
     renderTrialBanner();
     renderCoachCounter();
@@ -8290,9 +8310,9 @@ async function handleUpgradeClick(tier) {
   // During trial — set preference without charging, offer optional early payment
   if (status === 'trial') {
     const billing = _upgradeAnnual ? 'annual' : 'monthly';
-    const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
-                    (tier === 'forge' && _launchPromo.forge_active);
-    const tierLabel = tier === 'forge' ? '🔥 Forge' : tier === 'steel' ? '🔩 Steel' : '⚙️ Iron';
+    const isPromo = (tier === 'iron'  && !!_launchPromo.iron_active) ||
+                    (tier === 'forge' && !!_launchPromo.forge_active);
+    const tierLabel = TIER_LABELS[tier] || TIER_LABELS.iron;
     const daysLeft = userSubscription?.trialDaysLeft || 0;
 
     const toast = document.createElement('div');
@@ -8312,8 +8332,8 @@ async function handleUpgradeClick(tier) {
 
   // Not on trial, no active subscription — go straight to payment
   const billing = _upgradeAnnual ? 'annual' : 'monthly';
-  const isPromo = (tier === 'steel' && _launchPromo.steel_active) ||
-                  (tier === 'forge' && _launchPromo.forge_active);
+  const isPromo = (tier === 'iron'  && !!_launchPromo.iron_active) ||
+                  (tier === 'forge' && !!_launchPromo.forge_active);
   startCheckout(tier, billing, isPromo);
 }
 
@@ -8329,8 +8349,14 @@ async function manageTierSwitch(newTier) {
 }
 
 // ── LOCKED FEATURE MODAL ──────────────────────────────
+// ── LOCKED FEATURE MODAL ──────────────────────────────
+// Two tiers, so there is only one destination: Forge. requiredTier is kept in the
+// signature because eleven call sites pass it and it still drives which card the upgrade
+// sheet highlights. featureName is escaped — call sites pass literals today, but this is
+// injected as innerHTML.
 function showLockedFeature(featureName, requiredTier) {
-  const tierLabel = requiredTier === 'forge' ? '🔥 Forge' : '🔩 Steel';
+  const tier = (requiredTier === 'iron') ? 'iron' : 'forge';
+  const tierLabel = TIER_LABELS[tier] || TIER_LABELS.forge;
   const existing = document.getElementById('lockedModal');
   if (existing) existing.remove();
 
@@ -8340,9 +8366,9 @@ function showLockedFeature(featureName, requiredTier) {
   modal.innerHTML = `
     <div style="background:var(--bg);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;">
       <div style="font-size:36px;margin-bottom:12px;">🔒</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">${featureName}</div>
-      <div style="font-size:14px;color:var(--muted);margin-bottom:20px;">This feature is available on the ${tierLabel} plan and above.</div>
-      <button onclick="document.getElementById('lockedModal').remove();openUpgradeSheet('${requiredTier}')" style="display:block;width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">${escHtml(featureName)}</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:20px;">This feature is available on the ${tierLabel} plan.</div>
+      <button onclick="document.getElementById('lockedModal').remove();openUpgradeSheet('${tier}')" style="display:block;width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">
         Upgrade to ${tierLabel}
       </button>
       <button onclick="document.getElementById('lockedModal').remove()" style="display:block;width:100%;padding:12px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;">
@@ -8358,55 +8384,28 @@ function showLockedFeature(featureName, requiredTier) {
 // The /api/export/history endpoint is left intact server-side per spec.
 
 // ── PROGRAMMES PANEL ──────────────────────────────────
-// Entry point from the Plan panel. Iron → upgrade prompt; Steel/Forge → open panel.
+// Entry point from the Plan panel. Iron → upgrade prompt; Forge → open panel.
+// Gating goes through canAccess so it cannot drift from server TIER_FEATURES.
 function openProgrammes() {
-  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
-  if (tier !== 'steel' && tier !== 'forge') {
-    showLockedFeature('Multiple Saved Programmes', 'steel');
+  if (!canAccess('multiple_programmes')) {
+    showLockedFeature('Multiple Saved Programmes', 'forge');
     return;
   }
   showPanel('programmes');
 }
 
 function programmeTierLimit() {
-  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
-  return tier === 'forge' ? Infinity : (tier === 'steel' ? 3 : 1);
+  return canAccess('multiple_programmes') ? Infinity : 1;
 }
 
 function programmeLimitToast() {
   showToast(t('toast_prog_limit'), 'error');
 }
 
-async function renderProgrammes() {
-  const el = document.getElementById('programmesPanel');
-  if (!el) return;
-  el.innerHTML = '<div class="loader"><div class="spin"></div></div>';
-
-  const res = await api('/api/programmes');
-  const progs = res?.programmes || [];
-  userProgrammes = progs;
-  const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
-  const limit = programmeTierLimit();
-  const atLimit = progs.length >= limit;
-
-  // Save-current button: disabled at limit (Steel cap). Steel also shows slots used.
-  const saveBtn = atLimit
-    ? `<button onclick="programmeLimitToast()" title="You've reached your 3 programme limit on Steel. Upgrade to Forge for unlimited programmes." style="width:100%;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;margin-bottom:16px;">${t('prog_limit_reached')}</button>`
-    : `<button onclick="showNewProgrammeModal()" style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">${t('prog_save_current')}</button>`;
-
-  const slotsLine = (tier === 'steel')
-    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-top:14px;text-align:center;">${t('prog_slots_used', { n: progs.length })}</div>`
-    : '';
-
-  el.innerHTML = `
-    <div style="padding:16px;">
-      ${saveBtn}
-      ${progs.length === 0
-        ? '<div class="empty-state">' + t('prog_empty') + '</div>'
-        : progs.map(programmeCard).join('')}
-      ${slotsLine}
-    </div>`;
-}
+// renderProgrammes USED to be defined here. It was dead: a later <script> block
+// reassigns it (search "FEATURE 1: multiple saved programmes"), and that version is the
+// one the app runs. The dead copy has been deleted rather than updated — editing it
+// changes nothing at runtime while looking like it shipped.
 
 // ═══════════════════════════════════════════════════════
 // BUILD 3 — "Save changes to this programme"
@@ -8661,7 +8660,7 @@ function viewProgrammeWorkouts(id) {
 function showNewProgrammeModal() {
   if (userProgrammes.length >= programmeTierLimit()) {
     const tier = userSubscription?.isExempt ? 'forge' : (userSubscription?.accessTier || 'iron');
-    if (tier === 'iron') showLockedFeature('Multiple Saved Programmes', 'steel');
+    if (tier === 'iron') showLockedFeature('Multiple Saved Programmes', 'forge');
     else programmeLimitToast();
     return;
   }
@@ -8701,7 +8700,7 @@ async function saveCurrentProgramme() {
     renderProgrammes();
   } else if (res?.error === 'upgrade_required') {
     document.getElementById('newProgModal')?.remove();
-    showLockedFeature('Multiple Saved Programmes', 'steel');
+    showLockedFeature('Multiple Saved Programmes', 'forge');
   } else if (res?.error === 'programme_limit_reached') {
     document.getElementById('newProgModal')?.remove();
     showToast(res.message || 'Programme limit reached', 'error');
@@ -8727,7 +8726,7 @@ async function saveCurrentNutritionPlan() {
     showToast(t('toast_nutrition_saved'), 'success');
     renderNutritionProgrammes();
   } else if (res?.error === 'upgrade_required') {
-    showLockedFeature('Saved Nutrition Plans', 'steel');
+    showLockedFeature('Saved Nutrition Plans', 'forge');
   } else if (res?.error === 'programme_limit_reached') {
     showToast(res.message || 'Plan limit reached', 'error');
   } else {
@@ -9013,9 +9012,11 @@ function renderAccount() {
 
   const sub = userSubscription || {};
   const profile = userProfile || {};
-  const tierLabel = { iron: 'Iron', steel: 'Steel', forge: 'Forge' };
-  const tierColour = { iron: 'var(--muted)', steel: 'var(--steel, #7eb8f7)', forge: 'var(--accent)' };
-  const displayTier = sub.isExempt ? 'forge' : (sub.tier || 'iron');
+  const tierLabel = { iron: 'Iron', forge: 'Forge' };
+  const tierColour = { iron: 'var(--muted)', forge: 'var(--accent)' };
+  // Normalise anything that is not 'forge' to 'iron'. A legacy stored 'steel' would
+  // otherwise miss every lookup and render an undefined label against a paid badge.
+  const displayTier = (sub.isExempt || sub.tier === 'forge') ? 'forge' : 'iron';
   const trialDays = sub.trialEndsAt ? Math.max(0, Math.ceil((new Date(sub.trialEndsAt) - new Date()) / (1000*60*60*24))) : (sub.trialDaysLeft || 0);
   const statusText = sub.isExempt ? t('exempt_free') : (sub.status === 'trial' ? t('trial_days_left', {n: trialDays}) : (sub.status || t('sub_trial_status')));
   const isTrial = sub.status === 'trial';
@@ -9762,8 +9763,8 @@ function filterAdminUsers() {
 
 function renderAdminList(users) {
   const el = document.getElementById('adminUserList');
-  const tierColour = { iron: 'var(--muted)', steel: '#7eb8f7', forge: 'var(--accent)' };
-  const tierIcon = { iron: '⚙️', steel: '🔩', forge: '🔥' };
+  const tierColour = { iron: 'var(--muted)', forge: 'var(--accent)' };
+  const tierIcon = { iron: '⚙️', forge: '🔥' };
 
   // FIX 2: paying vs exempt vs trial. Prefer server-computed res.stats; fall back to a
   // client-side count (same rule as the server) so the cards still work if the backend
@@ -9803,8 +9804,8 @@ function renderAdminList(users) {
 }
 
 function renderAdminUserCards(users) {
-  const tierColour = { iron: 'var(--muted)', steel: '#7eb8f7', forge: 'var(--accent)' };
-  const tierIcon = { iron: '⚙️', steel: '🔩', forge: '🔥' };
+  const tierColour = { iron: 'var(--muted)', forge: 'var(--accent)' };
+  const tierIcon = { iron: '⚙️', forge: '🔥' };
 
   return users.map(u => {
     const tier = u.subscription_tier || 'iron';
@@ -9823,8 +9824,10 @@ function renderAdminUserCards(users) {
       + '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">'
       + '<select onchange="setUserTier(\'' + u.id + '\', this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 8px;font-size:12px;font-family:DM Sans,sans-serif;cursor:pointer;">'
       + '<option value="iron" ' + (tier==='iron'?'selected':'') + '>⚙️ Iron</option>'
-      + '<option value="steel" ' + (tier==='steel'?'selected':'') + '>🔩 Steel</option>'
       + '<option value="forge" ' + (tier==='forge'?'selected':'') + '>🔥 Forge</option>'
+      // Surface a legacy stored tier (e.g. 'steel') instead of letting the browser
+      // silently select Iron, which would misreport the row and overwrite it on change.
+      + (tier !== 'iron' && tier !== 'forge' ? '<option value="' + escHtml(tier) + '" selected>⚠ ' + escHtml(tier) + ' (legacy)</option>' : '')
       + '</select>'
       + '<button onclick="toggleExempt(\'' + u.id + '\', ' + !u.is_exempt + ')" style="background:' + (u.is_exempt?'rgba(255,200,0,0.15)':'var(--bg)') + ';border:1px solid ' + (u.is_exempt?'var(--accent)':'var(--border)') + ';color:' + (u.is_exempt?'var(--accent)':'var(--muted)') + ';border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:DM Sans,sans-serif;">'
       + (u.is_exempt ? '★ Exempt' : '☆ Exempt') + '</button>'
@@ -9937,36 +9940,33 @@ async function renderAdminLaunchPricing() {
   if (!el) return;
   const res = await api('/api/admin/launch-pricing');
   if (!res) return;
+  // Two tiers, no headcount cap. *_sold is telemetry only, so there is no "N of 500"
+  // progress line any more — the toggle is the only thing that ends launch pricing.
+  const row = (tier, icon, name, active, sold) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;">${icon} ${escHtml(name)}</div>
+          <div style="font-size:12px;color:var(--muted);">${sold} sold · ${active ? '<span style="color:var(--accent)">ACTIVE</span>' : '<span style="color:var(--muted)">ENDED</span>'}</div>
+        </div>
+        <button onclick="toggleLaunchPromo('${tier}', ${!active})" style="padding:8px 14px;background:var(--surface2);border:1px solid ${active ? 'var(--red)' : 'var(--accent)'};color:${active ? 'var(--red)' : 'var(--accent)'};border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;">
+          ${active ? 'END PROMO' : 'REACTIVATE'}
+        </button>
+      </div>`;
   el.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">LAUNCH PRICING STATUS</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div>
-          <div style="font-size:14px;font-weight:600;">🔩 Steel</div>
-          <div style="font-size:12px;color:var(--muted);">${res.steel_sold} / ${res.steel_threshold} sold · ${res.steel_active ? '<span style="color:var(--accent)">ACTIVE</span>' : '<span style="color:var(--muted)">ENDED</span>'}</div>
-        </div>
-        <button onclick="toggleLaunchPromo('steel', ${!res.steel_active})" style="padding:8px 14px;background:${res.steel_active ? 'rgba(255,68,68,0.1)' : 'rgba(232,255,61,0.1)'};border:1px solid ${res.steel_active ? 'rgba(255,68,68,0.4)' : 'rgba(232,255,61,0.4)'};color:${res.steel_active ? 'var(--red)' : 'var(--accent)'};border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;">
-          ${res.steel_active ? 'END PROMO' : 'REACTIVATE'}
-        </button>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-size:14px;font-weight:600;">🔥 Forge</div>
-          <div style="font-size:12px;color:var(--muted);">${res.forge_sold} / ${res.forge_threshold} sold · ${res.forge_active ? '<span style="color:var(--accent)">ACTIVE</span>' : '<span style="color:var(--muted)">ENDED</span>'}</div>
-        </div>
-        <button onclick="toggleLaunchPromo('forge', ${!res.forge_active})" style="padding:8px 14px;background:${res.forge_active ? 'rgba(255,68,68,0.1)' : 'rgba(232,255,61,0.1)'};border:1px solid ${res.forge_active ? 'rgba(255,68,68,0.4)' : 'rgba(232,255,61,0.4)'};color:${res.forge_active ? 'var(--red)' : 'var(--accent)'};border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;">
-          ${res.forge_active ? 'END PROMO' : 'REACTIVATE'}
-        </button>
-      </div>
+      ${row('iron', '⚙️', 'Iron', !!res.iron_active, res.iron_sold || 0)}
+      ${row('forge', '🔥', 'Forge', !!res.forge_active, res.forge_sold || 0)}
     </div>
   `;
 }
 
 async function toggleLaunchPromo(tier, active) {
-  const body = tier === 'steel' ? { steel_active: active } : { forge_active: active };
+  // PATCH body shape changed with the two-tier restructure: { iron_active, forge_active }.
+  const body = tier === 'iron' ? { iron_active: active } : { forge_active: active };
   const res = await api('/api/admin/launch-pricing', 'PATCH', body);
   if (res?.ok) {
-    showToast(`${tier} promo ${active ? 'reactivated' : 'ended'}`, 'success');
+    showToast(`${tier} launch pricing ${active ? 'reactivated' : 'ended'}`, 'success');
     renderAdminLaunchPricing();
   } else {
     showToast('Failed', 'error');
@@ -10509,8 +10509,8 @@ const STRINGS = {
     notif_enable_instructions: "To enable: Settings → Safari → Notifications → FORGE → Allow", notif_enabled: "Notifications enabled.", notif_disabled: "Notifications disabled.", notif_not_supported: "Push notifications not supported on this browser.", notif_blocked: "Notifications blocked. Go to Settings → Safari → Notifications → FORGE → Allow",
     /* i18n fix — stat cards / upgrade sheet / share / features / coach */
     stat_sessions_week: "SESSIONS THIS WEEK", stat_sessions_recent: "SESSIONS (7 DAYS)", stat_current_streak: "CURRENT STREAK", stat_last_session: "LAST SESSION", stat_prs_month: "PRS THIS MONTH", stat_day: "day", stat_days: "days", stat_best: "best", stat_view_history: "View history ›",
-    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "One PT session costs more than 6 months of Steel annual.", upgrade_save_forever: "Save CHF {n}/mo vs full price. Locked in forever.", upgrade_launch_pricing: "LAUNCH PRICING — {n} of 500 spots remaining",
-    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7. Steel starts from CHF 9.99/mo annual — less than a coffee a week.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed", share_free_months: "Free months",
+    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "One PT session costs more than a year of Forge annual.", upgrade_save_forever: "Launch price. Yours while your subscription stays active.", upgrade_launch_pricing: "LAUNCH PRICING LIVE",
+    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7. Forge is CHF 79/year. That is CHF 6.58 a month.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed", share_free_months: "Free months",
     become_coach_title: "Become a FORGE Coach",
     become_coach_subtitle: "Build your coaching business on FORGE. Manage clients, assign programmes, and grow your income.",
     coach_profile_title: "Your Coach Profile", coach_profile_sub: "This is what clients see when you connect with them.",
@@ -10870,16 +10870,15 @@ const STRINGS = {
     feat_iron_prs: 'Personal records detection',
     feat_iron_push: 'Daily push reminders',
     feat_iron_themes: '7 app themes · 2 languages',
-    feat_steel_tagline: 'Full coaching. No PT required.',
-    feat_steel_coach: 'Unlimited AI coach messages',
-    feat_steel_weekly: 'Weekly AI performance review',
-    feat_steel_checkin: 'Post-workout AI check-in',
-    feat_steel_overload: 'Progressive overload tracker',
-    feat_steel_metrics: 'Body metrics & AI insights',
-    feat_steel_editing: 'Plan editing via AI chat',
-    feat_steel_deload: 'Deload detection & alerts',
-    feat_steel_shopping: 'Weekly shopping list',
-    feat_steel_programmes: 'Multiple saved programmes',
+    feat_forge_coach: 'Unlimited AI coach messages',
+    feat_forge_weekly: 'Weekly AI performance review',
+    feat_forge_checkin: 'Post-workout AI check-in',
+    feat_forge_overload: 'Progressive overload tracker',
+    feat_forge_metrics: 'Body metrics & AI insights',
+    feat_forge_editing: 'Plan editing via AI chat',
+    feat_forge_deload: 'Deload detection & alerts',
+    feat_forge_shopping: 'Weekly shopping list',
+    feat_forge_programmes: 'Multiple saved programmes',
     feat_forge_tagline: 'Maximum performance. Monthly AI coaching review included.',
     feat_forge_monthly: 'Monthly AI deep-dive coaching review',
     feat_forge_video: 'Exercise video demonstrations',
@@ -10888,7 +10887,6 @@ const STRINGS = {
     feat_forge_support: 'Priority support',
     feat_forge_early: 'Early access to new features',
     feat_everything_iron: 'Everything in Iron',
-    feat_everything_steel: 'Everything in Steel',
     upgrade_current_plan: 'CURRENT PLAN',
     upgrade_current_trial: 'CURRENT PLAN · {n} DAYS LEFT',
     upgrade_btn_current: '✓ Your trial plan — choose to continue',
@@ -10901,8 +10899,8 @@ const STRINGS = {
     upgrade_billed_year: 'billed {amount}/year',
     upgrade_if_annual: '{price}/mo if annual',
     coach_limit_title: 'AI COACH',
-    coach_limit_body: 'I\'ve got more to say — on your progress, your plan, your next phase. But I\'m out of messages until your billing period resets. If you want to keep the conversation going, Steel gives you unlimited coaching. No cap, no waiting.',
-    coach_limit_btn: 'Upgrade to Steel →',
+    coach_limit_body: 'I\'ve got more to say — on your progress, your plan, your next phase. But I\'m out of messages until your billing period resets. If you want to keep the conversation going, Forge gives you unlimited coaching. No cap, no waiting.',
+    coach_limit_btn: 'Upgrade to Forge →',
     coach_running_low: 'running low',
     coach_one_remaining: '1 message remaining',
     panel_coach: 'Coach',
@@ -10954,7 +10952,6 @@ const STRINGS = {
     acc_day_remaining_one: '1 day remaining',
     prog_save_current: '+ Save current programme',
     prog_limit_reached: 'Programme limit reached',
-    prog_slots_used: '{n} of 3 slots used',
     prog_empty: 'No saved programmes yet. Tap "Save current programme" to store your active plan.',
     prog_edit: 'Edit workouts',
     prog_view: 'View',
@@ -10975,7 +10972,6 @@ const STRINGS = {
     trial_banner_days: '🔥 {n} day{s} left in your free trial — full access until it ends.',
     trial_banner_active: '🔥 Free trial active — full access until it ends.',
     trial_banner_free: '🔥 Free plan — upgrade to unlock all features.',
-    upgrade_steel: 'Upgrade to Steel for unlimited.',
     name_empty: 'Name cannot be empty',
     profile_saved: 'Profile saved',
     name_saved_email_confirm: 'Name saved. Check your new email to confirm the change.',
@@ -10983,7 +10979,7 @@ const STRINGS = {
     reset_sent: 'Password reset email sent',
     reset_failed: 'Failed to send reset email — try again',
     failed_save: 'Failed to save — try again',
-    shopping_locked: 'Shopping list requires Steel or above',
+    shopping_locked: 'Shopping list requires Forge',
     coach_messages_left: '{n} messages left this month',
     generating: 'Generating...',
     generate_review: 'Generate This Month\'s Review',
@@ -11020,9 +11016,9 @@ const STRINGS = {
     upgrade_sub: '',
     upgrade_monthly: 'Monthly',
     upgrade_annual: 'Annual',
-    upgrade_months_free: '2 MONTHS FREE',
+    upgrade_months_free: 'SAVE 40%+',
     upgrade_per_mo: '/mo',
-    coach_limit_msg: 'That’s your 20 for this month. I’ve got more to say — on your progress, your plan, your next phase. But I’m out of messages until your billing period resets. If you want to keep the conversation going, Steel gives you unlimited coaching. No cap, no waiting.',
+    coach_limit_msg: 'That’s your 20 for this month. I’ve got more to say — on your progress, your plan, your next phase. But I’m out of messages until your billing period resets. If you want to keep the conversation going, Forge gives you unlimited coaching. No cap, no waiting.',
     coach_input_disabled: 'You’ve used all 20 coaching messages for this month.',
   
     locked_shopping: 'Weekly Shopping List',
@@ -11031,7 +11027,6 @@ const STRINGS = {
     locked_adherence: 'Plan Adherence',
     locked_body_metrics: 'Body Metrics & AI Insights',
     locked_programmes: 'Multiple Saved Programmes',
-    locked_steel_badge: 'Available on 🔩 Steel and above',
     locked_forge_badge: 'Available on 🔥 Forge',
 
     ob_goal_muscle: 'Build Muscle',
@@ -11568,8 +11563,8 @@ const STRINGS = {
     notif_enable_instructions: "Pour activer: Réglages → Safari → Notifications → FORGE →Autoriser", notif_enabled: "Notifications activées.", notif_disabled: "Notifications désactivées.", notif_not_supported: "Les notifications push ne sont pas disponibles sur ce navigateur.", notif_blocked: "Notifications bloquées. Va dans Réglages → Safari → Notifications → FORGE → Autoriser",
     /* i18n fix — stat cards / upgrade sheet / share / features / coach */
     stat_sessions_week: "SÉANCES CETTE SEMAINE", stat_sessions_recent: "SÉANCES (7 JOURS)", stat_current_streak: "SÉRIE EN COURS", stat_last_session: "DERNIÈRE SÉANCE", stat_prs_month: "RECORDS CE MOIS", stat_day: "jour", stat_days: "jours", stat_best: "meilleur", stat_view_history: "Voir l'historique ›",
-    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Une séance de PT coûte plus cher que 6 mois d'abonnement Steel annuel.", upgrade_save_forever: "Économise CHF {n}/mois vs prix normal. Bloqué pour toujours.", upgrade_launch_pricing: "PRIX DE LANCEMENT — {n} places sur 500",
-    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Quand un ami s'abonne, tu gagnes un mois gratuit. Il obtient 14 jours d'essai au lieu de 7. Steel à partir de CHF 9.99/mois en annuel — moins qu'un café par semaine.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés", share_free_months: "Mois gratuits",
+    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Une séance de PT coûte plus cher qu'un an d'abonnement Forge annuel.", upgrade_save_forever: "Prix de lancement. Conservé tant que ton abonnement reste actif.", upgrade_launch_pricing: "PRIX DE LANCEMENT ACTIF",
+    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Quand un ami s'abonne, tu gagnes un mois gratuit. Il obtient 14 jours d'essai au lieu de 7. Forge coûte CHF 79/an. Soit CHF 6.58 par mois.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés", share_free_months: "Mois gratuits",
     become_coach_title: "Deviens Coach FORGE",
     become_coach_subtitle: "Développe ton activité de coaching sur FORGE. Gère tes clients, assigne des programmes et augmente tes revenus.",
     coach_profile_title: "Ton Profil Coach", coach_profile_sub: "C'est ce que voient les clients quand tu te connectes avec eux.",
@@ -11929,16 +11924,15 @@ const STRINGS = {
     feat_iron_prs: 'Détection des records personnels',
     feat_iron_push: 'Rappels quotidiens',
     feat_iron_themes: '7 thèmes · 2 langues',
-    feat_steel_tagline: 'Coaching complet. Sans coach perso.',
-    feat_steel_coach: 'Messages illimités au coach IA',
-    feat_steel_weekly: 'Bilan hebdomadaire de performance',
-    feat_steel_checkin: 'Check-in post-entraînement',
-    feat_steel_overload: 'Suivi de surcharge progressive',
-    feat_steel_metrics: 'Métriques corporelles et insights IA',
-    feat_steel_editing: 'Modification du plan via chat IA',
-    feat_steel_deload: 'Détection de décharge et alertes',
-    feat_steel_shopping: 'Liste de courses hebdomadaire',
-    feat_steel_programmes: 'Plusieurs programmes sauvegardés',
+    feat_forge_coach: 'Messages illimités au coach IA',
+    feat_forge_weekly: 'Bilan hebdomadaire de performance',
+    feat_forge_checkin: 'Check-in post-entraînement',
+    feat_forge_overload: 'Suivi de surcharge progressive',
+    feat_forge_metrics: 'Métriques corporelles et insights IA',
+    feat_forge_editing: 'Modification du plan via chat IA',
+    feat_forge_deload: 'Détection de décharge et alertes',
+    feat_forge_shopping: 'Liste de courses hebdomadaire',
+    feat_forge_programmes: 'Plusieurs programmes sauvegardés',
     feat_forge_tagline: 'Performance maximale. Bilan mensuel de coaching IA inclus.',
     feat_forge_monthly: 'Bilan mensuel approfondi de coaching IA',
     feat_forge_video: 'Démonstrations vidéo des exercices',
@@ -11947,7 +11941,6 @@ const STRINGS = {
     feat_forge_support: 'Support prioritaire',
     feat_forge_early: 'Accès anticipé aux nouvelles fonctionnalités',
     feat_everything_iron: 'Tout dans Iron',
-    feat_everything_steel: 'Tout dans Steel',
     upgrade_current_plan: 'PLAN ACTUEL',
     upgrade_current_trial: 'PLAN ACTUEL · {n} JOURS RESTANTS',
     upgrade_btn_current: '✓ Votre plan d\'essai — choisir de continuer',
@@ -11960,8 +11953,8 @@ const STRINGS = {
     upgrade_billed_year: 'facturé {amount}/an',
     upgrade_if_annual: '{price}/mois si annuel',
     coach_limit_title: 'COACH IA',
-    coach_limit_body: 'J\'ai plus à dire — sur vos progrès, votre plan, votre prochaine phase. Mais je n\'ai plus de messages jusqu\'au renouvellement. Steel vous donne un coaching illimité.',
-    coach_limit_btn: 'Passer à Steel →',
+    coach_limit_body: 'J\'ai plus à dire — sur vos progrès, votre plan, votre prochaine phase. Mais je n\'ai plus de messages jusqu\'au renouvellement. Forge vous donne un coaching illimité.',
+    coach_limit_btn: 'Passer à Forge →',
     coach_running_low: 'presque épuisé',
     coach_one_remaining: '1 message restant',
     panel_coach: 'Coach',
@@ -12013,7 +12006,6 @@ const STRINGS = {
     acc_day_remaining_one: '1 jour restant',
     prog_save_current: '+ Enregistrer le programme actuel',
     prog_limit_reached: 'Limite de programmes atteinte',
-    prog_slots_used: '{n} sur 3 emplacements utilisés',
     prog_empty: 'Aucun programme enregistré. Appuyez sur « Enregistrer le programme actuel » pour sauvegarder votre plan.',
     prog_edit: 'Modifier les séances',
     prog_view: 'Voir',
@@ -12034,7 +12026,6 @@ const STRINGS = {
     trial_banner_days: '🔥 {n} jour{s} restant{s} dans votre essai gratuit — accès complet jusqu\'à la fin.',
     trial_banner_active: '🔥 Essai gratuit actif — passez à la version supérieure pour conserver l\'accès.',
     trial_banner_free: '🔥 Plan gratuit — passez à la version supérieure pour tout débloquer.',
-    upgrade_steel: 'Passez à Steel pour un accès illimité.',
     name_empty: 'Le nom ne peut pas être vide',
     profile_saved: 'Profil sauvegardé',
     name_saved_email_confirm: 'Nom sauvegardé. Vérifiez votre nouvel email pour confirmer.',
@@ -12042,7 +12033,7 @@ const STRINGS = {
     reset_sent: 'Email de réinitialisation envoyé',
     reset_failed: 'Échec de l\'envoi — réessayez',
     failed_save: 'Échec de la sauvegarde — réessayez',
-    shopping_locked: 'La liste de courses nécessite Steel ou supérieur',
+    shopping_locked: 'La liste de courses nécessite Forge',
     coach_messages_left: '{n} messages restants ce mois',
     generating: 'Génération...',
     generate_review: 'Générer la Revue Mensuelle',
@@ -12079,9 +12070,9 @@ const STRINGS = {
     upgrade_sub: '7 jours d\'essai gratuit · Annulez à tout moment · Remboursement 30 jours',
     upgrade_monthly: 'Mensuel',
     upgrade_annual: 'Annuel',
-    upgrade_months_free: '2 MOIS OFFERTS',
+    upgrade_months_free: 'ÉCONOMISE 40%+',
     upgrade_per_mo: '/mois',
-    coach_limit_msg: 'C\'est vos 20 messages du mois. J\'ai plus à dire, mais je n\'ai plus de messages jusqu\'à la prochaine période. Steel vous donne un coaching illimité. Sans limite, sans attente.',
+    coach_limit_msg: 'C\'est vos 20 messages du mois. J\'ai plus à dire, mais je n\'ai plus de messages jusqu\'à la prochaine période. Forge vous donne un coaching illimité. Sans limite, sans attente.',
     coach_input_disabled: 'Vous avez utilisé vos 20 messages de coaching ce mois-ci.',
   
     locked_shopping: 'Liste de courses hebdomadaire',
@@ -12090,7 +12081,6 @@ const STRINGS = {
     locked_adherence: 'Adhérence au plan',
     locked_body_metrics: 'Métriques corporelles & IA',
     locked_programmes: 'Programmes multiples sauvegardés',
-    locked_steel_badge: 'Disponible sur 🔩 Steel et plus',
     locked_forge_badge: 'Disponible sur 🔥 Forge',
 
     ob_goal_muscle: 'Prendre du Muscle',
@@ -12976,7 +12966,7 @@ function renderCoachClientList() {
       const name = c.profile?.name || t('clients_unknown_name');
       const goal = Array.isArray(c.profile?.goal) ? c.profile.goal.join(' + ') : (c.profile?.goal || t('clients_no_goal'));
       const tier = c.profile?.subscription_tier || 'iron';
-      const tierLabel = { iron:'IRON', steel:'STEEL', forge:'FORGE' }[tier] || 'IRON';
+      const tierLabel = { iron:'IRON', forge:'FORGE' }[tier] || 'IRON';
       const dot = clientStatusDot(c.last_active);
       const unreadFromClient = _unreadCounts?.client_messages_by_client?.[c.client_id] || 0;
       const showActivityDot = coachHasNewActivity(c.client_id);
@@ -17120,7 +17110,7 @@ renderProgrammes = async function () {
   var tier = (userSubscription && userSubscription.isExempt) ? 'forge' : ((userSubscription && userSubscription.accessTier) || 'iron');
   var limit = programmeTierLimit();
   var atLimit = progs.length >= limit;
-  // FIX 8: over-limit after a downgrade (e.g. trial -> Steel). Show the one-time archive
+  // FIX 8: over-limit after a downgrade (e.g. trial -> Iron). Show the one-time archive
   // chooser modal so the user resolves which programmes to keep.
   var overLimit = (limit !== Infinity) && progs.length > limit;
   if (overLimit && !localStorage.getItem('forge-programmes-overlimit-shown')) {
@@ -17137,9 +17127,7 @@ renderProgrammes = async function () {
   var saveBtn = atLimit
     ? ''
     : `<button onclick="showNewProgrammeModal()" style="width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">${t('prog_save_current')}</button>`;
-  var slotsLine = (tier === 'steel')
-    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-top:14px;text-align:center;">${t('prog_slots_used', { n: progs.length })}</div>`
-    : '';
+  var slotsLine = '';
   var archivedSection = archived.length ? `
       <details style="margin-top:20px;">
         <summary style="list-style:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);padding:8px 0;">&#9656; ARCHIVED (${archived.length})</summary>
@@ -17262,8 +17250,7 @@ function npSteps() {
 }
 
 function startNewProgramme() {
-  var tier = (userSubscription && userSubscription.isExempt) ? 'forge' : ((userSubscription && userSubscription.accessTier) || 'iron');
-  if (tier !== 'steel' && tier !== 'forge') { showLockedFeature('Multiple Saved Programmes', 'steel'); return; }
+  if (!canAccess('multiple_programmes')) { showLockedFeature('Multiple Saved Programmes', 'forge'); return; }
   if (Array.isArray(userProgrammes) && userProgrammes.length >= programmeTierLimit()) { programmeLimitToast(); return; }
   _npData = { goal: [], equipment: [], preferred_days: [] };
   _npStep = 0;
@@ -17440,7 +17427,7 @@ async function submitNewProgramme() {
   if (res && res.programme_id) {
     showNewProgrammeSuccess(res.programme_id, name);
   } else if (res && res.error === 'upgrade_required') {
-    closeNewProgramme(); showLockedFeature('Multiple Saved Programmes', 'steel');
+    closeNewProgramme(); showLockedFeature('Multiple Saved Programmes', 'forge');
   } else if (res && res.error === 'programme_limit_reached') {
     closeNewProgramme(); showToast(res.message || 'Programme limit reached', 'error');
   } else {
@@ -18077,7 +18064,7 @@ async function cbSave() {
     cbShowSaveChoice(res.programme.id, _cbName.trim());
   } else if (res && res.error === 'upgrade_required') {
     cbUpdateSaveBtn();
-    if (typeof showLockedFeature === 'function') showLockedFeature('Multiple Saved Programmes', 'steel');
+    if (typeof showLockedFeature === 'function') showLockedFeature('Multiple Saved Programmes', 'forge');
     else showToast(res.message || 'Upgrade required', 'error');
   } else if (res && (res.error === 'programme_limit_reached' || res._status === 409)) {
     cbUpdateSaveBtn();
