@@ -4535,19 +4535,40 @@ function shareReferralLink(url) {
 
 // Testimonial copy, fetched from GET /api/testimonial (backend data, admin-editable via
 // PATCH /api/admin/testimonial — there is no admin UI for it in this file).
-// Held in module state: renderUpgradeSheetContent() rebuilds sheet.innerHTML on every
-// billing toggle and every language switch, and nothing re-fetched afterwards, so a
-// fetched quote was silently reverted to the hardcoded English fallback the first time
-// the user toggled monthly/annual.
+// The response is the PER-LANGUAGE object { en: {quote, attribution}, fr: {...} }. It is
+// fetched ONCE and held here: renderUpgradeSheetContent() rebuilds sheet.innerHTML on every
+// billing toggle and every language switch, and nothing re-fetches, so holding all
+// languages is what lets a language switch resolve correctly with no network call.
 let _upgradeTestimonial = null;
+
+// Pick the entry for the active language. Falls back to EN, then to the translated t()
+// values, so a partially populated row can never blank the card. Reads appLanguage at CALL
+// time — applyLanguage() sets appLanguage before it re-renders the sheet, which is what
+// makes EN<->FR switching work without re-fetching.
+function resolveTestimonial() {
+  const src = _upgradeTestimonial || {};
+  // Legacy flat { quote, attribution } is tolerated here too, in case an older server
+  // response is still in flight or cached (the endpoint is public, max-age=300).
+  const entry = src[appLanguage] || src.en || (typeof src.quote === 'string' ? src : null);
+  return {
+    quote: (entry && entry.quote) || t('upgrade_testimonial_quote'),
+    attribution: (entry && entry.attribution) || t('upgrade_testimonial_attr'),
+  };
+}
+
+function applyUpgradeTestimonial() {
+  const { quote, attribution } = resolveTestimonial();
+  const q = document.getElementById('upgradeTestimonialQuote');
+  const a = document.getElementById('upgradeTestimonialAttr');
+  if (q) q.textContent = '"' + quote + '"';
+  if (a) a.textContent = attribution;
+}
+
 async function loadUpgradeTestimonial() {
   const res = await api('/api/testimonial');
-  if (res?.quote) {
-    _upgradeTestimonial = { quote: res.quote, attribution: res.attribution || '' };
-    const q = document.getElementById('upgradeTestimonialQuote');
-    const a = document.getElementById('upgradeTestimonialAttr');
-    if (q) q.textContent = '"' + _upgradeTestimonial.quote + '"';
-    if (a) a.textContent = _upgradeTestimonial.attribution;
+  if (res && typeof res === 'object' && !res.error) {
+    _upgradeTestimonial = res;
+    applyUpgradeTestimonial();
   }
 }
 
@@ -8084,11 +8105,13 @@ function renderUpgradeSheetContent(highlightTier) {
   // Testimonial: prefer the fetched value, fall back to the seeded English default (which
   // matches the server's own fallback). escHtml'd at the render site because this is
   // admin-supplied data going into innerHTML, not textContent.
-  // Confirmed by Kevin as marketing copy, not a real customer's words, so it IS translated.
-  // A backend value still wins: set one via PATCH /api/admin/testimonial and it overrides
-  // both languages (that override is single-language by design — see known-bugs.md).
-  const _tmQuote = _upgradeTestimonial?.quote || t('upgrade_testimonial_quote');
-  const _tmAttr  = _upgradeTestimonial?.attribution || t('upgrade_testimonial_attr');
+  // Testimonial resolves per language at RENDER time, so an EN<->FR switch picks the
+  // right entry from the already-fetched object with no network call. Order is
+  // appLanguage -> en -> the translated t() values. escHtml'd at the render site below,
+  // because this is admin-supplied data going into innerHTML rather than textContent.
+  const _tm = resolveTestimonial();
+  const _tmQuote = _tm.quote;
+  const _tmAttr  = _tm.attribution;
 
   // ── LIFETIME ENTRY POINT ────────────────────────────────────────────────────────
   // One understated link, deliberately NOT a third card — the Iron/Forge decision has to
