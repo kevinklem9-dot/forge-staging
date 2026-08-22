@@ -310,8 +310,10 @@ html,body { height:100%; overflow:hidden; overflow-x:hidden; overscroll-behavior
 .consent-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto; margin-top:1px; }
 .consent-text { font-family:'DM Mono',monospace; font-size:10px; line-height:1.6; color:var(--muted); cursor:pointer; letter-spacing:0.3px; }
 .consent-text a { color:var(--accent); text-decoration:underline; }
-/* Inline under-age warning on the onboarding stats step. */
-.ob-age-warning { font-family:'DM Mono',monospace; font-size:10px; line-height:1.5; color:var(--red); margin:6px 2px 0; display:none; }
+/* Inline out-of-range warnings on the onboarding stats step (age, height, weight).
+ * .ob-age-warning is kept as-is so the existing age markup is untouched; .ob-field-warning
+ * is the same style under a name that is not age-specific. */
+.ob-age-warning, .ob-field-warning { font-family:'DM Mono',monospace; font-size:10px; line-height:1.5; color:var(--red); margin:6px 2px 0; display:none; }
 
 /* ── ONBOARDING (Style B — Coach Intake) ── */
 /* #screen-onboarding keeps .screen's display toggling (.screen.active → flex).
@@ -1675,6 +1677,13 @@ const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
 // wording in terms.html section 03 / privacy.html section 10. Client-side use is UX only
 // — the enforcement is the age check in PATCH /api/profile.
 const FORGE_MIN_AGE = 18;
+// Height/weight bounds. Mirror MIN_HEIGHT_CM / MAX_HEIGHT_CM / MIN_WEIGHT_KG /
+// MAX_WEIGHT_KG in server.js. Client-side use is UX only — the enforcement is the range
+// check in PATCH /api/profile. Both accept decimals, so they are finite-number ranges.
+const FORGE_MIN_HEIGHT_CM = 100;
+const FORGE_MAX_HEIGHT_CM = 250;
+const FORGE_MIN_WEIGHT_KG = 30;
+const FORGE_MAX_WEIGHT_KG = 300;
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_51TRVSaCP6MFAx438rHQRzgOhIr68s1Bd8KqXZBKtPmU2BVuyUeVEhpEnGPHpdrrOWTrs7UOlCRb6sE7QU3AbBrJG00eXfkbMZM';
 // ══ END ENVIRONMENT CONFIG ══
 const ADMIN_EMAIL = 'kevinklem9@gmail.com';
@@ -3164,11 +3173,13 @@ function renderObStep() {
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_height')}</div>
-        <div class="ob-input-card"><input type="number" id="ob-height" inputmode="numeric" placeholder="—" value="${obData.height_cm || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_cm')}</span></div>
+        <div class="ob-input-card"><input type="number" id="ob-height" inputmode="numeric" min="${FORGE_MIN_HEIGHT_CM}" max="${FORGE_MAX_HEIGHT_CM}" placeholder="—" value="${obData.height_cm || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_cm')}</span></div>
+        <div class="ob-field-warning" id="ob-height-warning"></div>
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_weight')}</div>
-        <div class="ob-input-card"><input type="number" id="ob-weight" inputmode="decimal" placeholder="—" value="${obData.weight_kg || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_kg')}</span></div>
+        <div class="ob-input-card"><input type="number" id="ob-weight" inputmode="decimal" min="${FORGE_MIN_WEIGHT_KG}" max="${FORGE_MAX_WEIGHT_KG}" placeholder="—" value="${obData.weight_kg || ''}" oninput="checkStats()"><span class="ob-input-unit">${t('ob_stats_kg')}</span></div>
+        <div class="ob-field-warning" id="ob-weight-warning"></div>
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_stats_sex')}</div>
@@ -3500,7 +3511,34 @@ function checkStats() {
     }
   }
 
-  document.getElementById('ob-next').disabled = !(ageOk && height && weight && obData.sex);
+  // Height and weight. Both accept decimals (178.5cm, 72.5kg), so this is a finite-number
+  // range test — NOT the integer test age uses. Same ranges as the server gate in
+  // PATCH /api/profile, so the form refuses exactly what the server would refuse.
+  // Before this, any non-empty string passed: 2cm and 800kg both reached submit.
+  const heightOk = obCheckStatField(height, 'ob-height-warning', FORGE_MIN_HEIGHT_CM, FORGE_MAX_HEIGHT_CM, 'ob_height_range');
+  const weightOk = obCheckStatField(weight, 'ob-weight-warning', FORGE_MIN_WEIGHT_KG, FORGE_MAX_WEIGHT_KG, 'ob_weight_range');
+
+  document.getElementById('ob-next').disabled = !(ageOk && heightOk && weightOk && obData.sex);
+}
+
+// Shared body for the height and weight checks: range-test one field, paint or clear its
+// inline warning, return whether the value is acceptable. An empty box is "not yet valid"
+// but shows no warning — the user has not typed anything wrong, they have typed nothing.
+function obCheckStatField(raw, warnId, min, max, msgKey) {
+  const has = raw !== '' && raw !== null && raw !== undefined;
+  const num = Number(raw);
+  const ok = has && Number.isFinite(num) && num >= min && num <= max;
+  const el = document.getElementById(warnId);
+  if (el) {
+    if (!has || ok) {
+      el.textContent = '';
+      el.style.display = 'none';
+    } else {
+      el.textContent = t(msgKey, { min: min, max: max });
+      el.style.display = 'block';
+    }
+  }
+  return ok;
 }
 
 function selectSportSessions(el, val) {
@@ -3691,6 +3729,20 @@ async function submitOnboarding() {
       // Recoverable: the value is nonsense rather than too young, so the form is the
       // right place to land — with a message that names the actual problem.
       showToast(t('ob_age_invalid'), 'error', 5000);
+      showScreen('onboarding');
+      return;
+    }
+    // Out-of-range height or weight. Recoverable like invalid_age: back to the form with
+    // the bounds named, NEVER the terminal age screen. Returning here also keeps them out
+    // of the retry loop — a second identical PATCH earns the same 400, and falling through
+    // to it ends at toast_profile_save_failed ("check your connection"), which would be a
+    // lie about what happened. The server sends min/max so the copy stays in one place.
+    if (profileRes?.error === 'invalid_height' || profileRes?.error === 'invalid_weight') {
+      const isHeight = profileRes.error === 'invalid_height';
+      showToast(t(isHeight ? 'ob_height_range' : 'ob_weight_range', {
+        min: profileRes.min ?? (isHeight ? FORGE_MIN_HEIGHT_CM : FORGE_MIN_WEIGHT_KG),
+        max: profileRes.max ?? (isHeight ? FORGE_MAX_HEIGHT_CM : FORGE_MAX_WEIGHT_KG)
+      }), 'error', 5000);
       showScreen('onboarding');
       return;
     }
@@ -11424,6 +11476,8 @@ const STRINGS = {
     consent_required: 'Accept the Terms of Service and Privacy Policy to continue.',
     ob_age_min: 'You must be {min} or over to use FORGE.',
     ob_age_invalid: 'Enter a valid age.',
+    ob_height_range: 'Height must be between {min} and {max} cm.',
+    ob_weight_range: 'Weight must be between {min} and {max} kg.',
     age_blocked_title: 'YOU MUST BE {min} OR OVER',
     age_blocked_body: 'FORGE accounts are for people aged {min} and over, as set out in our Terms of Service. Your profile has not been saved and no programme has been created.',
     age_blocked_exit: 'Sign out',
@@ -12506,6 +12560,8 @@ const STRINGS = {
     consent_required: 'Accepte les CGU et la Politique de confidentialité pour continuer.',
     ob_age_min: 'Tu dois avoir {min} ans ou plus pour utiliser FORGE.',
     ob_age_invalid: 'Entre un âge valide.',
+    ob_height_range: 'Ta taille doit être comprise entre {min} et {max} cm.',
+    ob_weight_range: 'Ton poids doit être compris entre {min} et {max} kg.',
     age_blocked_title: 'TU DOIS AVOIR {min} ANS OU PLUS',
     age_blocked_body: 'Les comptes FORGE sont réservés aux personnes de {min} ans ou plus, comme indiqué dans nos CGU. Ton profil n\'a pas été enregistré et aucun programme n\'a été créé.',
     age_blocked_exit: 'Se déconnecter',
