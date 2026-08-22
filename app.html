@@ -10775,13 +10775,13 @@ const STRINGS = {
     // LAUNCH price (2 x CHF 49). At the standard CHF 79 annual two years is CHF 158 and the
     // claim is false. Rewrite this and the fr copy when launch pricing ends (admin toggle
     // in-app, LAUNCH_PRICING_LIVE in index.html) — and the .pt-bar copy in index.html with it.
-    // share_forge_desc quotes Forge LAUNCH monthly (CHF 6.99); standard monthly is CHF 11.99.
-    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "One PT session costs CHF 100. Two years of Forge annual costs CHF 98.", upgrade_save_forever: "Launch price. Yours while your subscription stays active.", upgrade_launch_pricing: "LAUNCH PRICING LIVE",
+    // share_forge_desc no longer quotes a price — the 14-day referred trial is the whole claim.
+    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "Two years of FORGE costs less than one PT session.", upgrade_save_forever: "Launch price. Yours while your subscription stays active.", upgrade_launch_pricing: "LAUNCH PRICING LIVE",
     // share_forge_desc promises ONLY what the product delivers: the referred user's trial is
     // extended to 14 days (server.js:1734 and 6465). The old copy also promised the referrer
     // "a free month", which no code ever granted — removed along with the share_free_months
     // key, whose only use was the Account panel tile counting unredeemable credits.
-    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. Your friend gets 14 days to try FORGE instead of 7. Forge is CHF 6.99 a month.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed",
+    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. Your friend gets 14 days to try FORGE instead of 7.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed",
     become_coach_title: "Become a FORGE Coach",
     become_coach_subtitle: "Build your coaching business on FORGE. Manage clients, assign programmes, and grow your income.",
     coach_profile_title: "Your Coach Profile", coach_profile_sub: "This is what clients see when you connect with them.",
@@ -11867,10 +11867,10 @@ const STRINGS = {
     /* i18n fix — stat cards / upgrade sheet / share / features / coach */
     stat_sessions_week: "SÉANCES CETTE SEMAINE", stat_sessions_recent: "SÉANCES (7 JOURS)", stat_current_streak: "SÉRIE EN COURS", stat_last_session: "DERNIÈRE SÉANCE", stat_prs_month: "RECORDS CE MOIS", stat_day: "jour", stat_days: "jours", stat_best: "meilleur", stat_view_history: "Voir l'historique ›",
     // upgrade_pt_compare — TIED TO LAUNCH PRICING (see the en block above). Rewrite when
-    // launch pricing ends. share_forge_desc quotes Forge LAUNCH monthly (CHF 6.99).
-    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Une séance de PT coûte CHF 100. Deux ans d'abonnement Forge annuel coûtent CHF 98.", upgrade_save_forever: "Prix de lancement. Conservé tant que ton abonnement reste actif.", upgrade_launch_pricing: "PRIX DE LANCEMENT ACTIF",
+    // launch pricing ends. share_forge_desc no longer quotes a price.
+    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Deux ans de FORGE coûtent moins cher qu'une séance de PT.", upgrade_save_forever: "Prix de lancement. Conservé tant que ton abonnement reste actif.", upgrade_launch_pricing: "PRIX DE LANCEMENT ACTIF",
     // Voir le bloc en ci-dessus : plus de promesse de mois gratuit, clé share_free_months retirée.
-    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Ton ami obtient 14 jours d'essai au lieu de 7. Forge coûte CHF 6.99 par mois.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés",
+    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Ton ami obtient 14 jours d'essai au lieu de 7.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés",
     become_coach_title: "Deviens Coach FORGE",
     become_coach_subtitle: "Développe ton activité de coaching sur FORGE. Gère tes clients, assigne des programmes et augmente tes revenus.",
     coach_profile_title: "Ton Profil Coach", coach_profile_sub: "C'est ce que voient les clients quand tu te connectes avec eux.",

@@ -537,9 +537,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 </section>
 
 <!-- PT ANCHOR BAR -->
+<!-- PT ANCHOR CLAIM — TIED TO LAUNCH PRICING.
+     CHF 98 is two years of Forge annual at the LAUNCH price (2 x CHF 49). At the standard
+     price two years is CHF 158 and the claim fails against most session prices.
+     When LAUNCH_PRICING_LIVE is flipped to false, this claim MUST be rewritten.
+     Duplicated in LANDING_STRINGS.en.pt_line1/pt_line2 and .fr — change all of them together. -->
 <div class="pt-bar">
-  <div class="pt-bar-line1 reveal">One PT session costs more than <span class="pt-highlight">a full year</span> of FORGE.</div>
-  <div class="pt-bar-line2 reveal">Sixty minutes of a trainer's time. Or twelve months of an AI coach that's online at 2am.</div>
+  <div class="pt-bar-line1 reveal"><span class="pt-highlight">Two years</span> of FORGE costs less than one PT session.</div>
+  <div class="pt-bar-line2 reveal">Sixty minutes of their time. Or two years of an AI coach that's online at 2am.</div>
 </div>
 
 <!-- PRICING -->
@@ -1287,8 +1292,11 @@ const LANDING_STRINGS = {
     test_3_ctx:"Intermediate lifter, hypertrophy goal",
     test_4:'"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."',
     test_4_ctx:"Fitness and body composition",
-    pt_line1:"One PT session costs more than a full year of FORGE.",
-    pt_line2:"Sixty minutes of a trainer's time. Or twelve months of an AI coach that's online at 2am.",
+    // PT anchor claim — TIED TO LAUNCH PRICING. CHF 98 = 2 x CHF 49 (launch annual). At the
+    // standard CHF 79 annual two years is CHF 158 and the claim fails. Rewrite when
+    // LAUNCH_PRICING_LIVE goes false. Mirrored in the .pt-bar markup and in fr below.
+    pt_line1:"Two years of FORGE costs less than one PT session.",
+    pt_line2:"Sixty minutes of their time. Or two years of an AI coach that's online at 2am.",
     price_label:"Pricing", price_h2:"Choose your level.",
     price_sub:"Start free for 7 days. No commitment until you're ready.",
     price_iron_tag:"Start training with a real plan.",
@@ -1383,8 +1391,10 @@ const LANDING_STRINGS = {
     test_3_ctx:"Pratiquant intermédiaire, objectif hypertrophie",
     test_4:'"Le plan nutritionnel fonctionne autour de mes jours d\'entraînement. Ce n\'est pas un plan générique — il sait quand je m\'entraîne."',
     test_4_ctx:"Fitness et composition corporelle",
-    pt_line1:"Une séance de coach coûte plus qu'une année complète de FORGE.",
-    pt_line2:"Soixante minutes du temps d'un coach. Ou douze mois d'un coach IA disponible à 2h du matin.",
+    // PT anchor claim — TIED TO LAUNCH PRICING (see the en block above). Rewrite when
+    // LAUNCH_PRICING_LIVE goes false.
+    pt_line1:"Deux ans de FORGE coûtent moins cher qu'une séance de coach.",
+    pt_line2:"Soixante minutes de son temps. Ou deux ans d'un coach IA disponible à 2h du matin.",
     price_label:"Tarifs", price_h2:"Choisis ton niveau.",
     price_sub:"Essai gratuit 7 jours. Sans engagement jusqu'à ce que tu sois prêt.",
     price_iron_tag:"Commence à t'entraîner avec un vrai programme.",
