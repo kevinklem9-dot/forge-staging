@@ -4281,7 +4281,7 @@ function renderCoachTrialExpiredPaywall() {
     <div style="padding:0 18px 24px;flex:1;">
       <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:14px;">
         <button onclick="_coachExpiredState.billing = 'monthly'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Monthly</button>
-        <button onclick="_coachExpiredState.billing = 'annual'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— 2 months free</span></button>
+        <button onclick="_coachExpiredState.billing = 'annual'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— 4 months free</span></button>
       </div>
       ${planCard('starter', 'Starter', ['Up to 10 clients', 'Client dashboard', '10% commission'])}
       ${planCard('pro', 'Pro', ['Up to 30 clients', 'Template library', '15% commission'])}
@@ -4337,22 +4337,55 @@ function dismissExpiredPaywall() {
 }
 // ═══════════════════════════════════════════════════════
 
+// Reconcile local state with whatever currency the server actually resolved. Writes the
+// profile cache and localStorage so the correction survives the redirect to Stripe, and
+// records the lock so the selector disappears on return. Silent when they already agree.
+function applyServerCurrency(res, sentCurrency) {
+  const resolved = normaliseCurrency(res && res.currency);
+  if (!resolved) return;
+  const wasLocked = res.currency_locked === true || res.currencyLocked === true;
+  if (wasLocked && typeof userSubscription !== 'undefined' && userSubscription) {
+    userSubscription.currency = resolved;
+    userSubscription.currencyLocked = true;
+  }
+  if (resolved === sentCurrency) return;
+  try { localStorage.setItem('forge-currency', resolved); } catch(e) {}
+  if (typeof userProfile !== 'undefined' && userProfile) {
+    userProfile.currency = resolved;
+    try { localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile)); } catch(e) {}
+  }
+}
+
 async function startCheckout(tier, billing, isPromo) {
   if (!currentUser) { showToast('Please sign in first', 'error'); return; }
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+
+  const sentCurrency = resolveDisplayCurrency();
 
   try {
     const res = await api('/api/stripe/create-checkout', 'POST', {
       tier,
       billing,
       is_promo: !!isPromo,
+      currency: sentCurrency,
     });
 
     if (res?.url) {
+      // The server has the last word on currency: an existing customer's is immutable, so a
+      // locked customer gets their locked currency back no matter what was sent. Correct
+      // local state BEFORE redirecting — otherwise they return from Stripe to a screen still
+      // priced in the currency they asked for rather than the one they were charged in.
+      applyServerCurrency(res, sentCurrency);
       // Open Stripe Checkout in same tab — it redirects back on success/cancel
       window.location.href = res.url;
     } else {
+      // The server maps currency failures to distinct codes rather than a generic 500.
+      // Both carry the currency it resolved, so the display can be corrected in place.
+      if (res?.code === 'currency_locked_mismatch' || res?.code === 'currency_unsupported') {
+        applyServerCurrency(res, sentCurrency);
+        if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent(_upgradeHighlightTier);
+      }
       showToast(res?.error || 'Failed to start checkout', 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Get started'; }
     }
@@ -4573,6 +4606,10 @@ async function openFoundingMemberPage() {
   const forgeLeft = (slots?.forge_total || 250) - (slots?.forge_sold || 0);
   const totalLeft = ironLeft + forgeLeft;
   const totalSlots = (slots?.iron_total || 500) + (slots?.forge_total || 250);
+  // Lifetime is an INDIVIDUAL price, so it follows the resolved currency exactly like the
+  // subscription tiers. A locked customer sees their locked currency here too.
+  const _fmCur = resolveDisplayCurrency();
+  const _fmPrices = lifetimeTable(_fmCur);
   const sheet = document.createElement('div');
   sheet.id = 'foundingMemberSheet';
   // z-index MUST sit above the upgrade sheet (10000) and the expired paywall (10002) —
@@ -4605,14 +4642,14 @@ async function openFoundingMemberPage() {
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.iron })}</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 149 <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_iron_payback')}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.iron, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_iron_payback')}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_iron_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
         ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Iron' })}</button>` : soldOutBtn}
       </div>
       <div style="border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface2);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.forge })}</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">CHF 249 <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_forge_payback')}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.forge, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_forge_payback')}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_forge_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(forgeFeatures)}</div>
         ${forgeLeft > 0 ? `<button onclick="claimFoundingMember('forge')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Forge' })}</button>` : soldOutBtn}
@@ -7978,22 +8015,135 @@ document.getElementById('chatInput').addEventListener('input', function () {
 const TIER_LABELS = { iron: '⚙️ Iron', forge: '🔥 Forge' };
 const IRON_COACH_LIMIT = 20;
 
+// ── CURRENCY ──────────────────────────────────────────
+// Each Stripe Price carries currency_options for all four, so there is still ONE Price ID
+// per tier/billing pair and the currency is chosen per Checkout Session. This table decides
+// only what is DISPLAYED — and it must never disagree with what the server will charge,
+// which is the entire reason resolveDisplayCurrency() puts the server's lock first.
+const SUPPORTED_CURRENCIES = ['chf', 'gbp', 'eur', 'usd'];
+const DEFAULT_CURRENCY = 'chf';
+// CHF reads as a prefix word, the other three as tight symbols.
+const CURRENCY_SYMBOLS = { chf: 'CHF ', gbp: '\u00A3', eur: '\u20AC', usd: '$' };
+
+function normaliseCurrency(raw) {
+  if (typeof raw !== 'string') return null;
+  const c = raw.trim().toLowerCase();
+  return SUPPORTED_CURRENCIES.includes(c) ? c : null;
+}
+
+// Timezone DEFAULT — a starting guess, never a decision. The selector always overrides it,
+// and a locked customer never sees it at all. Same Intl call the reminder picker already
+// uses, so no new dependency, no network call, nothing to disclose.
+//   Europe/Zurich -> CHF · Europe/London -> GBP · America/* -> USD
+//   other Europe/* -> EUR · everything else -> CHF
+function tzDefaultCurrency() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return DEFAULT_CURRENCY; }
+  if (tz === 'Europe/Zurich') return 'chf';
+  if (tz === 'Europe/London') return 'gbp';
+  if (tz.startsWith('America/')) return 'usd';
+  if (tz.startsWith('Europe/')) return 'eur';
+  return DEFAULT_CURRENCY;
+}
+
+// Precedence, highest first:
+//   1. the server's lock — a customer who has paid CANNOT change currency, so their
+//      displayed price must be the one Stripe will actually charge
+//   2. the loaded profile preference
+//   3. the localStorage mirror of that preference, for an instant first paint before
+//      /api/profile lands (same role as forge-cached-profile)
+//   4. timezone default
+//   5. CHF
+function resolveDisplayCurrency() {
+  const locked = currencyLockedFromServer();
+  if (locked) return locked;
+  const fromProfile = normaliseCurrency(typeof userProfile !== 'undefined' && userProfile ? userProfile.currency : null);
+  if (fromProfile) return fromProfile;
+  let cached = null;
+  try { cached = normaliseCurrency(localStorage.getItem('forge-currency')); } catch(e) {}
+  if (cached) return cached;
+  return tzDefaultCurrency();
+}
+
+// The lock, read defensively: /api/subscription returns camelCase, the checkout responses
+// return snake_case. Returns the locked currency, or null when the user is free to choose.
+function currencyLockedFromServer() {
+  const sub = (typeof userSubscription !== 'undefined') ? userSubscription : null;
+  if (!sub) return null;
+  const isLocked = sub.currencyLocked === true || sub.currency_locked === true;
+  if (!isLocked) return null;
+  return normaliseCurrency(sub.currency);
+}
+
+// Persist a chosen currency. Refuses while locked — the server would override it anyway and
+// the selector is not rendered in that state, so reaching here means something is wrong.
+// Writes localStorage first so the next paint is instant, then PATCHes the profile.
+function setCurrency(cur) {
+  const c = normaliseCurrency(cur);
+  if (!c) return;
+  if (currencyLockedFromServer()) return;
+  try { localStorage.setItem('forge-currency', c); } catch(e) { /* quota / private mode */ }
+  if (typeof userProfile !== 'undefined' && userProfile) {
+    userProfile.currency = c;
+    try { localStorage.setItem('forge-cached-profile', JSON.stringify(userProfile)); } catch(e) {}
+  }
+  // Fire-and-forget: the display is already correct locally, and checkout re-resolves
+  // server-side regardless, so a failed PATCH must not block the user.
+  try { api('/api/profile', 'PATCH', { currency: c }); } catch(e) {}
+  if (document.getElementById('upgradeSheet')) renderUpgradeSheetContent(_upgradeHighlightTier);
+}
+
 // ── PRICE FORMATTING ──────────────────────────────────
-// CHF. Whole numbers render bare (CHF 49), fractions to two places (CHF 6.99).
+// Whole numbers render bare (CHF 49), fractions to two places (£ 10.99 -> '£10.99').
 // Annual prices are stored as the YEARLY TOTAL; the per-month headline and the
 // "billed X/year" line are both DERIVED from it. The previous build kept a
 // string-keyed annualBilled map that fell back to '' on a miss, so any price change
 // silently rendered "billed /year" with a blank amount.
-function fmtCHF(n) {
-  return 'CHF ' + (Number.isInteger(n) ? String(n) : Number(n).toFixed(2));
+function fmtPrice(n, currency) {
+  const c = normaliseCurrency(currency) || resolveDisplayCurrency();
+  const sym = CURRENCY_SYMBOLS[c] || CURRENCY_SYMBOLS[DEFAULT_CURRENCY];
+  return sym + (Number.isInteger(n) ? String(n) : Number(n).toFixed(2));
 }
 function monthlyFromAnnual(annualTotal) { return annualTotal / 12; }
 
-// Single source of truth for subscription pricing in the app (CHF).
+// Single source of truth for subscription pricing, keyed by currency. These are the exact
+// figures configured on each Stripe Price's currency_options — they are NOT converted at
+// runtime, because a rate-converted display would drift from what Stripe charges.
 const TIER_PRICING = {
-  iron:  { std: { monthly: 6.99,  annual: 49 }, launch: { monthly: 4.99, annual: 35 } },
-  forge: { std: { monthly: 11.99, annual: 79 }, launch: { monthly: 6.99, annual: 49 } },
+  chf: {
+    iron:  { std: { monthly: 6.95,  annual: 49 }, launch: { monthly: 4.95, annual: 35 } },
+    forge: { std: { monthly: 11.95, annual: 79 }, launch: { monthly: 6.95, annual: 49 } },
+  },
+  gbp: {
+    iron:  { std: { monthly: 6.99,  annual: 45 }, launch: { monthly: 4.99, annual: 33 } },
+    forge: { std: { monthly: 10.99, annual: 73 }, launch: { monthly: 6.99, annual: 45 } },
+  },
+  eur: {
+    iron:  { std: { monthly: 7.99,  annual: 53 }, launch: { monthly: 5.99, annual: 38 } },
+    forge: { std: { monthly: 12.99, annual: 85 }, launch: { monthly: 7.99, annual: 53 } },
+  },
+  usd: {
+    iron:  { std: { monthly: 8.99,  annual: 62 }, launch: { monthly: 6.99, annual: 44 } },
+    forge: { std: { monthly: 14.99, annual: 99 }, launch: { monthly: 8.99, annual: 62 } },
+  },
 };
+
+// Founding / lifetime one-time prices per currency.
+const LIFETIME_PRICING = {
+  chf: { iron: 149, forge: 249 },
+  gbp: { iron: 137, forge: 228 },
+  eur: { iron: 160, forge: 267 },
+  usd: { iron: 187, forge: 311 },
+};
+
+// Both tables are keyed by currency now, so every lookup must go through a resolved key.
+// Falling back to CHF on an unknown key keeps a bad value from rendering `undefined`.
+function pricingTable(currency) {
+  return TIER_PRICING[normaliseCurrency(currency) || resolveDisplayCurrency()] || TIER_PRICING[DEFAULT_CURRENCY];
+}
+function lifetimeTable(currency) {
+  return LIFETIME_PRICING[normaliseCurrency(currency) || resolveDisplayCurrency()] || LIFETIME_PRICING[DEFAULT_CURRENCY];
+}
 
 // ── TRIAL BANNER ─────────────────────────────────────
 async function renderTrialBanner() {
@@ -8243,8 +8393,14 @@ function renderUpgradeSheetContent(highlightTier) {
   const ironPromo  = !!_launchPromo.iron_active;
   const forgePromo = !!_launchPromo.forge_active;
 
+  // Resolved ONCE per render so every card, the strike-through, the annual note and the
+  // lifetime link all agree. Re-resolving per call site is how a screen ends up mixing
+  // currencies.
+  const _cur = resolveDisplayCurrency();
+  const _curLocked = !!currencyLockedFromServer();
+
   const pricingFor = (tier, promoActive) => {
-    const p = TIER_PRICING[tier];
+    const p = pricingTable(_cur)[tier];
     const active = promoActive ? p.launch : p.std;
     return {
       monthly: active.monthly,
@@ -8277,7 +8433,7 @@ function renderUpgradeSheetContent(highlightTier) {
   const _fmSlots = foundingSlotsLeft();
   const lifetimeLink = (_fmSlots && _fmSlots.left <= 0) ? '' : `
       <button class="us-lifetime" onclick="openFoundingMemberPage()">
-        <span class="us-lifetime-main">${t('upgrade_lifetime_link')}</span>
+        <span class="us-lifetime-main">${t('upgrade_lifetime_link', { price: fmtPrice(lifetimeTable(_cur).iron, _cur) })}</span>
         ${_fmSlots ? `<span class="us-lifetime-slots">${t('upgrade_lifetime_slots', { n: _fmSlots.left, total: _fmSlots.total })}</span>` : ''}
       </button>`;
 
@@ -8340,6 +8496,12 @@ function renderUpgradeSheetContent(highlightTier) {
         </div>
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">${t('upgrade_annual')} <span class="us-save-badge">${t('upgrade_months_free')}</span></span>
       </div>
+      ${_curLocked
+        ? `<div style="text-align:center;font-size:11px;color:var(--muted);margin:-8px 0 16px;line-height:1.5;">${t('currency_locked_note', { currency: _cur.toUpperCase() })}</div>`
+        : `<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:-8px 0 16px;">
+             <span style="font-size:11px;color:var(--muted);">${t('currency_label')}</span>
+             ${SUPPORTED_CURRENCIES.map(c => `<button onclick="setCurrency('${c}')" style="background:transparent;border:none;padding:2px 5px;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;color:${c === _cur ? 'var(--accent)' : 'var(--muted)'};font-weight:${c === _cur ? '700' : '400'};text-decoration:${c === _cur ? 'underline' : 'none'};">${c.toUpperCase()}</button>`).join('')}
+           </div>`}
 
       <!-- PT anchor + testimonial -->
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">${t('upgrade_pt_compare')}</div>
@@ -8456,12 +8618,12 @@ function renderUpgradeTierCard(tier, label, pricing, features, highlighted, reco
   const showAnnual = _upgradeAnnual;
   const activeVal = showAnnual ? monthlyFromAnnual(pricing.annual) : pricing.monthly;
   const stdVal    = showAnnual ? monthlyFromAnnual(pricing.stdAnnual) : pricing.stdMonthly;
-  const price  = fmtCHF(activeVal);
-  const strike = pricing.isPromo ? fmtCHF(stdVal) : null;
+  const price  = fmtPrice(activeVal);
+  const strike = pricing.isPromo ? fmtPrice(stdVal) : null;
 
   const annualNote = showAnnual
-    ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: fmtCHF(pricing.annual)}) + '</div>'
-    : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: fmtCHF(monthlyFromAnnual(pricing.annual))}) + '</div>';
+    ? '<div class="us-price-annual" style="color:' + annualColor + '">' + t('upgrade_billed_year', {amount: fmtPrice(pricing.annual)}) + '</div>'
+    : '<div class="us-price-annual" style="color:var(--muted)">' + t('upgrade_if_annual', {price: fmtPrice(monthlyFromAnnual(pricing.annual))}) + '</div>';
 
   const priceDisplay = `<div style="text-align:right">
         ${strike ? `<div style="font-size:13px;color:var(--muted);text-decoration:line-through;">${strike}<span style="font-size:10px">${t('upgrade_per_mo')}</span></div>` : ''}
@@ -10791,7 +10953,7 @@ const STRINGS = {
     coach_setup_continue: "Continue", coach_setup_confirm: "Start coaching", coach_activating: "Activating…",
     coach_err_name: "Add your name", coach_err_title: "Add your title", coach_err_trial: "Could not start your coach trial",
     coach_choose_plan: "Choose your coach plan", coach_plan_trial_note: "7 days free. No card required. You'll be asked for payment when your trial ends.",
-    coach_annual_note: "2 months free", coach_billed_separately: "Your personal FORGE subscription is billed separately.",
+    coach_annual_note: "4 months free", coach_billed_separately: "Your personal FORGE subscription is billed separately.",
     coach_plan_starter: "Starter", coach_plan_pro: "Pro", coach_plan_elite: "Elite",
     coach_plan_clients: "Up to {n} clients", coach_unlimited_clients: "Unlimited clients",
     coach_feat_dashboard: "Client dashboard", coach_feat_builder: "Programme builder", coach_feat_ai_controls: "AI review controls", coach_feat_commission: "{n}% commission",
@@ -11169,8 +11331,10 @@ const STRINGS = {
     upgrade_close: 'Continue with limited access',
     upgrade_testimonial_quote: 'Built me a full programme in under 2 minutes. I\'ve tried four other apps. This is the first one that felt like it actually knew what I needed.',
     upgrade_testimonial_attr: '— James, training for football season',
-    upgrade_lifetime_link: 'Pay once instead. Lifetime access from CHF 149',
+    upgrade_lifetime_link: 'Pay once instead. Lifetime access from {price}',
     upgrade_lifetime_slots: '{n} of {total} founding slots left',
+    currency_label: 'Prices in',
+    currency_locked_note: 'Prices shown in {currency}. Your billing currency was set by your first payment and cannot be changed.',
     fm_title: 'FOUNDING MEMBER',
     fm_sub: 'Pay once. Train forever. {total} slots total.',
     fm_slots_remaining: '{n} of {total} slots remaining',
@@ -11880,7 +12044,7 @@ const STRINGS = {
     coach_setup_continue: "Continuer", coach_setup_confirm: "Commencer à coacher", coach_activating: "Activation…",
     coach_err_name: "Ajoute ton nom", coach_err_title: "Ajoute ton titre", coach_err_trial: "Impossible de démarrer ton essai coach",
     coach_choose_plan: "Choisis ton plan coach", coach_plan_trial_note: "7 jours gratuits. Sans carte. Le paiement te sera demandé à la fin de ton essai.",
-    coach_annual_note: "2 mois gratuits", coach_billed_separately: "Ton abonnement FORGE personnel est facturé séparément.",
+    coach_annual_note: "4 mois gratuits", coach_billed_separately: "Ton abonnement FORGE personnel est facturé séparément.",
     coach_plan_starter: "Débutant", coach_plan_pro: "Pro", coach_plan_elite: "Élite",
     coach_plan_clients: "Jusqu'à {n} clients", coach_unlimited_clients: "Clients illimités",
     coach_feat_dashboard: "Tableau de bord clients", coach_feat_builder: "Créateur de programmes", coach_feat_ai_controls: "Contrôles des bilans IA", coach_feat_commission: "{n}% de commission",
@@ -12258,8 +12422,10 @@ const STRINGS = {
     upgrade_close: 'Continuer avec un accès limité',
     upgrade_testimonial_quote: 'Il m\'a construit un programme complet en moins de 2 minutes. J\'ai essayé quatre autres applis. C\'est la première qui avait vraiment l\'air de savoir ce qu\'il me fallait.',
     upgrade_testimonial_attr: '— James, en prépa pour la saison de foot',
-    upgrade_lifetime_link: 'Paie une seule fois. Accès à vie dès CHF 149',
+    upgrade_lifetime_link: 'Paie une seule fois. Accès à vie dès {price}',
     upgrade_lifetime_slots: '{n} places fondateur restantes sur {total}',
+    currency_label: 'Prix en',
+    currency_locked_note: 'Prix affichés en {currency}. Ta devise de facturation a été fixée lors de ton premier paiement et ne peut pas être modifiée.',
     fm_title: 'MEMBRE FONDATEUR',
     fm_sub: 'Paie une fois. Entraîne-toi à vie. {total} places au total.',
     fm_slots_remaining: '{n} places restantes sur {total}',
