@@ -8448,6 +8448,15 @@ function renderUpgradeSheetContent(highlightTier) {
       #upgradeSheet .us-header { text-align:center;margin-bottom:20px; }
       #upgradeSheet .us-title { font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;color:var(--accent); }
       #upgradeSheet .us-sub { font-size:13px;color:var(--muted);margin-top:6px; }
+      #upgradeSheet .us-currency { display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px; }
+      #upgradeSheet .us-currency-label { font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase; }
+      #upgradeSheet .us-currency-select { background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:8px;cursor:pointer;outline:none;transition:all .15s; }
+      #upgradeSheet .us-currency-select:hover { border-color:var(--muted);background:var(--surface2); }
+      #upgradeSheet .us-currency-select:focus { border-color:var(--accent);box-shadow:0 0 0 3px var(--surface2); }
+      /* Android/Chrome renders the option list with the select's own colours; iOS/macOS use
+         the native picker and ignore this. Set both so neither path can go unreadable. */
+      #upgradeSheet .us-currency-select option { background:var(--surface);color:var(--text); }
+      #upgradeSheet .us-currency-locked { text-align:center;font-size:11px;color:var(--text);margin:-4px 0 18px;line-height:1.5;padding:0 8px; }
       #upgradeSheet .us-toggle { display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px; }
       #upgradeSheet .us-toggle-label { font-size:13px;font-weight:600; }
       #upgradeSheet .us-pill { width:48px;height:26px;border-radius:13px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s; }
@@ -8489,6 +8498,14 @@ function renderUpgradeSheetContent(highlightTier) {
         <div class="us-title" style="font-size:24px;line-height:1.2;">${upgradeHeadline}</div>
         <div class="us-sub">${upgradeSubline}</div>
       </div>
+      ${_curLocked
+        ? `<div class="us-currency-locked">${escHtml(t('currency_locked_note', { currency: _cur.toUpperCase() }))}</div>`
+        : `<div class="us-currency">
+             <label class="us-currency-label" for="usCurrencySelect">${escHtml(t('currency_label'))}</label>
+             <select class="us-currency-select" id="usCurrencySelect" onchange="setCurrency(this.value)">
+               ${SUPPORTED_CURRENCIES.map(c => `<option value="${c}"${c === _cur ? ' selected' : ''}>${escHtml(t('currency_opt_' + c))}</option>`).join('')}
+             </select>
+           </div>`}
       <div class="us-toggle">
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--muted)' : 'var(--text)'}">${t('upgrade_monthly')}</span>
         <div class="us-pill" onclick="toggleUpgradeBilling()" style="background:${_upgradeAnnual ? 'var(--accent)' : 'var(--border)'}">
@@ -8496,12 +8513,6 @@ function renderUpgradeSheetContent(highlightTier) {
         </div>
         <span class="us-toggle-label" style="color:${_upgradeAnnual ? 'var(--text)' : 'var(--muted)'}">${t('upgrade_annual')} <span class="us-save-badge">${t('upgrade_months_free')}</span></span>
       </div>
-      ${_curLocked
-        ? `<div style="text-align:center;font-size:11px;color:var(--muted);margin:-8px 0 16px;line-height:1.5;">${t('currency_locked_note', { currency: _cur.toUpperCase() })}</div>`
-        : `<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:-8px 0 16px;">
-             <span style="font-size:11px;color:var(--muted);">${t('currency_label')}</span>
-             ${SUPPORTED_CURRENCIES.map(c => `<button onclick="setCurrency('${c}')" style="background:transparent;border:none;padding:2px 5px;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;color:${c === _cur ? 'var(--accent)' : 'var(--muted)'};font-weight:${c === _cur ? '700' : '400'};text-decoration:${c === _cur ? 'underline' : 'none'};">${c.toUpperCase()}</button>`).join('')}
-           </div>`}
 
       <!-- PT anchor + testimonial -->
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:4px 0 12px;">${t('upgrade_pt_compare')}</div>
@@ -11334,6 +11345,10 @@ const STRINGS = {
     upgrade_lifetime_link: 'Pay once instead. Lifetime access from {price}',
     upgrade_lifetime_slots: '{n} of {total} founding slots left',
     currency_label: 'Prices in',
+    currency_opt_chf: 'CHF \u2014 Switzerland',
+    currency_opt_gbp: 'GBP \u2014 United Kingdom',
+    currency_opt_eur: 'EUR \u2014 Europe',
+    currency_opt_usd: 'USD \u2014 United States',
     currency_locked_note: 'Prices shown in {currency}. Your billing currency was set by your first payment and cannot be changed.',
     fm_title: 'FOUNDING MEMBER',
     fm_sub: 'Pay once. Train forever. {total} slots total.',
@@ -12425,6 +12440,10 @@ const STRINGS = {
     upgrade_lifetime_link: 'Paie une seule fois. Accès à vie dès {price}',
     upgrade_lifetime_slots: '{n} places fondateur restantes sur {total}',
     currency_label: 'Prix en',
+    currency_opt_chf: 'CHF \u2014 Suisse',
+    currency_opt_gbp: 'GBP \u2014 Royaume-Uni',
+    currency_opt_eur: 'EUR \u2014 Europe',
+    currency_opt_usd: 'USD \u2014 \u00C9tats-Unis',
     currency_locked_note: 'Prix affichés en {currency}. Ta devise de facturation a été fixée lors de ton premier paiement et ne peut pas être modifiée.',
     fm_title: 'MEMBRE FONDATEUR',
     fm_sub: 'Paie une fois. Entraîne-toi à vie. {total} places au total.',
