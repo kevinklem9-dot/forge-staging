@@ -4661,10 +4661,15 @@ async function renderReferralSection(container) {
         <button onclick="copyReferralLink('${referralUrl}')" style="background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;">${t('share_copy')}</button>
       </div>
       <button onclick="shareReferralLink('${referralUrl}')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">${t('share_share')} →</button>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;text-align:center;">
+      <!-- Two tiles, not three. The third showed referral_stats.credits under "Free months":
+           that counter still accrues server-side (handleReferralConversion) but nothing
+           redeems it — no coupon, no credit, no trial extension — so displaying it promised
+           a reward that does not exist. Put it back only when the reward is built.
+           signups and conversions are real counts and stay. space-around, not space-between,
+           so two tiles sit balanced instead of pinned to the edges. -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-around;text-align:center;">
         <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.signups || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${t('share_referred')}</div></div>
         <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.conversions || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${t('share_subscribed')}</div></div>
-        <div><div style="font-size:20px;font-weight:700;color:var(--accent);">${stats.credits || 0}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${t('share_free_months')}</div></div>
       </div>
     </div>
   `;
@@ -10766,8 +10771,17 @@ const STRINGS = {
     notif_enable_instructions: "To enable: Settings → Safari → Notifications → FORGE → Allow", notif_enabled: "Notifications enabled.", notif_disabled: "Notifications disabled.", notif_not_supported: "Push notifications not supported on this browser.", notif_blocked: "Notifications blocked. Go to Settings → Safari → Notifications → FORGE → Allow",
     /* i18n fix — stat cards / upgrade sheet / share / features / coach */
     stat_sessions_week: "SESSIONS THIS WEEK", stat_sessions_recent: "SESSIONS (7 DAYS)", stat_current_streak: "CURRENT STREAK", stat_last_session: "LAST SESSION", stat_prs_month: "PRS THIS MONTH", stat_day: "day", stat_days: "days", stat_best: "best", stat_view_history: "View history ›",
-    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "One PT session costs more than a year of Forge annual.", upgrade_save_forever: "Launch price. Yours while your subscription stays active.", upgrade_launch_pricing: "LAUNCH PRICING LIVE",
-    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. When a friend subscribes, you get a free month. They get 14 days to try it instead of 7. Forge is CHF 79/year. That is CHF 6.58 a month.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed", share_free_months: "Free months",
+    // upgrade_pt_compare — TIED TO LAUNCH PRICING. CHF 98 is two years of Forge annual at the
+    // LAUNCH price (2 x CHF 49). At the standard CHF 79 annual two years is CHF 158 and the
+    // claim is false. Rewrite this and the fr copy when launch pricing ends (admin toggle
+    // in-app, LAUNCH_PRICING_LIVE in index.html) — and the .pt-bar copy in index.html with it.
+    // share_forge_desc quotes Forge LAUNCH monthly (CHF 6.99); standard monthly is CHF 11.99.
+    upg_plan_headline: "Upgrade your plan", upgrade_trial_ended: "Your trial has ended.", upgrade_days_left: "You have {n} days left on your trial.", upgrade_subline_ended: "Keep your progress and continue training.", upgrade_pt_compare: "One PT session costs CHF 100. Two years of Forge annual costs CHF 98.", upgrade_save_forever: "Launch price. Yours while your subscription stays active.", upgrade_launch_pricing: "LAUNCH PRICING LIVE",
+    // share_forge_desc promises ONLY what the product delivers: the referred user's trial is
+    // extended to 14 days (server.js:1734 and 6465). The old copy also promised the referrer
+    // "a free month", which no code ever granted — removed along with the share_free_months
+    // key, whose only use was the Account panel tile counting unredeemable credits.
+    share_forge_title: "Share FORGE", share_forge_desc: "Send your link. Your friend gets 14 days to try FORGE instead of 7. Forge is CHF 6.99 a month.", share_copy: "Copy", share_share: "Share", share_referred: "Referred", share_subscribed: "Subscribed",
     become_coach_title: "Become a FORGE Coach",
     become_coach_subtitle: "Build your coaching business on FORGE. Manage clients, assign programmes, and grow your income.",
     coach_profile_title: "Your Coach Profile", coach_profile_sub: "This is what clients see when you connect with them.",
@@ -11852,8 +11866,11 @@ const STRINGS = {
     notif_enable_instructions: "Pour activer: Réglages → Safari → Notifications → FORGE →Autoriser", notif_enabled: "Notifications activées.", notif_disabled: "Notifications désactivées.", notif_not_supported: "Les notifications push ne sont pas disponibles sur ce navigateur.", notif_blocked: "Notifications bloquées. Va dans Réglages → Safari → Notifications → FORGE → Autoriser",
     /* i18n fix — stat cards / upgrade sheet / share / features / coach */
     stat_sessions_week: "SÉANCES CETTE SEMAINE", stat_sessions_recent: "SÉANCES (7 JOURS)", stat_current_streak: "SÉRIE EN COURS", stat_last_session: "DERNIÈRE SÉANCE", stat_prs_month: "RECORDS CE MOIS", stat_day: "jour", stat_days: "jours", stat_best: "meilleur", stat_view_history: "Voir l'historique ›",
-    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Une séance de PT coûte plus cher qu'un an d'abonnement Forge annuel.", upgrade_save_forever: "Prix de lancement. Conservé tant que ton abonnement reste actif.", upgrade_launch_pricing: "PRIX DE LANCEMENT ACTIF",
-    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Quand un ami s'abonne, tu gagnes un mois gratuit. Il obtient 14 jours d'essai au lieu de 7. Forge coûte CHF 79/an. Soit CHF 6.58 par mois.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés", share_free_months: "Mois gratuits",
+    // upgrade_pt_compare — TIED TO LAUNCH PRICING (see the en block above). Rewrite when
+    // launch pricing ends. share_forge_desc quotes Forge LAUNCH monthly (CHF 6.99).
+    upg_plan_headline: "Améliore ton abonnement", upgrade_trial_ended: "Ton essai est terminé.", upgrade_days_left: "Il te reste {n} jours d'essai.", upgrade_subline_ended: "Garde tes progrès et continue l'entraînement.", upgrade_pt_compare: "Une séance de PT coûte CHF 100. Deux ans d'abonnement Forge annuel coûtent CHF 98.", upgrade_save_forever: "Prix de lancement. Conservé tant que ton abonnement reste actif.", upgrade_launch_pricing: "PRIX DE LANCEMENT ACTIF",
+    // Voir le bloc en ci-dessus : plus de promesse de mois gratuit, clé share_free_months retirée.
+    share_forge_title: "Partager FORGE", share_forge_desc: "Envoie ton lien. Ton ami obtient 14 jours d'essai au lieu de 7. Forge coûte CHF 6.99 par mois.", share_copy: "Copier", share_share: "Partager", share_referred: "Parrainés", share_subscribed: "Abonnés",
     become_coach_title: "Deviens Coach FORGE",
     become_coach_subtitle: "Développe ton activité de coaching sur FORGE. Gère tes clients, assigne des programmes et augmente tes revenus.",
     coach_profile_title: "Ton Profil Coach", coach_profile_sub: "C'est ce que voient les clients quand tu te connectes avec eux.",
