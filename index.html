@@ -554,7 +554,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <h2 class="reveal" style="text-align:center">Choose your level.</h2>
     <div class="pricing-meta reveal">
       <div class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
-      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-chf-note">Transactions processed in CHF</span></div>
+      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-charge-note">You'll be charged in this currency</span></div>
     </div>
     <div class="billing-toggle reveal">
       <span class="toggle-label" id="lbl-monthly">Monthly</span>
@@ -743,20 +743,25 @@ async function supabaseAuth(endpoint, body) {
 }
 
 // ── CURRENCY ──────────────────────────────────────────
-// Two tiers, standard AND launch, in four DISPLAY currencies.
+// Two tiers, standard AND launch, in four currencies.
 // Annual values are the YEARLY TOTAL; the headline in annual mode is that total / 12.
-// This mirrors app.html's TIER_PRICING so the landing page and the in-app upgrade sheet
-// cannot drift.
 //
-// DISPLAY ONLY. Stripe charges CHF for every currency — the "Transactions processed in
-// CHF" note under the toggle is the disclosure and must stay visible. GBP/EUR are the
-// existing map's ratios (x0.90 / x0.95) reapplied to the new CHF numbers so relative
-// pricing stays coherent; USD tracks CHF 1:1, as it did before.
+// These are NOT display-only conversions. Since the multi-currency build, each Stripe Price
+// carries a currency_options entry per currency and Checkout is created with the currency the
+// visitor picked, so the figure below is the figure the card is charged. Nothing is converted
+// at checkout and no FX rate is applied anywhere in this file.
+//
+// THREE PLACES MUST AGREE, or a visitor is quoted one price and charged another:
+//   1. this map
+//   2. app.html's TIER_PRICING  (identical numbers, lowercase keys)
+//   3. each Stripe Price's currency_options
+// They drifted once already — every one of the 16 pairs disagreed, so a UK visitor saw
+// GBP 6.29/mo here and GBP 6.99/mo one screen later in the app. Change all three together.
 const PRICES = {
-  CHF: { sym:'CHF ', iron:{ std:{mo:6.99, ann:49}, launch:{mo:4.99, ann:35} }, forge:{ std:{mo:11.99, ann:79}, launch:{mo:6.99, ann:49} } },
-  GBP: { sym:'£',    iron:{ std:{mo:6.29, ann:44}, launch:{mo:4.49, ann:32} }, forge:{ std:{mo:10.79, ann:71}, launch:{mo:6.29, ann:44} } },
-  EUR: { sym:'€',    iron:{ std:{mo:6.69, ann:47}, launch:{mo:4.79, ann:33} }, forge:{ std:{mo:11.39, ann:75}, launch:{mo:6.69, ann:47} } },
-  USD: { sym:'$',    iron:{ std:{mo:6.99, ann:49}, launch:{mo:4.99, ann:35} }, forge:{ std:{mo:11.99, ann:79}, launch:{mo:6.99, ann:49} } },
+  CHF: { sym:'CHF ', iron:{ std:{mo: 6.95, ann:49}, launch:{mo:4.95, ann:35} }, forge:{ std:{mo:11.95, ann:79}, launch:{mo:6.95, ann:49} } },
+  GBP: { sym:'£',    iron:{ std:{mo: 6.99, ann:45}, launch:{mo:4.99, ann:33} }, forge:{ std:{mo:10.99, ann:73}, launch:{mo:6.99, ann:45} } },
+  EUR: { sym:'€',    iron:{ std:{mo: 7.99, ann:53}, launch:{mo:5.99, ann:38} }, forge:{ std:{mo:12.99, ann:85}, launch:{mo:7.99, ann:53} } },
+  USD: { sym:'$',    iron:{ std:{mo: 8.99, ann:62}, launch:{mo:6.99, ann:44} }, forge:{ std:{mo:14.99, ann:99}, launch:{mo:8.99, ann:62} } },
 };
 
 // Launch pricing on the landing page is a hardcoded marketing switch. It does NOT read
@@ -764,12 +769,55 @@ const PRICES = {
 // to false when launch pricing ends, in the same change as the admin toggle in-app.
 const LAUNCH_PRICING_LIVE = true;
 
-let currency = 'CHF';
+// Shared with app.html, deliberately: SAME key, SAME lowercase codes. app.html reads this in
+// resolveDisplayCurrency() and writes it in setCurrency(), so a visitor who picks GBP here and
+// then signs up carries GBP into the app instead of being reset to CHF at the door.
+// This file works in UPPERCASE internally because PRICES is keyed that way, so every read
+// upper-cases and every write lower-cases. app.html's normaliseCurrency() would tolerate
+// either, but it stores lowercase, and one casing in one key is the point.
+const CURRENCY_STORAGE_KEY = 'forge-currency';
+
+// Mirrors app.html's tzDefaultCurrency() exactly — same five branches, same order:
+//   Europe/Zurich -> CHF · Europe/London -> GBP · America/* -> USD
+//   other Europe/* -> EUR · everything else -> CHF
+// The two MUST stay identical. A visitor shown GBP here and CHF one screen later in the app
+// is worse off than one shown no default at all.
+function tzDefaultCurrency() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return 'CHF'; }
+  if (tz === 'Europe/Zurich') return 'CHF';
+  if (tz === 'Europe/London') return 'GBP';
+  if (tz.startsWith('America/')) return 'USD';
+  if (tz.startsWith('Europe/')) return 'EUR';
+  return 'CHF';
+}
+
+// Precedence: stored choice -> timezone -> CHF. A stored value is only honoured if it names a
+// currency this page actually prices, so a stale or hand-edited key cannot make PRICES[currency]
+// undefined and take updatePrices() down at init.
+function initialCurrency() {
+  let stored = null;
+  try { stored = localStorage.getItem(CURRENCY_STORAGE_KEY); } catch(e) {}
+  if (typeof stored === 'string') {
+    const up = stored.trim().toUpperCase();
+    if (PRICES[up]) return up;
+  }
+  return tzDefaultCurrency();
+}
+
+let currency = initialCurrency();
 let isAnnual = true;
 
 function setCurrency(c) {
-  currency = c;
-  document.getElementById('currencyLabel').textContent = c;
+  if (typeof c !== 'string') return;
+  const up = c.trim().toUpperCase();
+  if (!PRICES[up]) return;
+  currency = up;
+  try { localStorage.setItem(CURRENCY_STORAGE_KEY, up.toLowerCase()); } catch(e) { /* private mode */ }
+  const label = document.getElementById('currencyLabel');
+  if (label) label.textContent = up;
+  const sel = document.getElementById('currencySelect');
+  if (sel && sel.value !== up) sel.value = up;
   updatePrices();
 }
 
@@ -1226,7 +1274,9 @@ if (refCode) {
 }
 
 // ── INIT ──────────────────────────────────────────────
-updatePrices();
+// The markup ships CHF selected and "CHF" in the label. Push the RESOLVED currency into both
+// before the first paint, or a returning GBP visitor sees GBP prices under a CHF label.
+setCurrency(currency);
 
 // ── SCROLL REVEAL (additive, design-only) ──────────────
 (function(){
@@ -1308,7 +1358,7 @@ const LANDING_STRINGS = {
     price_if_annual:"{price}/mo if annual",
     price_micro:"7-day free trial · No card required · Cancel anytime",
     showing_prices:"Showing prices in", change_currency:"change currency",
-    currency_chf_note:"Transactions processed in CHF",
+    currency_charge_note:"You'll be charged in this currency",
     feat_iron_1:"Personalised AI training plan",
     feat_iron_2:"Personalised AI nutrition plan",
     feat_iron_3:"AI coach — up to 20 messages/month",
@@ -1406,7 +1456,7 @@ const LANDING_STRINGS = {
     price_if_annual:"{price}/mois en annuel",
     price_micro:"7 jours d'essai gratuit · Sans carte bancaire · Annule quand tu veux",
     showing_prices:"Prix en", change_currency:"changer la devise",
-    currency_chf_note:"Transactions traitées en CHF",
+    currency_charge_note:"Tu seras débité dans cette devise",
     feat_iron_1:"Programme d'entraînement IA personnalisé",
     feat_iron_2:"Plan nutritionnel IA personnalisé",
     feat_iron_3:"Coach IA — jusqu'à 20 messages/mois",
@@ -1607,8 +1657,8 @@ function applyLandingLanguage(code) {
   finalTrust.forEach(el => { if (s.final_trust && el.textContent.includes('No commitment') || el.textContent.includes('Cancel')) el.textContent = s.final_trust; });
 
   // Currency note
-  const currNote = document.getElementById('currency-chf-note');
-  if (currNote && s.currency_chf_note) currNote.textContent = s.currency_chf_note;
+  const currNote = document.getElementById('currency-charge-note');
+  if (currNote && s.currency_charge_note) currNote.textContent = s.currency_charge_note;
 
   // Footer — keyed by the data-i18n attribute, never by DOM position.
   // The old code read querySelectorAll('.footer-link')[0..2], so adding or removing
