@@ -2289,11 +2289,18 @@ async function signUp() {
   const btn = document.querySelector('#auth-signup .auth-btn');
   btn.disabled = true; btn.textContent = 'Creating account...';
 
+  // Carry any stored currency choice into the new profile so it survives signup. OMITTED
+  // when nothing valid is stored — the server must not substitute a default, because a
+  // defaulted value is what made "no preference" unrepresentable and broke this before.
+  let signupCurrency = null;
+  try { signupCurrency = normaliseCurrency(localStorage.getItem('forge-currency')); } catch(e) {}
+
   try {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, code, accepted_terms: consent })
+      body: JSON.stringify({ email, password, name, code, accepted_terms: consent,
+        ...(signupCurrency ? { currency: signupCurrency } : {}) })
     });
     const data = await res.json();
     btn.disabled = false; btn.textContent = 'Create Account';

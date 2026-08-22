@@ -985,11 +985,25 @@ async function doSignup(instance) {
   const btn = document.querySelector('#form-signup-' + instance + ' .auth-btn');
   btn.disabled = true; btn.textContent = 'Creating account...';
 
+  // Carry the visitor's currency choice into the new profile so the app shows the same
+  // prices they just saw here. Read from storage rather than the in-memory `currency` so
+  // this sends exactly what was persisted. Sent LOWERCASE — the server validates against
+  // ['chf','eur','gbp','usd'] — and OMITTED entirely when nothing valid is stored, because
+  // a server-side default is what broke the handoff in the first place.
+  let signupCurrency = null;
+  try {
+    const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (typeof stored === 'string' && PRICES[stored.trim().toUpperCase()]) {
+      signupCurrency = stored.trim().toLowerCase();
+    }
+  } catch(e) {}
+
   try {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent })
+      body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
+        ...(signupCurrency ? { currency: signupCurrency } : {}) })
     });
     const data = await res.json();
     btn.disabled = false; btn.textContent = 'Start your free trial';
