@@ -3447,6 +3447,13 @@ function obSelect(field, value, el) {
   const container = el.closest('.ob-options') || el.closest('.ob-grid') || el.parentElement;
   if (container) container.querySelectorAll('.ob-option').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
+  // The stats step owns its own gate — Next there depends on a valid age AND height AND
+  // weight AND sex, not on "a card was tapped". The sex cards are wired to this same
+  // generic handler, so the unconditional enable below used to defeat the age range test
+  // whenever sex was the last field touched: type 17, fill height/weight, tap Male, Next
+  // goes live. Hand the decision back to the step's own validator instead.
+  const _step = getObSteps()[obStep];
+  if (_step && _step.type === 'stats') { checkStats(); return; }
   document.getElementById('ob-next').disabled = false;
 }
 
@@ -3475,16 +3482,18 @@ function checkStats() {
   // the user complete onboarding and hit a rejection at submit. The enforcement is the
   // server gate in PATCH /api/profile, which runs whatever this does.
   // A `type=number` input reports '' for unparseable text, so an empty box shows nothing.
-  const ageNum = parseInt(age, 10);
+  // Number() + Number.isInteger mirrors the server gate at PATCH /api/profile exactly.
+  // parseInt was looser: it read '18.5' as 18 and passed a value the user never typed.
+  const ageNum = Number(age);
   const hasAge = age !== '' && age !== null && age !== undefined;
-  const ageOk = hasAge && !isNaN(ageNum) && ageNum >= FORGE_MIN_AGE && ageNum <= 100;
+  const ageOk = hasAge && Number.isInteger(ageNum) && ageNum >= FORGE_MIN_AGE && ageNum <= 100;
   const warn = document.getElementById('ob-age-warning');
   if (warn) {
     if (!hasAge || ageOk) {
       warn.textContent = '';
       warn.style.display = 'none';
     } else {
-      warn.textContent = (!isNaN(ageNum) && ageNum >= 1 && ageNum < FORGE_MIN_AGE)
+      warn.textContent = (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < FORGE_MIN_AGE)
         ? t('ob_age_min', { min: FORGE_MIN_AGE })
         : t('ob_age_invalid');
       warn.style.display = 'block';
