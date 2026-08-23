@@ -455,6 +455,13 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <input type="checkbox" id="hero-consent">
           <label class="consent-text" for="hero-consent" data-i18n="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
         </div>
+        <!-- Marketing consent. SEPARATE from the box above and UNTICKED BY DEFAULT — the
+             Terms/Privacy box does not cover marketing email, and a pre-ticked box is not
+             consent. Never add `checked` here. -->
+        <div class="consent-row">
+          <input type="checkbox" id="hero-marketing">
+          <label class="consent-text" for="hero-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
+        </div>
         <div class="auth-error" id="hero-signup-error"></div>
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
         <div class="auth-note">7 days free. No card required, cancel anytime.</div>
@@ -645,6 +652,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div class="consent-row">
             <input type="checkbox" id="final-consent">
             <label class="consent-text" for="final-consent" data-i18n="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+          </div>
+          <!-- Marketing consent. SEPARATE and UNTICKED BY DEFAULT. Never add `checked`. -->
+          <div class="consent-row">
+            <input type="checkbox" id="final-marketing">
+            <label class="consent-text" for="final-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
           </div>
           <div class="auth-error" id="final-signup-error"></div>
           <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
@@ -962,6 +974,13 @@ function togglePw(id, btn) {
   btn.textContent = show ? '🙈' : '👁';
 }
 
+// Escape before any user-supplied value goes into innerHTML. app.html has its own copy at
+// the same name; this file had none, which is why the signup confirmation card below was
+// concatenating a raw form value straight into markup.
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
 function showError(id, msg) {
   const el = document.getElementById(id);
   if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
@@ -973,6 +992,9 @@ async function doSignup(instance) {
   const password = document.getElementById(instance + '-password').value;
   const code = document.getElementById(instance + '-code')?.value.trim() || '';
   const consent = document.getElementById(instance + '-consent')?.checked === true;
+  // Marketing consent is OPTIONAL — never blocks the submit. Strict true so a missing
+  // element (older cached markup) reads as a decline, not an accidental opt-in.
+  const marketingOptIn = document.getElementById(instance + '-marketing')?.checked === true;
   const errId = instance + '-signup-error';
 
   if (!name) return showError(errId, 'Please enter your name.');
@@ -1003,6 +1025,7 @@ async function doSignup(instance) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
+        marketing_opt_in: marketingOptIn,
         ...(signupCurrency ? { currency: signupCurrency } : {}) })
     });
     const data = await res.json();
@@ -1013,7 +1036,8 @@ async function doSignup(instance) {
     if (data.requires_confirmation) {
       // Show confirmation message
       const card = btn.closest('.auth-card');
-      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + email + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
+      // `email` is whatever was typed into the signup field — escaped, never concatenated raw.
+      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
     } else {
       window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
     }
@@ -1050,8 +1074,15 @@ async function doSignin(instance) {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       user: { ...data.user, email: data.user?.email || email },
-      rememberMe: true
+      // Was hard-coded true even when the box was unticked, so anything reading
+      // session.rememberMe downstream saw the wrong answer. Carries the real choice now.
+      rememberMe: !!rememberMe
     };
+
+    // Record the choice for app.html. sessionStorage survives this same-tab navigation
+    // (which is how forge-session-temp already reaches app.html) and dies with the tab —
+    // so the flag can never outlive the session it exists to keep short-lived.
+    try { sessionStorage.setItem('forge-remember', rememberMe ? '1' : '0'); } catch(e) {}
 
     if (rememberMe) {
       localStorage.setItem('forge-session', JSON.stringify(session));
@@ -1410,6 +1441,7 @@ const LANDING_STRINGS = {
     footer_privacy:"Privacy", footer_terms:"Terms", footer_contact:"Contact",
     lang_saved:"language saved. Your app will open in this language.",
     consent_label:'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
+    marketing_label:'Email me training tips and FORGE offers. Optional, and you can turn this off any time.',
     consent_required:"Accept the Terms of Service and Privacy Policy to continue.",
   },
   fr: {
@@ -1508,6 +1540,7 @@ const LANDING_STRINGS = {
     footer_privacy:"Confidentialité", footer_terms:"CGU", footer_contact:"Contact",
     lang_saved:"langue enregistrée. Ton app s'ouvrira dans cette langue.",
     consent_label:'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
+    marketing_label:'Recevoir des conseils d\'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.',
     consent_required:"Accepte les CGU et la Politique de confidentialité pour continuer.",
   },
 };
@@ -1545,6 +1578,8 @@ function applyLandingLanguage(code) {
 
   // Consent labels (hero + final) — carry links, so set as HTML.
   document.querySelectorAll('[data-i18n="consent_label"]').forEach(el => { if (s.consent_label) el.innerHTML = s.consent_label; });
+  // Plain text, no links — textContent, not innerHTML.
+  document.querySelectorAll('[data-i18n="marketing_label"]').forEach(el => { if (s.marketing_label) el.textContent = s.marketing_label; });
 
   // Auth buttons
   document.querySelectorAll('.auth-btn').forEach(btn => {

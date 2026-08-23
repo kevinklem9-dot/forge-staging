@@ -1205,6 +1205,13 @@ input:focus, textarea:focus, select:focus { outline: none; }
           <input type="checkbox" id="signup-consent">
           <label class="consent-text" for="signup-consent" id="signup-consent-label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
         </div>
+        <!-- Marketing consent. SEPARATE from the box above and UNTICKED BY DEFAULT — the
+             Terms/Privacy box does not cover marketing email, and a pre-ticked box is not
+             consent. Never add `checked` here. -->
+        <div class="consent-row">
+          <input type="checkbox" id="signup-marketing">
+          <label class="consent-text" for="signup-marketing" id="signup-marketing-label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
+        </div>
         <button class="auth-btn" onclick="signUp()">Create Account</button>
         <div style="margin-top:12px;text-align:center;">
           <input id="signup-code" type="text" placeholder="Have a code? Enter it here" style="width:100%;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;letter-spacing:1px;text-align:center;box-sizing:border-box;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
@@ -1924,10 +1931,56 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
+// ── REMEMBER-ME PERSISTENCE ────────────────────────────
+// The user's remember-me choice has to outlive a token refresh. Before this, EVERY write of
+// forge-session went straight to localStorage, so the FIRST refresh after an unticked
+// "remember me" sign-in promoted a sessionStorage-only session into permanent storage and
+// the choice was silently discarded.
+//
+// WHERE THE CHOICE LIVES: sessionStorage, key 'forge-remember', value '1' | '0'.
+// Deliberately NOT localStorage — a flag stored there would itself outlive the browser
+// session it exists to keep short-lived, which is the same leak in a smaller box.
+// sessionStorage survives a page refresh and a same-tab navigation (index.html → app.html),
+// which is exactly the lifetime a "don't remember me" session is meant to have, and dies
+// with the tab. It holds one character: no token, no email, no identifier.
+//
+// FALLBACK when the flag is absent (fresh tab, or a session created before this shipped):
+// infer from WHERE the session already sits. A session in localStorage can only have got
+// there through a remember-me sign-in; one in sessionStorage only cannot have.
+function isRemembered() {
+  try {
+    const flag = sessionStorage.getItem('forge-remember');
+    if (flag !== null) return flag === '1';
+    if (localStorage.getItem('forge-session')) return true;
+    if (sessionStorage.getItem('forge-session-temp')) return false;
+  } catch(e) {}
+  // No flag AND no session anywhere. Unreachable from the sign-in paths (both set the flag
+  // before the first write). Defaults to the old behaviour so nobody is logged out by surprise.
+  return true;
+}
+
+// SINGLE WRITER for forge-session. Every refresh path goes through here, so the choice is
+// honoured in one place instead of five, and rememberMe on the stored object is rewritten
+// to the truth each time (index.html used to hard-code it to true).
+function persistSession(session) {
+  if (!session) return;
+  try {
+    const remembered = isRemembered();
+    const payload = JSON.stringify({ ...session, rememberMe: remembered });
+    if (remembered) {
+      localStorage.setItem('forge-session', payload);
+      sessionStorage.removeItem('forge-session-temp');
+    } else {
+      sessionStorage.setItem('forge-session-temp', payload);
+      localStorage.removeItem('forge-session');
+    }
+  } catch(e) {}
+}
+
 // Keep forge-session in sync with Supabase token auto-refresh / sign-out.
 sb.auth.onAuthStateChange((event, session) => {
   if (session) {
-    localStorage.setItem('forge-session', JSON.stringify(session));
+    persistSession(session);
   } else if (event === 'SIGNED_OUT') {
     localStorage.removeItem('forge-session');
     sessionStorage.removeItem('forge-session-temp');
@@ -1955,10 +2008,8 @@ document.addEventListener('visibilitychange', async function() {
         refresh_token: session.refresh_token
       });
       if (refreshed?.session) {
-        try {
-          localStorage.setItem('forge-session',
-            JSON.stringify(refreshed.session));
-        } catch(e) {}
+        // Honours remember-me: routes to sessionStorage when the box was unticked.
+        persistSession(refreshed.session);
         // Seed the SDK so future no-arg refreshes work
         try {
           await sb.auth.setSession({
@@ -2265,6 +2316,9 @@ async function signIn() {
       user: { ...data.user, email: data.user?.email || email },
       rememberMe
     };
+    // Record the choice BEFORE the session is written. Every later refresh reads this flag
+    // to decide which store the refreshed session goes into. See isRemembered() above.
+    try { sessionStorage.setItem('forge-remember', rememberMe ? '1' : '0'); } catch(e) {}
     if (rememberMe) {
       localStorage.setItem('forge-session', JSON.stringify(session));
     } else {
@@ -2286,6 +2340,9 @@ async function signUp() {
   const password = document.getElementById('signup-password').value;
   const code = document.getElementById('signup-code')?.value.trim().toUpperCase() || '';
   const consent = document.getElementById('signup-consent')?.checked === true;
+  // Marketing consent is OPTIONAL — never blocks the submit. Strict true so a missing
+  // element (older cached markup) reads as a decline, not an accidental opt-in.
+  const marketingOptIn = document.getElementById('signup-marketing')?.checked === true;
 
   if (!name || !email || !password) return showAuthError('Fill in all fields.');
   if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
@@ -2320,6 +2377,7 @@ async function signUp() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, code, accepted_terms: consent,
+        marketing_opt_in: marketingOptIn,
         ...(signupCurrency ? { currency: signupCurrency } : {}) })
     });
     const data = await res.json();
@@ -2460,12 +2518,27 @@ async function confirmPasswordReset() {
 async function signOut() {
   if (window._subPollInterval) { clearInterval(window._subPollInterval); window._subPollInterval = null; }
   if (!confirm(t('sign_out'))) return;
+  // Revoke the session at Supabase FIRST. Clearing localStorage alone left the refresh
+  // token VALID server-side, and left 'forge-auth' (the SDK's own storageKey) in place —
+  // so the SDK still held a live session and could resurrect it via onAuthStateChange.
+  // NOTE: supabase-js v2 defaults to scope 'global', which revokes this user's refresh
+  // tokens on EVERY device, not just this one. That is the only scope that actually
+  // invalidates the token server-side ('local' just clears client storage).
+  // If this throws — offline, Supabase down, expired token — we deliberately fall through
+  // and clear local state anyway. A network failure must never trap someone signed in.
+  try {
+    await sb.auth.signOut();
+  } catch(e) {
+    console.warn('Remote sign-out failed — clearing local session anyway.');
+  }
+  localStorage.removeItem('forge-auth');
   localStorage.removeItem('forge-session');
   localStorage.removeItem('forge-cached-profile');
   localStorage.removeItem('forge-cached-plan');
   localStorage.removeItem('forge-a2hs-shown');
   localStorage.removeItem('forge-pwa-dismissed');
   sessionStorage.removeItem('forge-session-temp');
+  sessionStorage.removeItem('forge-remember');
   currentUser = null; userProfile = null; userPlan = null;
   // Redirect to landing page (index.html is one level up from app.html)
   const landingUrl = window.location.href.replace(/\/app\.html.*$/, '/').replace(/\/app$/, '/');
@@ -2627,10 +2700,8 @@ async function api(path, method = 'GET', body = null, timeoutMs = 30000) {
         });
         if (refreshed?.session) {
           token = refreshed.session.access_token;
-          try {
-            localStorage.setItem('forge-session',
-              JSON.stringify(refreshed.session));
-          } catch(e) {}
+          // Honours remember-me: routes to sessionStorage when the box was unticked.
+          persistSession(refreshed.session);
         }
       } catch(e) {}
     }
@@ -3373,11 +3444,11 @@ function renderObStep() {
     body.innerHTML = `
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_restrictions_diet_label')}</div>
-        <div class="ob-input-card"><input type="text" id="ob-restrictions" placeholder="${t('ob_restrictions_diet_placeholder')}" value="${obData.diet_restrictions || ''}"></div>
+        <div class="ob-input-card"><input type="text" id="ob-restrictions" placeholder="${t('ob_restrictions_diet_placeholder')}" value="${escHtml(obData.diet_restrictions || '')}"></div>
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_restrictions_injuries_label')}</div>
-        <div class="ob-input-card"><input type="text" id="ob-injuries" placeholder="${t('ob_restrictions_injuries_placeholder')}" value="${obData.injuries || ''}"></div>
+        <div class="ob-input-card"><input type="text" id="ob-injuries" placeholder="${t('ob_restrictions_injuries_placeholder')}" value="${escHtml(obData.injuries || '')}"></div>
       </div>
     `;
     document.getElementById('ob-next').disabled = false;
@@ -3387,7 +3458,7 @@ function renderObStep() {
     body.innerHTML = `
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_sport_name_label')}</div>
-        <div class="ob-input-card"><input type="text" id="ob-sport-name" placeholder="${t('ob_sport_name_placeholder')}" value="${obData.sport_name || ''}" oninput="checkSportName()"></div>
+        <div class="ob-input-card"><input type="text" id="ob-sport-name" placeholder="${t('ob_sport_name_placeholder')}" value="${escHtml(obData.sport_name || '')}" oninput="checkSportName()"></div>
       </div>
       <div class="ob-input-wrap">
         <div class="ob-input-label">${t('ob_sport_position_label')}</div>
@@ -3583,7 +3654,13 @@ function selectSportSessions(el, val) {
 
 function checkSportName() {
   const val = document.getElementById('ob-sport-name')?.value.trim();
-  if (val) obData.sport_name = val;
+  // Sanitise HERE, not only in obNext(). This fires on every keystroke and used to store the
+  // raw value, so anything typed into the field reached obData.sport_name unfiltered — and
+  // renderObStep() writes obData.sport_name straight back into a value="" attribute. Typing
+  // an attribute-breaking payload and then navigating back a step re-rendered it as markup.
+  // Same strip and same 100-char cap obNext() applies on submit, so the two paths agree and
+  // nothing is double-processed.
+  if (val) obData.sport_name = val.replace(/[\\\"'<>{}]/g, '').trim().substring(0, 100);
   document.getElementById('ob-next').disabled = !val;
 }
 
@@ -9502,6 +9579,37 @@ async function deleteProgramme(id) {
 const _origSendMessage = sendMessage;
 
 
+// ── MARKETING EMAIL CONSENT TOGGLE ─────────────────────
+// Backs the Account panel row. Optimistic: flips the UI at once, then puts it straight back
+// if the server refuses, so the row can never show a state the server did not store.
+// POSTs to /api/marketing-consent, which writes the Mailchimp 'marketing_opt_in' tag first
+// (status 'active' to add, 'inactive' to remove) and profiles.marketing_opt_in second.
+async function toggleMarketingConsent() {
+  const prev = userProfile?.marketing_opt_in === true;
+  const next = !prev;
+  if (userProfile) userProfile.marketing_opt_in = next;
+  renderAccount();
+
+  const res = await api('/api/marketing-consent', 'POST', { opt_in: next });
+  if (!res || res.error || res.success !== true) {
+    if (userProfile) userProfile.marketing_opt_in = prev;
+    renderAccount();
+    showToast(t('acc_marketing_failed'), 'error');
+    return;
+  }
+
+  // Keep the instant-launch cache in step, or a reload paints the stale value.
+  try {
+    const cached = JSON.parse(localStorage.getItem('forge-cached-profile') || 'null');
+    if (cached) {
+      cached.marketing_opt_in = next;
+      localStorage.setItem('forge-cached-profile', JSON.stringify(cached));
+    }
+  } catch(e) {}
+
+  showToast(t(next ? 'acc_marketing_saved_on' : 'acc_marketing_saved_off'), '');
+}
+
 // ═══════════════════════════════════════════════════════
 // ACCOUNT PANEL
 // ═══════════════════════════════════════════════════════
@@ -9705,6 +9813,17 @@ function renderAccount() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
           ${_chev}
         </div>
+      </div>
+
+      <!-- Row — Marketing email. Withdrawal must be as easy as giving consent, so this is
+           the same one-tap row as every other setting. It does NOT control the 7-day welcome
+           sequence, which is transactional and stays on either way. -->
+      <div onclick="toggleMarketingConsent()" style="${_rowStyle}">
+        <div style="min-width:0;">
+          <div style="${_rowLabel}">${t('acc_marketing')}</div>
+          <div style="${_rowSub}">${t('acc_marketing_sub')}</div>
+        </div>
+        ${_toggle(profile.marketing_opt_in === true)}
       </div>
 
       ${_isCoachAcct ? `
@@ -10127,7 +10246,7 @@ async function loadExerciseVideo(exerciseName, mwId) {
               'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
               'allowfullscreen loading="lazy"></iframe>' +
           '</div>' +
-          (exercise.youtubeTitle ? '<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + exercise.youtubeTitle + '</div>' : '');
+          (exercise.youtubeTitle ? '<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(exercise.youtubeTitle) + '</div>' : '');
       } else {
         videoArea.innerHTML =
           '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">' +
@@ -11734,6 +11853,12 @@ const STRINGS = {
 
     /* === Terms/Privacy consent + minimum age (18) === */
     consent_label: 'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
+    marketing_label: 'Email me training tips and FORGE offers. Optional, and you can turn this off any time.',
+    acc_marketing: 'Marketing email',
+    acc_marketing_sub: 'Training tips and FORGE offers',
+    acc_marketing_saved_on: 'Marketing email on.',
+    acc_marketing_saved_off: 'Marketing email off.',
+    acc_marketing_failed: 'Could not save that — try again.',
     consent_required: 'Accept the Terms of Service and Privacy Policy to continue.',
     ob_age_min: 'You must be {min} or over to use FORGE.',
     ob_age_invalid: 'Enter a valid age.',
@@ -12827,6 +12952,12 @@ const STRINGS = {
 
     /* === Consentement CGU/Confidentialité + âge minimum (18) === */
     consent_label: 'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
+    marketing_label: 'Recevoir des conseils d\'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.',
+    acc_marketing: 'Emails marketing',
+    acc_marketing_sub: 'Conseils d\'entraînement et offres FORGE',
+    acc_marketing_saved_on: 'Emails marketing activés.',
+    acc_marketing_saved_off: 'Emails marketing désactivés.',
+    acc_marketing_failed: 'Enregistrement impossible — réessaie.',
     consent_required: 'Accepte les CGU et la Politique de confidentialité pour continuer.',
     ob_age_min: 'Tu dois avoir {min} ans ou plus pour utiliser FORGE.',
     ob_age_invalid: 'Entre un âge valide.',
@@ -12882,6 +13013,9 @@ function applyLanguage() {
   // Terms + Privacy consent label — carries two links, so it is set as HTML.
   const consentLabel = document.getElementById('signup-consent-label');
   if (consentLabel) consentLabel.innerHTML = t('consent_label');
+  // Plain text, no links — textContent, not innerHTML.
+  const marketingLabel = document.getElementById('signup-marketing-label');
+  if (marketingLabel) marketingLabel.textContent = t('marketing_label');
 
   // Forgot password link
   const forgotBtn = document.querySelector('[onclick="showForgotPassword()"]');
@@ -17448,8 +17582,10 @@ function urlBase64ToUint8Array(base64String) {
         try {
           const refreshed = await sb.auth.refreshSession({ refresh_token: session.refresh_token });
           if (refreshed?.data?.session) {
-            const newSession = { ...refreshed.data.session, rememberMe: true, user: refreshed.data.session.user };
-            localStorage.setItem('forge-session', JSON.stringify(newSession));
+            // rememberMe was hard-coded true here, which promoted a "don't remember me"
+            // session into localStorage on the first cold boot with an expiring token.
+            const newSession = { ...refreshed.data.session, rememberMe: isRemembered(), user: refreshed.data.session.user };
+            persistSession(newSession);
             // Identity check before painting from cache: if the refreshed token resolves to a
             // different user than the stored session, hard-reset and go to landing (never paint
             // the wrong user). Redirect to '/' (not app.html) so this can't loop.
@@ -17539,12 +17675,13 @@ function urlBase64ToUint8Array(base64String) {
   try {
     const refreshed = await sb.auth.refreshSession({ refresh_token: session.refresh_token });
     if (refreshed?.data?.session) {
+      // Same hard-coded-true defect as the branch above — gated on the real choice.
       const newSession = {
         ...refreshed.data.session,
-        rememberMe: true,
+        rememberMe: isRemembered(),
         user: refreshed.data.session.user
       };
-      localStorage.setItem('forge-session', JSON.stringify(newSession));
+      persistSession(newSession);
       try {
         await sb.auth.setSession({
           access_token: newSession.access_token,
