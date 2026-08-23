@@ -68,77 +68,172 @@
   </div>
 
   <h2><span class="num">01</span>Introduction</h2>
-  <p>FORGE (<strong>"we"</strong>, <strong>"us"</strong>, <strong>"our"</strong>) operates klemforge.com and the FORGE app. This policy explains what data we collect, why, and how we protect it. By using FORGE you agree to this policy.</p>
+  <p>FORGE (<strong>"we"</strong>, <strong>"us"</strong>, <strong>"our"</strong>) operates klemforge.com and the FORGE app. This policy explains what data we collect, why, who it reaches, and how we protect it. By using FORGE you agree to this policy.</p>
+  <p>FORGE handles <strong>health data</strong>. Section 02 lists exactly what, section 04 explains that an AI processes it, and section 05 names every company that receives any of it.</p>
 
   <h2><span class="num">02</span>Data We Collect</h2>
+
+  <p><strong>Account and identity</strong></p>
   <ul>
-    <li><strong>Account data:</strong> name, email address, password (encrypted, never stored in plain text).</li>
-    <li><strong>Profile data:</strong> age, sex, height, weight, fitness goals, training experience, injury history, dietary preferences — used to personalise your programme and coaching.</li>
-    <li><strong>Usage data:</strong> workout logs, session history, personal records, AI coach conversations, login streaks.</li>
-    <li><strong>Payment data:</strong> handled entirely by Stripe. We never store card numbers or payment details. We receive only subscription status and transaction IDs.</li>
-    <li><strong>Device data:</strong> device type, browser, IP address, push notification subscription token.</li>
-    <li><strong>Preferences:</strong> language, units, notification settings, colour theme.</li>
+    <li>Name and email address.</li>
+    <li>Password — hashed by our authentication provider, never stored in plain text and never visible to us.</li>
+    <li>Consent records: the date and time you accepted the Terms and this policy, and which version of the policy you accepted.</li>
+    <li>Your marketing email choice (see section 06).</li>
+  </ul>
+
+  <p><strong>Health and body data</strong></p>
+  <ul>
+    <li>Age, sex, height and weight, and your target weight.</li>
+    <li><strong>Injuries and physical limitations</strong> — a free-text field. Whatever you type here is stored, including medical history if you choose to give it.</li>
+    <li><strong>Dietary restrictions</strong> — a free-text field, which in practice often contains allergies and intolerances.</li>
+    <li>Body measurements you log: chest, waist, hips, arm, thigh, body fat percentage, and any free-text note attached to a measurement.</li>
+    <li>Bodyweight history over time.</li>
+    <li>Exercise history, session logs and personal records: which exercises, how many sets and reps, at what weight, on what date.</li>
+    <li>Training goal, experience level, available equipment, and how many days a week you train.</li>
+  </ul>
+
+  <p><strong>AI coach conversations</strong></p>
+  <ul>
+    <li>Every message you send to the AI coach and every reply it gives. These are stored against your account.</li>
+    <li>You control what goes into these messages. They may contain anything you type, <strong>including health disclosures</strong> you have not entered anywhere else in the app.</li>
+  </ul>
+
+  <p><strong>If you have a human coach</strong></p>
+  <ul>
+    <li>Your coach can see your profile, your training data and your logged measurements.</li>
+    <li>Your coach writes <strong>private notes and session feedback about you</strong>, which may include their observations about your body and your training. Notes are visible to your coach and not to you. Session feedback is private unless your coach chooses to share it with you. Written reviews your coach produces are shared with you.</li>
+    <li>We generate an <strong>AI-written summary of you</strong> for your coach, built from the data above.</li>
+  </ul>
+
+  <p><strong>Payment</strong></p>
+  <ul>
+    <li>Card details are entered on Stripe's own checkout page and never reach FORGE. We do not see, store or process card numbers.</li>
+    <li>We store your Stripe customer and subscription identifiers, your subscription status and tier, and your billing currency.</li>
+  </ul>
+
+  <p><strong>Device and technical</strong></p>
+  <ul>
+    <li>Device type and browser (User-Agent).</li>
+    <li><strong>IP address.</strong> Our hosting providers receive it with every request as a matter of how the internet works. Our own application writes an IP address to the server log when an authentication attempt fails.</li>
+    <li>Push notification token, if you turn on notifications.</li>
+    <li>Your device's time zone, when you set a workout reminder. We also read your time zone in the browser to guess which currency to show you — that guess is made on your device.</li>
+  </ul>
+
+  <p><strong>Preferences</strong></p>
+  <ul>
+    <li>Language, units (kg / lbs), notification settings, colour theme, and currency.</li>
   </ul>
 
   <h2><span class="num">03</span>How We Use Your Data</h2>
   <ul>
-    <li>To generate and personalise your AI workout programme.</li>
-    <li>To power your AI coach with context about your training and goals.</li>
+    <li>To generate and personalise your workout and nutrition programme.</li>
+    <li>To give the AI coach the context it needs to answer you.</li>
+    <li>To show your progress, streaks, records and measurements back to you.</li>
+    <li>To let a coach you have connected to do their job, if you have one.</li>
     <li>To process payments and manage your subscription.</li>
-    <li>To send transactional emails: welcome, password reset, trial expiry notices.</li>
-    <li>To send push notifications if you enable them.</li>
-    <li>To improve the product using anonymised, aggregated usage patterns.</li>
+    <li>To send service emails and, only if you asked for them, marketing emails (section 06).</li>
+    <li>To send push notifications, if you enable them.</li>
+    <li>To keep the service secure and diagnose faults.</li>
+  </ul>
+  <p>We do not sell your data. We do not share it with advertisers. We do not use it to train anyone's AI models.</p>
+
+  <h2><span class="num">04</span>AI and Automated Processing</h2>
+  <p><strong>An AI generates your workout and nutrition plans, and an AI is the coach you chat with.</strong> The AI provider is <a href="https://www.anthropic.com/" target="_blank" rel="noopener">Anthropic</a> (Claude).</p>
+  <p>When a plan is generated or you send a coach message, the following is sent to Anthropic on our servers: your name, age, sex, height, weight, goal, training experience, days per week and preferred days, available equipment, diet style, <strong>dietary restrictions</strong>, <strong>injuries</strong>, your recent exercise history, your current plan, and the recent messages in that conversation. If you have a coach, the same health fields are sent when your coach uses an AI feature about you.</p>
+  <p>Anthropic processes this to produce a response and returns it to us. Under our arrangement with them this data is not used to train their models.</p>
+  <p><strong>The AI is not a medical professional and its output is not medical advice.</strong> It is automatically generated fitness guidance and may be wrong or unsuitable for you. See section 02 of our <a href="/terms.html">Terms of Service</a> for the full disclaimer and the recommendation to consult a doctor.</p>
+  <p>These automated outputs are suggestions. They do not produce legal effects for you and nothing is decided about you automatically — you choose whether to follow a plan.</p>
+
+  <h2><span class="num">05</span>Who Receives Your Data</h2>
+  <p>Thirteen companies are involved in running FORGE. This is all of them and what each one gets.</p>
+
+  <p><strong>Sent by our servers</strong></p>
+  <ul>
+    <li><strong>Supabase</strong> — database and authentication. <strong>Your data is stored on servers in the European Union.</strong> Supabase holds everything listed in section 02 that we store. It also receives your IP address directly from your browser, because sign-in and session refresh go straight from your device to Supabase.</li>
+    <li><strong>Anthropic</strong> — the AI provider. Receives the profile, health and conversation data listed in section 04.</li>
+    <li><strong>Stripe</strong> — payments. Receives your email address, your name, your FORGE account identifier, your chosen plan, billing period and currency. Your card details go to Stripe directly from your browser on Stripe's own checkout page and never pass through us.</li>
+    <li><strong>Mailchimp</strong> — email delivery and list management. Receives your email address, first and last name, and lifecycle tags (for example: on trial, upgraded, opted in to marketing).</li>
+    <li><strong>Railway</strong> — hosts our backend. All API traffic passes through it and it holds our server logs.</li>
+    <li><strong>Google (YouTube Data API)</strong> — receives exercise names from your plan as search queries, so we can attach a demonstration video. Sent from our servers, not linked to you.</li>
+    <li><strong>MuscleWiki</strong> — exercise reference data. Receives exercise identifiers from our servers. Demonstration videos are fetched by our server and passed on to you, so your IP address is never exposed to MuscleWiki.</li>
+    <li><strong>Resend</strong> — an email provider we have configured but which is <strong>currently sending nothing and receiving no data at all</strong>. If that changes we will update this policy first.</li>
   </ul>
 
-  <h2><span class="num">04</span>Who We Share Data With</h2>
-  <p>We share data only with these trusted services:</p>
+  <p><strong>Contacted directly by your browser</strong></p>
+  <p>These receive your <strong>IP address and browser User-Agent</strong> without our servers being involved. We cannot prevent this while these services are in use, and several are in the United States.</p>
   <ul>
-    <li><strong>Supabase</strong> (database and authentication) — servers in the EU.</li>
-    <li><strong>Anthropic</strong> (AI coaching engine) — your profile and training data is sent to generate responses.</li>
-    <li><strong>Stripe</strong> (payments) — payment processing only.</li>
-    <li><strong>Resend</strong> (email delivery) — email address and name only.</li>
+    <li><strong>GitHub Pages</strong> — hosts the website and the app itself. Sees your IP and User-Agent on every page load.</li>
+    <li><strong>Google Fonts</strong> (fonts.googleapis.com and fonts.gstatic.com) — sees your IP and User-Agent <strong>on every page of FORGE</strong>, including this one.</li>
+    <li><strong>jsDelivr</strong> — a content delivery network that serves one JavaScript library. Sees your IP and User-Agent every time you open the app.</li>
+    <li><strong>YouTube</strong> (youtube-nocookie.com) — sees your IP only when an exercise demonstration video is displayed. We use the no-cookie embed, which does not set tracking cookies before you press play.</li>
+    <li><strong>Your push provider</strong> — Google, Apple or Mozilla, depending on your browser and device, and only if you enable notifications. It receives the push address for your device. The contents of each notification are encrypted, so the push provider relays the message without being able to read it.</li>
   </ul>
+
   <p>We do not sell your data. We do not share it with advertisers.</p>
 
-  <h2><span class="num">05</span>Data Retention</h2>
+  <h2><span class="num">06</span>Email: Service and Marketing</h2>
+  <p>There are two kinds and they are handled separately.</p>
   <ul>
-    <li>Your data is retained while your account is active.</li>
-    <li>If you delete your account, all personal data is deleted within 30 days.</li>
-    <li>Anonymised aggregate data may be retained for product analytics.</li>
+    <li><strong>Service email — everyone receives this.</strong> Account confirmation, password reset, subscription and billing notices, and a <strong>7-day onboarding sequence</strong> that explains the trial you have started. This is part of providing the service and is not marketing. You cannot opt out of it while you hold an account.</li>
+    <li><strong>Marketing email — only if you ask for it.</strong> Training tips and offers. There is a separate, unticked checkbox at sign-up. If you leave it unticked you get no marketing email.</li>
+  </ul>
+  <p>You can turn marketing email on or off at any time from the <strong>Account</strong> panel in the app, or with the unsubscribe link in any marketing email. Changing it does not affect your service email.</p>
+
+  <h2><span class="num">07</span>Data Retention</h2>
+  <ul>
+    <li>Your data is kept while your account is active.</li>
+    <li>When your account is deleted, your personal data is removed within 30 days. Section 08 explains exactly what that covers.</li>
+    <li>Records of payments you made are retained by Stripe, and by us in summary form, for as long as accounting and tax law requires.</li>
+    <li>Server logs, which may contain an IP address, are held for a short period for security and fault diagnosis and then discarded on our hosting providers' normal cycle.</li>
   </ul>
 
-  <h2><span class="num">06</span>Your Rights (GDPR / UK GDPR)</h2>
-  <p>If you are in the EU or UK you have the right to:</p>
+  <h2><span class="num">08</span>Deleting Your Account</h2>
+  <p><strong>There is no delete button in the app.</strong> To close your account, email <a href="mailto:support@klemforge.com">support@klemforge.com</a> from the address on the account. We handle it manually and complete it within 30 days.</p>
+  <p>Deletion removes your authentication account and your profile, and with it: your plans, workout and session logs, exercise history, personal records, bodyweight log, body measurements, AI coach conversations, streaks and statistics, weekly and monthly reviews, onboarding tasks, push subscriptions, programmes, AI usage counters, trial feedback, any promotional code redemption, your connection to a coach, and any pending coach invitation addressed to you. If you have a coach, their private notes about you, their session feedback, their written reviews and their per-client settings are deleted with it. We also remove you from our mailing list.</p>
+  <p><strong>Two things are deliberately kept, with you removed from them:</strong></p>
+  <ul>
+    <li><strong>A coach's commission records.</strong> If a coach earned commission on your subscription, that entry is their financial record of a payment that actually happened, and they need it for their own accounting. Your identifier is stripped from it, so the entry no longer points at you.</li>
+    <li><strong>Training programmes a coach built.</strong> A programme your coach wrote is their work. Your identifier is stripped from it so it is no longer attached to you.</li>
+  </ul>
+  <p>Payment and invoice records held by Stripe are also retained where accounting and tax law requires it.</p>
+
+  <h2><span class="num">09</span>Your Rights (GDPR / UK GDPR)</h2>
+  <p>If you are in the EU, the UK or Switzerland you have the right to:</p>
   <ul>
     <li>Access your personal data.</li>
     <li>Correct inaccurate data.</li>
-    <li>Delete your data (<strong>"right to be forgotten"</strong>).</li>
+    <li>Delete your data (<strong>"right to be forgotten"</strong>) — see section 08.</li>
     <li>Export your data in a portable format.</li>
-    <li>Withdraw consent at any time.</li>
+    <li>Withdraw consent at any time, including for marketing email.</li>
+    <li>Object to processing, and ask us to restrict it.</li>
     <li>Lodge a complaint with your supervisory authority.</li>
   </ul>
-  <p>To exercise any right, email <a href="mailto:support@klemforge.com">support@klemforge.com</a>.</p>
+  <p>To exercise any right, email <a href="mailto:support@klemforge.com">support@klemforge.com</a>. We respond within 30 days.</p>
 
-  <h2><span class="num">07</span>California Residents (CCPA)</h2>
-  <p>California residents have the right to know what personal information we collect, request deletion, and opt out of sale (we do not sell data). Contact <a href="mailto:support@klemforge.com">support@klemforge.com</a> to exercise these rights.</p>
+  <h2><span class="num">10</span>California Residents (CCPA)</h2>
+  <p>California residents have the right to know what personal information we collect, request deletion, and opt out of sale. <strong>We do not sell personal information.</strong> Contact <a href="mailto:support@klemforge.com">support@klemforge.com</a> to exercise these rights.</p>
 
-  <h2><span class="num">08</span>Health Data</h2>
-  <p>Fitness and health information you provide (injuries, weight, goals) is used solely to personalise your experience. It is not shared with third parties for any other purpose. <strong>FORGE is not a medical service.</strong> Content from the AI coach is for fitness guidance only and does not constitute medical advice.</p>
+  <h2><span class="num">11</span>International Transfers</h2>
+  <p>Some of the companies in section 05 are based in the United States, and the ones your browser contacts directly are reached from wherever you are. Where data is transferred out of the EEA, the UK or Switzerland, it relies on the transfer mechanisms those providers have in place, such as the EU Standard Contractual Clauses.</p>
 
-  <h2><span class="num">09</span>Cookies and Tracking</h2>
-  <p>FORGE uses only functional cookies and local storage necessary to keep you logged in and save your preferences. We do not use tracking cookies or advertising pixels.</p>
+  <h2><span class="num">12</span>Health Data</h2>
+  <p>The health and body data listed in section 02 is used to personalise your programme, power the AI coach, and — if you have one — let your coach do their job. It is shared only with the companies named in section 05 and only for those purposes. It is never sold, never used for advertising, and never used to train AI models.</p>
+  <p>By entering this data and using the AI coach you are asking us to process it for those purposes. You can withdraw that by deleting your account (section 08).</p>
 
-  <h2><span class="num">10</span>Children's Privacy</h2>
-  <p>FORGE is not intended for users under 18. We do not knowingly collect data from anyone under 18.</p>
+  <h2><span class="num">13</span>Cookies and Local Storage</h2>
+  <p>FORGE uses only functional storage: your session, your preferences and a local cache of your profile and plan so the app opens quickly. <strong>We use no tracking cookies, no advertising pixels and no analytics products.</strong> The YouTube no-cookie embed is used so that video embeds do not set tracking cookies before you press play.</p>
 
-  <h2><span class="num">11</span>Security</h2>
-  <p>We use industry-standard encryption for data in transit (HTTPS) and at rest. Passwords are hashed and never stored in plain text. Access to user data is restricted to authorised personnel only.</p>
+  <h2><span class="num">14</span>Children's Privacy</h2>
+  <p>FORGE is not intended for anyone under 18. You must be at least 18 to hold an account. We do not knowingly collect data from anyone under 18.</p>
 
-  <h2><span class="num">12</span>Changes to This Policy</h2>
-  <p>We may update this policy. We will notify you by email and update the <strong>"Last updated"</strong> date. Continued use of FORGE after changes constitutes acceptance.</p>
+  <h2><span class="num">15</span>Security</h2>
+  <p>Data is encrypted in transit (HTTPS) and at rest. Passwords are hashed by our authentication provider and never stored in plain text. Database access rules restrict every account to its own data, and administrative access is limited to authorised personnel.</p>
 
-  <h2><span class="num">13</span>Contact</h2>
-  <p>Questions about this policy: <a href="mailto:support@klemforge.com">support@klemforge.com</a></p>
+  <h2><span class="num">16</span>Changes to This Policy</h2>
+  <p>We may update this policy. We will update the <strong>"Last updated"</strong> date at the top and, for material changes, notify you by email. Continued use of FORGE after a change constitutes acceptance.</p>
+
+  <h2><span class="num">17</span>Contact</h2>
+  <p>Questions about this policy, or to exercise any right in section 09: <a href="mailto:support@klemforge.com">support@klemforge.com</a></p>
   <p>FORGE, Rue du Rhône 14, 1204 Genève, Switzerland.</p>
 
   <div class="footer">
