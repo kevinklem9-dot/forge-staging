@@ -4304,9 +4304,9 @@ function renderCoachTrialExpiredPaywall() {
         <button onclick="_coachExpiredState.billing = 'monthly'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Monthly</button>
         <button onclick="_coachExpiredState.billing = 'annual'; renderCoachTrialExpiredPaywall();" style="flex:1;padding:9px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Annual <span style="font-size:10px;opacity:0.85;">— ${t('coach_annual_note')}</span></button>
       </div>
-      ${planCard('starter', 'Starter', ['Up to 10 clients', 'Client dashboard', '10% commission'])}
-      ${planCard('pro', 'Pro', ['Up to 30 clients', 'Template library', '15% commission'])}
-      ${planCard('elite', 'Elite', ['Unlimited clients', 'Priority support', '20% commission'])}
+      ${planCard('starter', 'Starter', ['Up to 10 clients', 'Client dashboard'])}
+      ${planCard('pro', 'Pro', ['Up to 30 clients', 'Template library'])}
+      ${planCard('elite', 'Elite', ['Unlimited clients', 'Priority support'])}
       <button id="coachExpiredContinueBtn" onclick="continueCoachAfterTrial()" style="width:100%;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;">Continue with ${escHtml(planNames[_coachExpiredState.plan] || 'Pro')}</button>
       <button onclick="downgradeCoachFromExpired()" style="width:100%;margin-top:10px;padding:11px;background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline;">${t('coach_downgrade')}</button>
     </div>
@@ -10997,7 +10997,7 @@ const STRINGS = {
     coach_send: 'Send',
     /* i18n FIX batch — coach CTA / today-relative / weight / plan units / greeting labels. ('today' lives below.) */
     yesterday: 'Yesterday', days_ago: '{n} days ago', todays_weight: "Today's weight",
-    become_coach_cta_desc: "Give your clients 24/7 AI coaching. Manage their programmes and progress in one place. Earn commission on every client subscription.",
+    become_coach_cta_desc: "Give your clients 24/7 AI coaching. Manage their programmes and progress in one place.",
     become_coach_cta_btn: "Set up coach account",
     unit_set: 'set', unit_sets: 'sets', unit_exercise: 'exercise', unit_exercises: 'exercises', label_custom: 'Custom',
     greeting_training: 'Training', greeting_recovery: 'Recovery', greeting_next_session: 'Next Session', greeting_ready_today: 'Ready For Today', greeting_today_focus: "Today's Focus", greeting_duration: 'Duration', greeting_last_completed: 'Last Completed',
@@ -11024,12 +11024,12 @@ const STRINGS = {
     coach_setup_continue: "Continue", coach_setup_confirm: "Start coaching", coach_activating: "Activating…",
     coach_err_name: "Add your name", coach_err_title: "Add your title", coach_err_trial: "Could not start your coach trial",
     coach_choose_plan: "Choose your coach plan", coach_plan_trial_note: "7 days free. No card required. You'll be asked for payment when your trial ends.",
-    coach_annual_note: "4 months free", coach_billed_separately: "Your personal FORGE subscription is billed separately.",
+    coach_annual_note: "3 months free", coach_billed_separately: "Your personal FORGE subscription is billed separately.",
     coach_plan_starter: "Starter", coach_plan_pro: "Pro", coach_plan_elite: "Elite",
     coach_plan_clients: "Up to {n} clients", coach_unlimited_clients: "Unlimited clients",
     coach_feat_dashboard: "Client dashboard", coach_feat_builder: "Programme builder", coach_feat_ai_controls: "AI review controls", coach_feat_commission: "{n}% commission",
     coach_feat_everything_starter: "Everything in Starter", coach_feat_everything_pro: "Everything in Pro", coach_feat_priority_notif: "Priority client notifications", coach_feat_templates: "Template library",
-    coach_trial_badge: "7-day free trial", coach_commission_label: "Commission rate",
+    coach_trial_badge: "7-day free trial", coach_commission_label: "Commission rate", coach_most_popular: "MOST POPULAR",
     coach_all_set: "You're all set.", coach_trial_started: "Your 7-day free trial has started.", coach_no_card_until: "No card required until your trial ends.",
     coach_word_plan: "Plan", coach_trial_ends_label: "Trial ends", coach_go_dashboard: "Go to my client dashboard", coach_welcome_dashboard: "Welcome to your coach dashboard.",
     clients_panel_title: 'My Clients',
@@ -12098,7 +12098,7 @@ const STRINGS = {
     coach_send: 'Envoyer',
     /* i18n FIX batch */
     today: "Aujourd'hui", yesterday: 'Hier', days_ago: 'il y a {n} jours', todays_weight: "Poids d'aujourd'hui",
-    become_coach_cta_desc: "Offrez à vos clients un coaching IA 24h/24 et 7j/7. Gérez leurs programmes et leur progression au même endroit. Gagnez une commission sur chaque abonnement client.",
+    become_coach_cta_desc: "Offre à tes clients un coaching IA 24h/24 et 7j/7. Gère leurs programmes et leur progression au même endroit.",
     become_coach_cta_btn: "Configurer le compte coach",
     unit_set: 'série', unit_sets: 'séries', unit_exercise: 'exercice', unit_exercises: 'exercices', label_custom: 'Personnalisé',
     greeting_training: 'Entraînement', greeting_recovery: 'Récupération', greeting_next_session: 'Prochaine séance', greeting_ready_today: "Prêt pour aujourd'hui", greeting_today_focus: 'Objectif du jour', greeting_duration: 'Durée', greeting_last_completed: 'Dernière terminée',
@@ -12119,12 +12119,12 @@ const STRINGS = {
     coach_setup_continue: "Continuer", coach_setup_confirm: "Commencer à coacher", coach_activating: "Activation…",
     coach_err_name: "Ajoute ton nom", coach_err_title: "Ajoute ton titre", coach_err_trial: "Impossible de démarrer ton essai coach",
     coach_choose_plan: "Choisis ton plan coach", coach_plan_trial_note: "7 jours gratuits. Sans carte. Le paiement te sera demandé à la fin de ton essai.",
-    coach_annual_note: "4 mois gratuits", coach_billed_separately: "Ton abonnement FORGE personnel est facturé séparément.",
+    coach_annual_note: "3 mois gratuits", coach_billed_separately: "Ton abonnement FORGE personnel est facturé séparément.",
     coach_plan_starter: "Débutant", coach_plan_pro: "Pro", coach_plan_elite: "Élite",
     coach_plan_clients: "Jusqu'à {n} clients", coach_unlimited_clients: "Clients illimités",
     coach_feat_dashboard: "Tableau de bord clients", coach_feat_builder: "Créateur de programmes", coach_feat_ai_controls: "Contrôles des bilans IA", coach_feat_commission: "{n}% de commission",
     coach_feat_everything_starter: "Tout le plan Débutant", coach_feat_everything_pro: "Tout le plan Pro", coach_feat_priority_notif: "Notifications clients prioritaires", coach_feat_templates: "Bibliothèque de modèles",
-    coach_trial_badge: "7 jours d'essai gratuit", coach_commission_label: "Taux de commission",
+    coach_trial_badge: "7 jours d'essai gratuit", coach_commission_label: "Taux de commission", coach_most_popular: "LE PLUS POPULAIRE",
     coach_all_set: "Tout est prêt.", coach_trial_started: "Ton essai gratuit de 7 jours a commencé.", coach_no_card_until: "Sans carte jusqu'à la fin de ton essai.",
     coach_word_plan: "Plan", coach_trial_ends_label: "Fin de l'essai", coach_go_dashboard: "Aller à mon tableau de bord clients", coach_welcome_dashboard: "Bienvenue sur ton tableau de bord coach.",
     clients_panel_title: 'Mes clients',
@@ -16581,7 +16581,7 @@ function renderCoachSetupPlan() {
   const _curLocked = !!currencyLockedFromServer();
   const planCard = (id, name, features, recommended) => `
     <div onclick="_coachSetupState.plan = '${id}'; renderCoachSetup();" style="padding:18px;background:var(--surface);border:2px solid ${_coachSetupState.plan === id ? 'var(--accent)' : 'var(--border)'};border-radius:14px;margin-bottom:12px;cursor:pointer;position:relative;">
-      ${recommended ? `<div style="position:absolute;top:-10px;right:14px;background:var(--accent);color:var(--bg);padding:3px 10px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:1px;border-radius:10px;">${t('upgrade_recommended')}</div>` : ''}
+      ${recommended ? `<div style="position:absolute;top:-10px;right:14px;background:var(--accent);color:var(--bg);padding:3px 10px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:1px;border-radius:10px;">${t('coach_most_popular')}</div>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">${name}</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);">${coachDisplayPrice(id, billing, _cur)}<span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">${t('upgrade_per_mo')}</span></div>
@@ -16597,9 +16597,9 @@ function renderCoachSetupPlan() {
       <button onclick="_coachSetupState.billing = 'monthly'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'monthly' ? 'var(--accent)' : 'transparent'};color:${billing === 'monthly' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('upgrade_monthly')}</button>
       <button onclick="_coachSetupState.billing = 'annual'; renderCoachSetup();" style="flex:1;padding:10px;background:${billing === 'annual' ? 'var(--accent)' : 'transparent'};color:${billing === 'annual' ? 'var(--bg)' : 'var(--muted)'};border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('upgrade_annual')} <span style="font-size:10px;opacity:0.85;">— ${t('coach_annual_note')}</span></button>
     </div>
-    ${planCard('starter', t('coach_plan_starter'), [t('coach_plan_clients').replace('{n}','10'), t('coach_feat_dashboard'), t('coach_feat_builder'), t('coach_feat_ai_controls'), t('coach_feat_commission').replace('{n}','10')], false)}
-    ${planCard('pro', t('coach_plan_pro'), [t('coach_plan_clients').replace('{n}','30'), t('coach_feat_everything_starter'), t('coach_feat_priority_notif'), t('coach_feat_templates'), t('coach_feat_commission').replace('{n}','15')], true)}
-    ${planCard('elite', t('coach_plan_elite'), [t('coach_unlimited_clients'), t('coach_feat_everything_pro'), t('coach_feat_commission').replace('{n}','20')], false)}
+    ${planCard('starter', t('coach_plan_starter'), [t('coach_plan_clients').replace('{n}','10'), t('coach_feat_dashboard'), t('coach_feat_builder'), t('coach_feat_ai_controls')], false)}
+    ${planCard('pro', t('coach_plan_pro'), [t('coach_plan_clients').replace('{n}','30'), t('coach_feat_everything_starter'), t('coach_feat_priority_notif'), t('coach_feat_templates')], true)}
+    ${planCard('elite', t('coach_plan_elite'), [t('coach_unlimited_clients'), t('coach_feat_everything_pro')], false)}
     <div style="font-size:11px;color:var(--muted);margin:14px 0 18px;text-align:center;font-family:'DM Mono',monospace;letter-spacing:0.5px;">${t('coach_billed_separately')}</div>
     <button onclick="submitCoachSetup()" id="csSubmit" style="width:100%;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('coach_setup_confirm')}</button>
     ${userProfile?.coach_plan_status === 'trial' ? `
@@ -16860,11 +16860,17 @@ async function renderAccountCoachSections() {
         ${plan !== 'elite' ? `<button onclick="openCoachSetup('plan')" style="width:100%;padding:12px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">${t('coach_upgrade_plan')}</button>` : ''}
         ${status === 'active' ? `<button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">${t('coach_manage_billing')}</button>` : ''}
         <button onclick="confirmCancelCoachPlan()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('coach_cancel_plan')}</button>
-      </div>
-      <details style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:16px;">
-        <summary style="cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;list-style:none;">COMMISSION ▾</summary>
-        <div id="coachCommissionBlock" style="margin-top:14px;font-size:13px;color:var(--muted);">Loading…</div>
-      </details>`;
+      </div>`;
+      // EARNINGS PANEL REMOVED — intentionally unreachable, NOT deleted.
+      // Commissions are no longer presented as a coach benefit, so the <details>
+      // "COMMISSION" block that used to sit here is gone and #coachCommissionBlock no longer
+      // exists in the DOM. populateCoachCommissionBlock() below still holds the rendering.
+      // TO RESTORE: put this markup back and call populateCoachCommissionBlock() from the
+      // async section further down.
+      //   <details style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:16px;">
+      //     <summary style="cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;list-style:none;">COMMISSION ▾</summary>
+      //     <div id="coachCommissionBlock" style="margin-top:14px;font-size:13px;color:var(--muted);">Loading…</div>
+      //   </details>
   } else if (!myCoach && !pendingCoach) {
     // Non-coach: show "Become a coach" CTA
     html += `
@@ -16897,6 +16903,15 @@ async function renderAccountCoachSections() {
       seatsEl.style.color = color;
       seatsEl.textContent = `${s.active} OF ${limit} CLIENTS`;
     });
+  }
+}
+
+// INTENTIONALLY UNREACHABLE — nothing calls this. Kept whole because commissions may return;
+// deleting it would mean rebuilding the panel from scratch. It reads /api/coach/commissions,
+// which is untouched and still serving, and renders into #coachCommissionBlock, which
+// renderAccount() no longer emits (see EARNINGS PANEL REMOVED above).
+// TO RESTORE: re-add that markup and call this from renderAccount()'s async section.
+function populateCoachCommissionBlock() {
     api('/api/coach/commissions').then(c => {
       const block = document.getElementById('coachCommissionBlock');
       if (!block || !c) return;
@@ -16917,7 +16932,6 @@ async function renderAccountCoachSections() {
         `).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px 0;">' + t('coach_no_commission') + '</div>'}
       `;
     });
-  }
 }
 
 function renderClientNotificationSummary() {
