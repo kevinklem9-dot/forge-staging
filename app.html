@@ -1732,6 +1732,12 @@ const ADMIN_EMAIL = 'kevinklem9@gmail.com';
 
 // ═══════════════════════════════════════════════════════
 // EXERCISE DATABASE
+// ⚠ NOT THE SOURCE OF TRUTH. The canonical copy is:
+//     Staging Backend/exercise-catalogue.js  (exports EXERCISE_CATALOGUE)
+// The backend injects it into the plan prompt, filtered to the user's equipment tier.
+// This inline copy exists only so the custom programme builder can search offline with no
+// network round-trip. THE TWO MUST BE RECONCILED ON EVERY CHANGE — edit the backend file
+// first, then mirror it here. As of 2026-08-23 they are byte-identical (150 entries).
 // ~150 exercises across every muscle group. Stored as a JS constant (no API call →
 // instant search). Merged at search time with user-created exercises from
 // localStorage('forge-custom-exercises'). Used by the custom programme builder.
@@ -7945,7 +7951,9 @@ async function submitCheckin() {
     notes,
     language: appLanguage,
     messages: [{ role: 'user', content: userContent }]
-  }, 45000); // 45s timeout — AI response can take time
+  }, 90000); // 90s timeout — matches /api/chat for the same non-streaming Sonnet 5 call.
+             // The server now holds the socket open with a 20s chunked heartbeat, so this
+             // only fires on a genuinely stuck call, not on a slow one.
 
   removeTyping(loadId);
 
