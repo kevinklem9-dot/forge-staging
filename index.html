@@ -53,7 +53,18 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0a0a0a;--surface:#111111;--surface2:#1a1a1a;--surface3:#161616;--border:#222222;--border2:#2a2a2a;
-  --accent:#e8ff3d;--accent-dim:#b8cc2e;--accent2:#ff6b35;--text:#f0f0f0;--muted:#666666;--muted2:#8a8a8a;
+  /* --muted / --muted2 raised for legibility. Measured against --bg #0a0a0a and, where the
+     token sits on a card, --surface2 #1a1a1a (the worst case: .card-pain and the recommended
+     tier card).
+       --muted   #666666 -> #8f8f8f   3.45:1 -> 6.12:1 on --bg   (worst case 5.38:1)
+       --muted2  #8a8a8a -> #a6a6a6   5.73:1 -> 8.13:1 on --bg   (worst case 7.15:1)
+     --muted2 already cleared 4.5:1; it was raised anyway because raising --muted alone would
+     have pushed the LABEL token brighter than the BODY token and inverted the hierarchy.
+     Order is still --text > --muted2 > --muted, and body stays 2.14:1 clear of headings.
+     --dim is new: the struck-through old price is superseded information and should not
+     compete with the live price, so it keeps a deliberately quiet value. It is still
+     BRIGHTER than the --muted it replaces there (3.94:1 vs 3.45:1 on --bg). */
+  --accent:#e8ff3d;--accent-dim:#b8cc2e;--accent2:#ff6b35;--text:#f0f0f0;--muted:#8f8f8f;--muted2:#a6a6a6;--dim:#6f6f6f;
   --red:#ff4444;--green:#39d98a;--accent-pressed:#d4eb1e;
   --shadow-glow:0 0 60px rgba(232,255,61,0.18);
   --shadow-card:0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.6);
@@ -140,7 +151,16 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(232,255,61,0.06);border:1px solid rgba(232,255,61,0.25);padding:8px 16px;border-radius:100px;margin-bottom:32px}
 .hero-eyebrow::before{content:"";width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(54px,8.2vw,108px);line-height:0.95;letter-spacing:1.5px;font-weight:400;max-width:980px;margin:0 auto 28px;color:var(--text);text-shadow:0 0 60px rgba(232,255,61,0.12),0 0 120px rgba(232,255,61,0.06)}
+/* THREE type tiers in the hero, each smaller than the one above:
+     h1 .............. clamp(38px, 5.4vw, 72px)   was clamp(54px, 8.2vw, 108px)
+     .hero-subhead ... clamp(26px, 3.6vw, 46px)   NEW — was the second half of the h1
+     .hero-sub ....... 19px                       unchanged
+   Both display lines used to live in one <h1> split by a <br>, so the punch line rendered at
+   the same 108px as the headline and the two fought each other. The subhead keeps --text and
+   the Bebas face — size alone carries the hierarchy — but not the h1's glow, so the headline
+   still reads as primary. */
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,5.4vw,72px);line-height:0.95;letter-spacing:1.5px;font-weight:400;max-width:980px;margin:0 auto 12px;color:var(--text);text-shadow:0 0 60px rgba(232,255,61,0.12),0 0 120px rgba(232,255,61,0.06)}
+.hero-subhead{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,3.6vw,46px);line-height:1.02;letter-spacing:1px;font-weight:400;max-width:860px;margin:0 auto 26px;color:var(--text)}
 .hero-sub{font-size:19px;color:var(--muted2);max-width:640px;margin:0 auto 24px;line-height:1.6}
 .hero-trust{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:48px}
 
@@ -266,8 +286,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
    "CHF 11.99" + "CHF 6.99" + "/mo") inside the 308px card interior, with 14.6px to spare.
    42px overflows it by 2.2px. The 720px override still wins on mobile. */
 .tier-price-main{font-size:38px}
-.tier-price-was{font-family:'DM Mono',monospace;font-size:16px;color:var(--muted);text-decoration:line-through;letter-spacing:0.5px;margin-right:10px;vertical-align:middle}
-.tier-card.recommended .tier-price-was{color:var(--muted2)}
+/* Pinned to --dim, not --muted: with --muted raised, a 16px struck-through price started
+   competing with the live price beside it. Still brighter than it was before the raise. */
+.tier-price-was{font-family:'DM Mono',monospace;font-size:16px;color:var(--dim);text-decoration:line-through;letter-spacing:0.5px;margin-right:10px;vertical-align:middle}
+/* One step brighter than the plain card's --dim, because the recommended card sits on the
+   lighter --surface2. Same relationship the original had, both ends lifted. */
+.tier-card.recommended .tier-price-was{color:var(--muted)}
 .tf-soon{background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;white-space:nowrap}
 .pricing-micro{text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:28px}
 .tier-card.recommended .tier-price-main{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.3)}
@@ -409,7 +433,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .nav-cta{padding:8px 10px;font-size:9px;letter-spacing:0.8px;white-space:nowrap}
   .section{padding:72px 16px}
   .hero{padding:110px 16px 70px}
-  .hero h1{font-size:clamp(36px,10vw,56px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto}
+  /* Continuous across the 720px boundary: the base clamps land on 38.9px / 25.9px at exactly
+     720px, and these pick up from there. At 390px: 30px / 22px / 15px. */
+  .hero h1{font-size:clamp(30px,5.4vw,40px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto}
+  .hero-subhead{font-size:clamp(22px,3.6vw,26px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;margin-bottom:20px}
   .hero-sub{font-size:15px;padding:0 4px}
   .hero-eyebrow{font-size:10px;letter-spacing:2px;padding:7px 12px}
   .hero-trust{font-size:10px;letter-spacing:1.5px}
@@ -448,7 +475,8 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .currency-select{font-size:9px;padding:5px;max-width:72px}
   .nav-link{font-size:8.5px;letter-spacing:0.5px}
   .nav-cta{padding:7px 8px}
-  .hero h1{font-size:clamp(32px,10vw,48px)}
+  .hero h1{font-size:clamp(28px,5.4vw,34px)}
+  .hero-subhead{font-size:clamp(20px,3.6vw,24px)}
 }
 </style>
 </head>
@@ -483,7 +511,8 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 <!-- HERO -->
 <section class="hero" id="hero">
   <div class="hero-eyebrow reveal" data-i18n="hero_eyebrow">AI Performance Coach</div>
-  <h1 class="reveal" data-i18n="hero_h1">You've read the articles, tried the apps, maybe hired someone for a while.<br>None of it ever knew what you did last time.</h1>
+  <h1 class="reveal" data-i18n="hero_h1">You've read the articles, tried the apps, maybe hired someone for a while.</h1>
+  <div class="hero-subhead reveal" data-i18n="hero_subhead">None of it ever knew what you did last time.</div>
   <p class="hero-sub reveal" data-i18n="hero_sub">FORGE builds your programme, coaches you through every session, and adapts as your data grows. Built in under 2 minutes.</p>
   <div class="hero-trust reveal" data-i18n="hero_trust">7-day free trial · No card required · Cancel anytime · 30-day money back</div>
 
@@ -590,7 +619,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <h2 class="reveal">Built by someone who lost years to bad advice.</h2>
     <p class="section-body why-sub reveal" style="margin-bottom:32px">One verified story. More being added as our early members train.</p>
     <blockquote class="founder-quote reveal">
-      <p class="founder-quote-text" id="founderQuote">"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There's no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of trial and error to actually understand what I was doing. FORGE exists so nobody else has to lose that time."</p>
+      <p class="founder-quote-text" id="founderQuote">"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There's no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of research and feedback to actually understand what I was doing. FORGE exists so nobody else has to lose that time."</p>
       <div class="founder-attr" id="founderAttr">— Kevin, Founder</div>
     </blockquote>
   </div>
@@ -614,7 +643,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <h2 class="reveal" style="text-align:center">Choose your level.</h2>
     <div class="pricing-meta reveal">
       <div class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
-      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-charge-note">You'll be charged in this currency</span></div>
+      <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-charge-note">You'll be charged in the currency you choose</span></div>
     </div>
     <!-- Three-way billing control. The old two-state .toggle-pill could not carry a third
          option, so the labels became the control itself. setBilling() drives it; there is no
@@ -1512,7 +1541,8 @@ setCurrency(currency);
 const LANDING_STRINGS = {
   en: {
     hero_eyebrow:'AI Performance Coach',
-    hero_h1:"You've read the articles, tried the apps, maybe hired someone for a while.<br>None of it ever knew what you did last time.",
+    hero_h1:"You've read the articles, tried the apps, maybe hired someone for a while.",
+    hero_subhead:"None of it ever knew what you did last time.",
     hero_sub:"FORGE builds your programme, coaches you through every session, and adapts as your data grows. Built in under 2 minutes.",
     hero_trust:"7-day free trial · No card required · Cancel anytime · 30-day money back",
     nav_trial:"Start free trial", nav_coaches:"For Coaches", nav_coaches_short:"Coaches",
@@ -1548,7 +1578,7 @@ const LANDING_STRINGS = {
     why_label:"Why this exists",
     why_h2:"Built by someone who lost years to bad advice.",
     why_sub:"One verified story. More being added as our early members train.",
-    founder_quote:'"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There\'s no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of trial and error to actually understand what I was doing. FORGE exists so nobody else has to lose that time."',
+    founder_quote:'"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There\'s no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of research and feedback to actually understand what I was doing. FORGE exists so nobody else has to lose that time."',
     founder_attr:"— Kevin, Founder",
     // PT anchor claim — TIED TO LAUNCH PRICING. CHF 98 = 2 x CHF 49 (launch annual). At the
     // standard CHF 79 annual two years is CHF 158 and the claim fails. Rewrite when
@@ -1578,7 +1608,7 @@ const LANDING_STRINGS = {
     price_if_annual:"{price}/mo if annual",
     price_micro:"7-day free trial · No card required · Cancel anytime",
     showing_prices:"Showing prices in", change_currency:"change currency",
-    currency_charge_note:"You'll be charged in this currency",
+    currency_charge_note:"You'll be charged in the currency you choose",
     feat_iron_1:"AI-generated workout programme",
     feat_iron_2:"AI-generated 7-day nutrition plan",
     feat_iron_3:"Workout logging (per-set)",
@@ -1627,7 +1657,8 @@ const LANDING_STRINGS = {
   },
   fr: {
     hero_eyebrow:"Coach Performance IA",
-    hero_h1:"Tu as lu les articles, essayé les apps, peut-être payé quelqu'un pendant un temps.<br>Rien de tout ça ne savait ce que tu avais fait la fois d'avant.",
+    hero_h1:"Tu as lu les articles, essayé les apps, peut-être payé quelqu'un pendant un temps.",
+    hero_subhead:"Rien de tout ça ne savait ce que tu avais fait la fois d'avant.",
     hero_sub:"FORGE construit ton programme, te coache à chaque séance et s'adapte à mesure que tes données s'accumulent. Prêt en moins de 2 minutes.",
     hero_trust:"7 jours gratuits · Annule quand tu veux · Remboursement 30 jours",
     nav_trial:"Essai gratuit", nav_coaches:"Pour les coachs", nav_coaches_short:"Coachs",
@@ -1661,7 +1692,7 @@ const LANDING_STRINGS = {
     why_label:"Pourquoi FORGE existe",
     why_h2:"Créé par quelqu'un qui a perdu des années à cause de mauvais conseils.",
     why_sub:"Un témoignage vérifié. D'autres arrivent à mesure que nos premiers membres s'entraînent.",
-    founder_quote:"« J'ai payé CHF 360 une fois pour un programme de coaching censé être construit autour de moi. Il est arrivé environ une minute après mon inscription. Il n'existe aucune version de cette histoire où quelqu'un a vraiment regardé ma situation en soixante secondes. Il m'a fallu presque trois ans d'essais et d'erreurs pour comprendre vraiment ce que je faisais. FORGE existe pour que personne d'autre n'ait à perdre ce temps. »",
+    founder_quote:"« J'ai payé CHF 360 une fois pour un programme de coaching censé être construit autour de moi. Il est arrivé environ une minute après mon inscription. Il n'existe aucune version de cette histoire où quelqu'un a vraiment regardé ma situation en soixante secondes. Il m'a fallu presque trois ans de recherches et de retours pour comprendre vraiment ce que je faisais. FORGE existe pour que personne d'autre n'ait à perdre ce temps. »",
     founder_attr:"— Kevin, fondateur",
     // PT anchor claim — TIED TO LAUNCH PRICING (see the en block above). Rewrite when
     // LAUNCH_PRICING_LIVE goes false.
@@ -1688,7 +1719,7 @@ const LANDING_STRINGS = {
     price_if_annual:"{price}/mois en annuel",
     price_micro:"7 jours d'essai gratuit · Sans carte bancaire · Annule quand tu veux",
     showing_prices:"Prix en", change_currency:"changer la devise",
-    currency_charge_note:"Tu seras débité dans cette devise",
+    currency_charge_note:"Tu seras débité dans la devise que tu choisis",
     feat_iron_1:"Programme d'entraînement généré par IA",
     feat_iron_2:"Plan nutritionnel IA sur 7 jours",
     feat_iron_3:"Journal d'entraînement (série par série)",
@@ -1761,6 +1792,7 @@ function applyLandingLanguage(code) {
   // Hero
   setText('.hero-eyebrow', 'hero_eyebrow', false);
   setText('h1', 'hero_h1', true);
+  setText('.hero-subhead', 'hero_subhead', false);
   setText('.hero-sub', 'hero_sub', false);
   setText('.hero-trust', 'hero_trust', false);
 
