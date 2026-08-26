@@ -8250,13 +8250,20 @@ const TIER_PRICING = {
 // This replaced TWO byte-identical hardcoded blocks (renderCoachTrialExpiredPaywall and
 // renderCoachSetupPlan) that stored PRE-DIVIDED per-month figures — and those figures were
 // still the ones derived from the old .88 annual prices, so both surfaces had been quoting
-// CHF 32.99 / 59.99 / 99.99 against annuals that are now 395 / 719 / 1199. One constant, so
-// they cannot drift again.
+// stale per-month numbers against annuals they no longer matched. One constant, so they
+// cannot drift again.
+//
+// Repriced down from 49/89/149 monthly (395/719/1199 annual CHF). Client caps and plan
+// features are UNCHANGED — this pass moved price only. Every non-CHF figure sits at or
+// above its FX floor (1 CHF = 0.91487585 GBP / 1.06917146 EUR / 1.24838088 USD), so no
+// currency undercuts the CHF price. The annual badge (coach_annual_note, "3 months free")
+// is worth 3.85–4.02 months of saving across all twelve combinations — CHF Pro is the
+// tightest at 3.85 — so the claim still holds. Re-check it if any figure moves.
 const COACH_PRICING = {
-  chf: { starter: { monthly:  49, annual:  395 }, pro: { monthly:  89, annual: 719 }, elite: { monthly: 149, annual: 1199 } },
-  gbp: { starter: { monthly:  45, annual:  362 }, pro: { monthly:  82, annual: 658 }, elite: { monthly: 137, annual: 1097 } },
-  eur: { starter: { monthly:  53, annual:  423 }, pro: { monthly:  96, annual: 769 }, elite: { monthly: 160, annual: 1282 } },
-  usd: { starter: { monthly:  62, annual:  494 }, pro: { monthly: 112, annual: 898 }, elite: { monthly: 187, annual: 1497 } },
+  chf: { starter: { monthly: 27.95, annual: 227 }, pro: { monthly: 49.95, annual: 407 }, elite: { monthly:  84.95, annual: 683 } },
+  gbp: { starter: { monthly: 25.99, annual: 209 }, pro: { monthly: 45.99, annual: 373 }, elite: { monthly:  77.99, annual: 626 } },
+  eur: { starter: { monthly: 29.99, annual: 244 }, pro: { monthly: 53.99, annual: 436 }, elite: { monthly:  90.99, annual: 731 } },
+  usd: { starter: { monthly: 34.99, annual: 284 }, pro: { monthly: 62.99, annual: 509 }, elite: { monthly: 106.99, annual: 854 } },
 };
 
 // Founding / lifetime one-time prices per currency.
