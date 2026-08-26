@@ -4371,7 +4371,10 @@ function renderCoachTrialExpiredPaywall() {
     <div onclick="_coachExpiredState.plan = '${id}'; renderCoachTrialExpiredPaywall();" style="padding:16px;background:var(--surface);border:2px solid ${_coachExpiredState.plan === id ? 'var(--accent)' : 'var(--border)'};border-radius:14px;margin-bottom:10px;cursor:pointer;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);">${name}</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);">${coachDisplayPrice(id, billing, _cur)}<span style="font-size:11px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">/mo</span></div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);">${coachDisplayPrice(id, billing, _cur)}<span style="font-size:11px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">/mo</span></div>
+          ${coachAnnualNote(id, billing, _cur)}
+        </div>
       </div>
       <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.6;">${features.map(f => '<li>' + f + '</li>').join('')}</ul>
     </div>
@@ -8291,6 +8294,31 @@ function coachDisplayPrice(plan, billing, currency) {
   const p = coachPricingTable(currency)[plan];
   if (!p) return '';
   return fmtPrice(billing === 'annual' ? p.annual / 12 : p.monthly, currency);
+}
+
+// The small line UNDER that headline figure. Mirrors the individual upgrade sheet's
+// `annualNote` (renderUpgradeCard) rather than inventing a coach variant: the same two i18n
+// keys, the same yearly total, the same two colours, the same 11px.
+//
+// Note the sheet keeps this slot filled in BOTH billing states, so this does too:
+//   annual  -> upgrade_billed_year  'billed {amount}/year'  var(--accent), amount = the
+//              YEARLY TOTAL straight off COACH_PRICING — never monthly x 12 recomputed
+//   monthly -> upgrade_if_annual    '{price}/mo if annual'  var(--muted), the per-month
+//              equivalent via monthlyFromAnnual, i.e. what switching would cost
+//
+// Styled inline, not with the sheet's .us-price-annual class: that rule is `#upgradeSheet`
+// scoped AND lives in a <style> injected into the sheet's own innerHTML, so it is not in the
+// document at all while a coach overlay is open. font-size:11px is the class's only
+// declaration; the colours the sheet sets inline are set inline here too.
+//
+// `currency` is passed through explicitly — both coach surfaces resolve _cur once per render
+// and hand it to coachDisplayPrice, so the whole card stays on one resolved currency.
+function coachAnnualNote(plan, billing, currency) {
+  const p = coachPricingTable(currency)[plan];
+  if (!p) return '';
+  return billing === 'annual'
+    ? '<div style="font-size:11px;color:var(--accent);">' + t('upgrade_billed_year', { amount: fmtPrice(p.annual, currency) }) + '</div>'
+    : '<div style="font-size:11px;color:var(--muted);">'  + t('upgrade_if_annual',   { price:  fmtPrice(monthlyFromAnnual(p.annual), currency) }) + '</div>';
 }
 
 // ONE currency control, rendered by the upgrade sheet, the coach paywall and the coach setup
@@ -16733,7 +16761,10 @@ function renderCoachSetupPlan() {
       ${recommended ? `<div style="position:absolute;top:-10px;right:14px;background:var(--accent);color:var(--bg);padding:3px 10px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:1px;border-radius:10px;">${t('coach_most_popular')}</div>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;color:var(--accent);">${name}</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);">${coachDisplayPrice(id, billing, _cur)}<span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">${t('upgrade_per_mo')}</span></div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);">${coachDisplayPrice(id, billing, _cur)}<span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;letter-spacing:0;">${t('upgrade_per_mo')}</span></div>
+          ${coachAnnualNote(id, billing, _cur)}
+        </div>
       </div>
       <ul style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--text);line-height:1.7;">${features.map(f => '<li>' + f + '</li>').join('')}</ul>
     </div>
