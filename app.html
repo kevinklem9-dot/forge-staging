@@ -4712,7 +4712,16 @@ async function openFoundingMemberPage() {
   const existing = document.getElementById('foundingMemberSheet');
   if (existing) { existing.remove(); return; }
   // Slots endpoint returns forge_total/forge_sold as of the two-tier restructure.
-  const slots = await api('/api/founding-member/slots');
+  // Launch pricing is fetched ALONGSIDE it because the payback line now anchors to the LIVE
+  // annual price. This page never loaded it before — nothing here read _launchPromo — so on
+  // any route that reaches the founding page without the upgrade sheet having primed it,
+  // _launchPromo would still be its all-false default and every tier would price as standard.
+  // loadLaunchPricingStatus() is cached on a 5-minute TTL and swallows its own errors, so the
+  // usual path costs nothing and a failed fetch degrades to the standard annual.
+  const [slots] = await Promise.all([
+    api('/api/founding-member/slots'),
+    loadLaunchPricingStatus(),
+  ]);
   // Re-prime the teaser cache so the upgrade sheet's lifetime line agrees with this page.
   if (slots) { _foundingSlots = slots; cacheSet('founding-slots', slots); }
   const ironLeft = (slots?.iron_total || 500) - (slots?.iron_sold || 0);
@@ -4723,6 +4732,28 @@ async function openFoundingMemberPage() {
   // subscription tiers. A locked customer sees their locked currency here too.
   const _fmCur = resolveDisplayCurrency();
   const _fmPrices = lifetimeTable(_fmCur);
+
+  // Payback is COMPUTED from LIFETIME_PRICING against TIER_PRICING — both figures, the annual
+  // price AND the month count, rather than baked into the string. fm_iron_payback used to read
+  // "At the standard CHF 49/year, this pays for itself in 37 months": CHF-only, so every other
+  // currency was quoted a Swiss price, and anchored to the STANDARD annual while launch pricing
+  // was live. index.html anchors to the LIVE annual, so the same product read 37 months in the
+  // app and 51 on the landing page, one screen apart.
+  //
+  // This mirrors index.html's updatePrices() exactly:  months = round(one-time / liveAnnual * 12)
+  // Each tier honours its OWN launch flag, the way pricingFor() in the upgrade sheet does —
+  // iron_active and forge_active are independent admin toggles, so one tier can be on launch
+  // pricing while the other is not.
+  const _fmTiers = pricingTable(_fmCur);
+  const fmPayback = (tier) => {
+    const promo = tier === 'iron' ? !!_launchPromo.iron_active : !!_launchPromo.forge_active;
+    const liveAnnual = (promo ? _fmTiers[tier].launch : _fmTiers[tier].std).annual;
+    return {
+      price: fmtPrice(liveAnnual, _fmCur),
+      months: Math.round(_fmPrices[tier] / liveAnnual * 12),
+    };
+  };
+
   const sheet = document.createElement('div');
   sheet.id = 'foundingMemberSheet';
   // z-index MUST sit above the upgrade sheet (10000) and the expired paywall (10002) —
@@ -4755,14 +4786,14 @@ async function openFoundingMemberPage() {
       ${totalLeft > 0 ? `
       <div style="border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.iron })}</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.iron, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_iron_payback')}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.iron, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_iron_payback', fmPayback('iron'))}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_iron_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(ironFeatures)}</div>
         ${ironLeft > 0 ? `<button onclick="claimFoundingMember('iron')" style="width:100%;padding:13px;background:var(--surface2);color:var(--text);border:2px solid var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Iron' })}</button>` : soldOutBtn}
       </div>
       <div style="border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:16px;background:var(--surface2);">
         <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${t('fm_card_title', { tier: TIER_LABELS.forge })}</div>
-        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.forge, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_forge_payback')}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${fmtPrice(_fmPrices.forge, _fmCur)} <span style="font-size:13px;color:var(--muted);font-weight:400;">${t('fm_one_time')}</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${t('fm_forge_payback', fmPayback('forge'))}</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${t('fm_forge_desc')}</div>
         <div style="margin-bottom:16px;">${featureList(forgeFeatures)}</div>
         ${forgeLeft > 0 ? `<button onclick="claimFoundingMember('forge')" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('fm_claim', { tier: 'Forge' })}</button>` : soldOutBtn}
@@ -11578,8 +11609,12 @@ const STRINGS = {
     fm_closed: 'Founding Member access is now closed.',
     fm_card_title: '{tier} — Founding Member',
     fm_one_time: 'one-time',
-    fm_iron_payback: 'At the standard CHF 49/year, this pays for itself in 37 months.',
-    fm_forge_payback: 'At the standard CHF 79/year, this pays for itself in 38 months.',
+    // {price} and {months} are BOTH substituted by openFoundingMemberPage(). Do not put a
+    // figure back into these strings, and do not reinstate "standard" before the price —
+    // while launch pricing is live the app strikes the standard price through elsewhere, so
+    // naming this one standard contradicts the same screen.
+    fm_iron_payback: 'At {price}/year, this pays for itself in {months} months.',
+    fm_forge_payback: 'At {price}/year, this pays for itself in {months} months.',
     fm_iron_desc: 'Everything in Iron. Forever. No monthly fees.',
     fm_forge_desc: 'The full coaching system. Forever.',
     fm_claim: 'Claim {tier} Lifetime',
@@ -12679,8 +12714,8 @@ const STRINGS = {
     fm_closed: 'L\'accès Membre Fondateur est maintenant fermé.',
     fm_card_title: '{tier} — Membre Fondateur',
     fm_one_time: 'paiement unique',
-    fm_iron_payback: 'Au tarif standard de CHF 49/an, c\'est rentabilisé en 37 mois.',
-    fm_forge_payback: 'Au tarif standard de CHF 79/an, c\'est rentabilisé en 38 mois.',
+    fm_iron_payback: 'À {price}/an, c\'est rentabilisé en {months} mois.',
+    fm_forge_payback: 'À {price}/an, c\'est rentabilisé en {months} mois.',
     fm_iron_desc: 'Tout Iron. À vie. Aucun abonnement.',
     fm_forge_desc: 'Le système de coaching complet. À vie.',
     fm_claim: 'Prendre {tier} à vie',

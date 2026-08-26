@@ -201,13 +201,8 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .card-body{font-size:15px;color:var(--muted2);line-height:1.7}
 
 /* Testimonials */
-.testimonial-quote{font-size:16px;color:var(--text);line-height:1.65;margin-bottom:24px;font-style:italic}
-.testimonial-attr{display:flex;align-items:center;gap:14px;padding-top:20px;border-top:1px solid var(--border)}
-.avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--surface2),var(--bg));border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;letter-spacing:1px;color:var(--accent);flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(232,255,61,0.12),0 0 0 3px rgba(232,255,61,0.06);overflow:hidden;position:relative}
-.avatar img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(0.95) contrast(1.05)}
-.avatar::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 12px rgba(0,0,0,0.4);pointer-events:none}
-.attr-name{font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
-.attr-ctx{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+/* Testimonial card CSS retired with the section it styled — .testimonial-quote,
+   .testimonial-attr, .avatar, .attr-name and .attr-ctx have no elements left. */
 
 /* ── PT ANCHOR BAR ── */
 .pt-bar{
@@ -337,6 +332,42 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .contact-email:hover{text-decoration:underline}
 
 /* ── REVEAL ANIMATION ── */
+/* ── NEW COMPONENTS (homepage copy pass) ── */
+/* Nav route to the coaches landing page. Sits inside .nav-right, before the currency
+   selector, so it never competes with the CTA for the flex end. */
+.nav-link{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted2);text-decoration:none;white-space:nowrap;flex-shrink:0;padding:8px 4px;transition:color .15s}
+.nav-link:hover{color:var(--accent)}
+/* Two labels, one link. Below 720px the nav carries logo + this link + currency select +
+   language + CTA on a 390px line; the full "For Coaches" / "Pour les coachs" pushed the CTA
+   past the right edge, so the short label takes over. Both carry data-i18n, so the swap is
+   still translated. */
+.nav-link-short{display:none}
+
+/* Problem cards. Deliberately a FLAT --surface2 rather than the --surface -> --surface3
+   gradient every other .card carries, so the four composite reader lines read as a distinct
+   band between the paragraph above and the feature cards below. Radius is inherited from
+   .card, which is what keeps them matching the feature blocks. */
+.card-pain{background:var(--surface2);border-color:var(--border2)}
+
+/* Founder story. One verified quote replacing the four testimonial cards. */
+.why-sub{font-style:italic}
+.founder-quote{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:14px;padding:36px;max-width:760px;margin-top:8px}
+.founder-quote-text{font-family:'DM Sans',sans-serif;font-size:18px;font-style:italic;color:var(--text);line-height:1.7;letter-spacing:-0.2px}
+.founder-attr{margin-top:22px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+
+/* Three-way billing control. The two-state pill could not carry a third option, so the
+   labels themselves became the control. .toggle-label still supplies type and the .active
+   colour; .toggle-seg only adds the button reset and the selected chip. */
+.toggle-seg{background:transparent;border:1px solid transparent;border-radius:100px;padding:8px 14px;cursor:pointer;font:inherit;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;transition:color .15s,background .15s,border-color .15s}
+.toggle-seg:hover{color:var(--text)}
+.toggle-seg.active{background:var(--surface2);border-color:var(--border2)}
+
+/* Lifetime payback line. Same slot as .tier-price-note, but a sentence rather than a mono
+   label, so it drops the uppercase mono treatment and keeps the divider. */
+.tier-lt-note{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+/* Forge "coming next" line — prose under the ticked list, not a ticked row. */
+.tier-soon-note{font-size:12px;font-style:italic;color:var(--muted);line-height:1.6;margin:-14px 0 24px}
+
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
 .reveal.in{opacity:1;transform:translateY(0)}
 .reveal-stagger > *{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
@@ -358,10 +389,24 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .nav{padding:0 12px;height:56px;gap:8px}
   .nav-logo-sub{display:none}
   .nav-logo-name{font-size:20px;letter-spacing:3px}
-  .nav-right{gap:6px}
-  .currency-select{padding:6px 6px;font-size:10px;max-width:96px;text-overflow:ellipsis}
+  .nav-right{gap:4px}
+  /* max-width trimmed 96 -> 80 to make room for the new .nav-link without pushing the CTA
+     off the right edge. The select already ellipsises at this size, so it reads "CHF — S…";
+     the currency is spelled out in full under the pricing heading either way.
+     Budget at 390px, EN worst case (DM Mono advance 0.60em, Bebas 0.42em):
+     padding 24 + logo 57 + link 51 + select 80 + lang 30 + cta 119 + 4 gaps 16 = 377. */
+  .currency-select{padding:6px 6px;font-size:10px;max-width:80px;text-overflow:ellipsis}
+  .nav-link{font-size:9px;letter-spacing:0.8px;padding:6px 2px}
+  .nav-link-full{display:none}
+  .nav-link-short{display:inline}
+  .billing-toggle{gap:6px}
+  .toggle-seg{padding:7px 10px;font-size:11px;letter-spacing:1.2px}
+  .founder-quote{padding:26px 22px}
+  .founder-quote-text{font-size:16px}
   #langBtn{padding:6px 8px !important;font-size:14px !important}
-  .nav-cta{padding:8px 11px;font-size:9.5px;letter-spacing:1.2px;white-space:nowrap}
+  /* Trimmed from 9.5px/1.2 to make room for .nav-link. Budget at 390px, EN worst case:
+     pad 24 + logo 57 + link 51 + select 84 + lang 30 + cta 119 + 4 gaps 20 = 385. */
+  .nav-cta{padding:8px 10px;font-size:9px;letter-spacing:0.8px;white-space:nowrap}
   .section{padding:72px 16px}
   .hero{padding:110px 16px 70px}
   .hero h1{font-size:clamp(36px,10vw,56px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto}
@@ -399,7 +444,9 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 }
 @media (max-width: 380px){
   .nav-logo-name{font-size:18px;letter-spacing:2.5px}
-  .currency-select{font-size:9px;padding:5px;max-width:96px}
+  .nav-right{gap:4px}
+  .currency-select{font-size:9px;padding:5px;max-width:72px}
+  .nav-link{font-size:8.5px;letter-spacing:0.5px}
   .nav-cta{padding:7px 8px}
   .hero h1{font-size:clamp(32px,10vw,48px)}
 }
@@ -414,6 +461,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <span class="nav-logo-sub">AI Performance Coach</span>
   </div>
   <div class="nav-right">
+    <a class="nav-link" href="coaches.html" aria-label="For Coaches"><span class="nav-link-full" data-i18n="nav_coaches">For Coaches</span><span class="nav-link-short" data-i18n="nav_coaches_short">Coaches</span></a>
     <select class="currency-select" id="currencySelect" onchange="setCurrency(this.value)">
       <option value="CHF">CHF — Switzerland</option>
       <option value="GBP">GBP — United Kingdom</option>
@@ -435,7 +483,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 <!-- HERO -->
 <section class="hero" id="hero">
   <div class="hero-eyebrow reveal" data-i18n="hero_eyebrow">AI Performance Coach</div>
-  <h1 class="reveal" data-i18n="hero_h1">You're at the gym.<br>You're making it up as you go.</h1>
+  <h1 class="reveal" data-i18n="hero_h1">You've read the articles, tried the apps, maybe hired someone for a while.<br>None of it ever knew what you did last time.</h1>
   <p class="hero-sub reveal" data-i18n="hero_sub">FORGE builds your programme, coaches you through every session, and adapts as your data grows. Built in under 2 minutes.</p>
   <div class="hero-trust reveal" data-i18n="hero_trust">7-day free trial · No card required · Cancel anytime · 30-day money back</div>
 
@@ -498,13 +546,16 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 <section class="section">
   <div class="section-inner">
     <div class="section-label reveal" data-i18n="prob_label">The problem</div>
-    <h2 class="reveal" data-i18n="prob_h2">You're putting in the work.<br>You're just not seeing the results.</h2>
-    <p class="section-body reveal">Every app gives you the same plan. It doesn't know your sport. It doesn't ask about your schedule. It doesn't know you had a bad week or that your shoulder's been playing up. You follow it for two weeks and quit — not because you lack discipline, but because it was never built for you. Because it wasn't.</p>
+    <h2 class="reveal" data-i18n="prob_h2">You're putting in the work.<br>Nothing's actually tracking it.</h2>
+    <p class="section-body reveal">Every app gives you the same plan as everyone else. It doesn't know your sport. It doesn't know your schedule, or that your shoulder's been off, or that last week was a write-off. You follow it for a couple of weeks and quietly stop — not because you lack discipline, but because nothing about it was built to notice you specifically.</p>
+    <!-- Composite reader thoughts, NOT quotes from real people: no attribution, no avatar,
+         deliberately. The four testimonial cards that used to sit further down this page
+         carried invented names and faces and have been removed in the same pass. -->
     <div class="grid-2 reveal-stagger">
-      <div class="card"><p class="card-a">"I go to the gym and follow the same routine I made up two years ago."</p></div>
-      <div class="card"><p class="card-a">"Three apps. Three generic programmes. Zero real results."</p></div>
-      <div class="card"><p class="card-a">"A PT would be great. I just can't justify the cost per session."</p></div>
-      <div class="card"><p class="card-a">"I need something that works around my sport, not against it."</p></div>
+      <div class="card card-pain"><p class="card-a">"I go to the gym and follow the same routine I made up two years ago."</p></div>
+      <div class="card card-pain"><p class="card-a">"Three apps. Three generic programmes. Zero real results."</p></div>
+      <div class="card card-pain"><p class="card-a">"A PT would be great. I just can't justify the cost per session."</p></div>
+      <div class="card card-pain"><p class="card-a">"I need something that works around my sport, not against it."</p></div>
     </div>
   </div>
 </section>
@@ -516,7 +567,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="section-inner">
     <div class="section-label reveal">What FORGE does</div>
     <h2 class="reveal">A coach that coaches.<br>Not just a plan that sits there.</h2>
-    <p class="section-body reveal">Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what a generic algorithm guessed about you at sign-up.</p>
+    <p class="section-body reveal">Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what an algorithm guessed about you at sign-up.</p>
     <div class="grid-2 reveal-stagger">
       <div class="card"><div class="card-title">Your coach reviews every session</div><div class="card-body">After every workout, FORGE logs what happened and updates what comes next. Weekly AI performance review tells you exactly what to change — and why. Your data. Your programme. Your next move.</div></div>
       <div class="card"><div class="card-title">Built around your life, not someone else's</div><div class="card-body">Your sport. Your schedule. Your equipment. Your injury history. FORGE asks the questions a real coach would ask before it builds anything. Most apps skip all of that.</div></div>
@@ -528,18 +579,20 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 
 <div class="section-divider"></div>
 
-<!-- TESTIMONIALS -->
+<!-- WHY THIS EXISTS -->
+<!-- Replaces the old TESTIMONIALS block. That block carried four invented names, contexts
+     and avatar photographs (/forge-avatars/*.jpg) presented as real early-access users.
+     One verified, attributable story replaces all four. Do not reintroduce composed
+     testimonials here; add real ones with consent as they arrive. -->
 <section class="section">
   <div class="section-inner">
-    <div class="section-label reveal">What people are saying</div>
-    <h2 class="reveal">Real users. Real results.</h2>
-    <p class="section-body reveal" style="margin-bottom:32px">Early access members. Training with FORGE from day one.</p>
-    <div class="grid-2 reveal-stagger" id="testimonialGrid">
-      <div class="card"><p class="testimonial-quote">"Built me a full programme in under 2 minutes. I've tried four other apps. This is the first one that felt like it actually knew what I needed."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/jm.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">James M.</div><div class="attr-ctx">Training for football season</div></div></div></div>
-      <div class="card"><p class="testimonial-quote">"The AI checked in after my first session and already adjusted my plan. I've never had an app do that. It actually feels like someone's watching your progress."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/sr.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Sophie R.</div><div class="attr-ctx">Building around marathon training</div></div></div></div>
-      <div class="card"><p class="testimonial-quote">"I was sceptical about AI coaching. Ten days in and my lifts are already progressing in a way they weren't after three months of doing it myself."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/dk.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Daniel K.</div><div class="attr-ctx">Intermediate lifter, hypertrophy goal</div></div></div></div>
-      <div class="card"><p class="testimonial-quote">"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."</p><div class="testimonial-attr"><div class="avatar"><img src="/forge-avatars/al.jpg" alt="" loading="lazy" width="48" height="48"></div><div><div class="attr-name">Anya L.</div><div class="attr-ctx">Fitness and body composition</div></div></div></div>
-    </div>
+    <div class="section-label reveal">Why this exists</div>
+    <h2 class="reveal">Built by someone who lost years to bad advice.</h2>
+    <p class="section-body why-sub reveal" style="margin-bottom:32px">One verified story. More being added as our early members train.</p>
+    <blockquote class="founder-quote reveal">
+      <p class="founder-quote-text" id="founderQuote">"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There's no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of trial and error to actually understand what I was doing. FORGE exists so nobody else has to lose that time."</p>
+      <div class="founder-attr" id="founderAttr">— Kevin, Founder</div>
+    </blockquote>
   </div>
 </section>
 
@@ -563,12 +616,19 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
       <div class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
       <div class="pricing-currency-note">Showing prices in <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span id="currency-charge-note">You'll be charged in this currency</span></div>
     </div>
-    <div class="billing-toggle reveal">
-      <span class="toggle-label" id="lbl-monthly">Monthly</span>
-      <div class="toggle-pill" id="billingToggle" onclick="toggleBilling()"><div class="toggle-knob"></div></div>
-      <span class="toggle-label active" id="lbl-annual">Annual <span class="save-badge">Save 40%+</span></span>
+    <!-- Three-way billing control. The old two-state .toggle-pill could not carry a third
+         option, so the labels became the control itself. setBilling() drives it; there is no
+         toggleBilling() any more. -->
+    <div class="billing-toggle reveal" role="group" aria-label="Billing period">
+      <button type="button" class="toggle-label toggle-seg" id="lbl-monthly" onclick="setBilling('monthly')">Monthly</button>
+      <button type="button" class="toggle-label toggle-seg active" id="lbl-annual" onclick="setBilling('annual')">Annual <span class="save-badge">Save 40%+</span></button>
+      <button type="button" class="toggle-label toggle-seg" id="lbl-lifetime" onclick="setBilling('lifetime')">Lifetime</button>
     </div>
-    <div class="tier-cards reveal-stagger">
+
+    <!-- SUBSCRIPTION CARDS (monthly / annual). Every figure below is placeholder markup —
+         updatePrices() overwrites #iron-price / #iron-note / #forge-price / #forge-note on
+         load and on every currency or billing change. Never hand-edit a price here. -->
+    <div class="tier-cards reveal-stagger" id="tier-cards-sub">
       <!-- IRON -->
       <div class="tier-card">
         <div class="tier-name">⚙️ Iron</div>
@@ -576,10 +636,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
         <div class="tier-price-main" id="iron-price"><span class="tier-price-was">CHF 4.08</span>CHF 2.92<span class="tier-price-period">/mo</span></div>
         <div class="tier-price-note" id="iron-note">billed CHF 35/year</div>
         <div class="tier-features" id="iron-features">
-          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personalised AI training plan</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personalised AI nutrition plan</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI coach — up to 20 messages/month</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Progress tracking, streaks &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI-generated workout programme</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI-generated 7-day nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Workout logging (per-set)</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Streak tracking &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personal records detection</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Daily push reminders</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">7 app themes · 2 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI coach — 20 messages/month</span></div>
         </div>
         <button class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
       </div>
@@ -607,9 +671,54 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
           <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Deload detection &amp; alerts</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Weekly shopping list</span></div>
           <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Multiple saved programmes</span></div>
-          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Apple Health sync · Garmin sync · Nutrition barcode scanner · Priority support · Early access</span> <span class="tf-soon">SOON</span></div>
         </div>
+        <div class="tier-soon-note" id="forgeSoon">Coming next: Apple Health sync, Garmin sync, nutrition barcode scanner, priority support, and early access to new features.</div>
         <button class="tier-btn primary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+    </div>
+
+    <!-- LIFETIME CARDS. Awareness only: both CTAs are scrollToAuth(), the SAME signup flow as
+         every other CTA on this page. There is no lifetime checkout from the landing page —
+         the purchase happens in-app after signup. Prices and the payback sentence are written
+         by updatePrices(); the markup below is placeholder.
+         No .reveal-stagger here on purpose: this grid starts display:none, so the
+         IntersectionObserver would never fire on it and it would unhide at opacity 0. -->
+    <div class="tier-cards" id="tier-cards-lifetime" style="display:none">
+      <div class="tier-card">
+        <div class="tier-name" id="lt-iron-name">⚙️ Iron — Founding Member</div>
+        <div class="tier-price-main" id="lt-iron-price">CHF 149<span class="tier-price-period">one-time</span></div>
+        <div class="tier-lt-note" id="lt-iron-note">At CHF 35/year, this pays for itself in 51 months. Everything in Iron. Forever. No monthly fees.</div>
+        <div class="tier-features" id="lt-iron-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI-generated workout programme</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI-generated 7-day nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Workout logging (per-set)</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Streak tracking &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Personal records detection</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Daily push reminders</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">7 app themes · 2 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">AI coach — 20 messages/month</span></div>
+        </div>
+        <button class="tier-btn secondary" onclick="scrollToAuth()">Create account</button>
+      </div>
+      <div class="tier-card recommended">
+        <div class="tier-name" id="lt-forge-name">🔥 Forge — Founding Member</div>
+        <div class="tier-price-main" id="lt-forge-price">CHF 249<span class="tier-price-period">one-time</span></div>
+        <div class="tier-lt-note" id="lt-forge-note">At CHF 49/year, this pays for itself in 61 months. The full coaching system. Forever.</div>
+        <div class="tier-features" id="lt-forge-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Everything in Iron</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Unlimited AI coach messages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Weekly AI performance review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Post-workout AI check-in</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Progressive overload tracker</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Body metrics &amp; AI insights</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Plan editing via AI chat</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Deload detection &amp; alerts</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Weekly shopping list</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Multiple saved programmes</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Monthly AI deep-dive coaching review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span class="tf-text">Exercise video demonstrations</span></div>
+        </div>
+        <button class="tier-btn primary" onclick="scrollToAuth()">Create account</button>
       </div>
     </div>
     <div class="pricing-micro reveal" id="pricingMicro">7-day free trial · No card required · Cancel anytime</div>
@@ -624,7 +733,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <div class="section-label reveal">Common questions</div>
     <h2 class="reveal">The things people ask<br>before they sign up.</h2>
     <div class="objection-cards reveal-stagger">
-      <div class="card"><div class="obj-q">"I've been burned by personalised apps before. They all give everyone the same thing."</div><div class="obj-a">That's a fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE runs on a conversational AI that reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You'll feel the difference before you've finished setting it up.</div></div>
+      <div class="card"><div class="obj-q">"I've been burned by personalised apps before. They all give everyone the same thing."</div><div class="obj-a">Fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You'll feel the difference before you've finished setting it up.</div></div>
       <div class="card"><div class="obj-q">"Is AI coaching actually as good as a real trainer?"</div><div class="obj-a">That's the wrong comparison for most people. The real question is: is it better than nothing? Better than a generic app you used for two weeks and abandoned? Better than showing up to the gym and guessing? For all of those: yes. Most people aren't choosing between FORGE and a £200/month coach. They're choosing between FORGE and going it alone. For that comparison, it's not close.</div></div>
       <div class="card"><div class="obj-q">"I'll sign up and stop using it after two weeks."</div><div class="obj-a">That's what apps deserve when they hand you a plan and disappear. FORGE checks in after every session, sends a weekly performance review, and flags when you're pushing too hard before you burn out. It's designed to stay in it with you — not just show up on your phone and hope you remember it's there. Try it free for 7 days. If it doesn't hold you, cancel. No questions.</div></div>
     </div>
@@ -769,11 +878,15 @@ async function supabaseAuth(endpoint, body) {
 //   3. each Stripe Price's currency_options
 // They drifted once already — every one of the 16 pairs disagreed, so a UK visitor saw
 // GBP 6.29/mo here and GBP 6.99/mo one screen later in the app. Change all three together.
+// `lifetime` is the FOUNDING MEMBER one-time price. It matches app.html's LIFETIME_PRICING
+// exactly (iron 149/137/160/187, forge 249/228/267/311) — the landing page must not quote a
+// figure the in-app founding page then contradicts. The landing page never starts a lifetime
+// checkout: both Founding Member CTAs go to signup and the purchase happens in-app.
 const PRICES = {
-  CHF: { sym:'CHF ', iron:{ std:{mo: 6.95, ann:49}, launch:{mo:4.95, ann:35} }, forge:{ std:{mo:11.95, ann:79}, launch:{mo:6.95, ann:49} } },
-  GBP: { sym:'£',    iron:{ std:{mo: 6.99, ann:45}, launch:{mo:4.99, ann:33} }, forge:{ std:{mo:10.99, ann:73}, launch:{mo:6.99, ann:45} } },
-  EUR: { sym:'€',    iron:{ std:{mo: 7.99, ann:53}, launch:{mo:5.99, ann:38} }, forge:{ std:{mo:12.99, ann:85}, launch:{mo:7.99, ann:53} } },
-  USD: { sym:'$',    iron:{ std:{mo: 8.99, ann:62}, launch:{mo:6.99, ann:44} }, forge:{ std:{mo:14.99, ann:99}, launch:{mo:8.99, ann:62} } },
+  CHF: { sym:'CHF ', iron:{ std:{mo: 6.95, ann:49}, launch:{mo:4.95, ann:35}, lifetime:149 }, forge:{ std:{mo:11.95, ann:79}, launch:{mo:6.95, ann:49}, lifetime:249 } },
+  GBP: { sym:'£',    iron:{ std:{mo: 6.99, ann:45}, launch:{mo:4.99, ann:33}, lifetime:137 }, forge:{ std:{mo:10.99, ann:73}, launch:{mo:6.99, ann:45}, lifetime:228 } },
+  EUR: { sym:'€',    iron:{ std:{mo: 7.99, ann:53}, launch:{mo:5.99, ann:38}, lifetime:160 }, forge:{ std:{mo:12.99, ann:85}, launch:{mo:7.99, ann:53}, lifetime:267 } },
+  USD: { sym:'$',    iron:{ std:{mo: 8.99, ann:62}, launch:{mo:6.99, ann:44}, lifetime:187 }, forge:{ std:{mo:14.99, ann:99}, launch:{mo:8.99, ann:62}, lifetime:311 } },
 };
 
 // Launch pricing on the landing page is a hardcoded marketing switch. It does NOT read
@@ -818,6 +931,10 @@ function initialCurrency() {
 }
 
 let currency = initialCurrency();
+// Three states now: 'monthly' | 'annual' | 'lifetime'. `isAnnual` is kept as a DERIVED
+// mirror because updatePrices() reads it for the subscription cards; it is written only by
+// setBilling(), never assigned directly.
+let billingMode = 'annual';
 let isAnnual = true;
 
 function setCurrency(c) {
@@ -833,12 +950,20 @@ function setCurrency(c) {
   updatePrices();
 }
 
-function toggleBilling() {
-  isAnnual = !isAnnual;
-  const pill = document.getElementById('billingToggle');
-  pill.classList.toggle('monthly', !isAnnual);
-  document.getElementById('lbl-monthly').classList.toggle('active', !isAnnual);
-  document.getElementById('lbl-annual').classList.toggle('active', isAnnual);
+// Replaces toggleBilling(). The two-state pill is gone — a boolean flip cannot express three
+// states, and the old function dereferenced #billingToggle unguarded, so leaving it in place
+// against the new markup would have thrown on the first click.
+const BILLING_MODES = ['monthly','annual','lifetime'];
+function setBilling(mode) {
+  if (BILLING_MODES.indexOf(mode) === -1) return;
+  billingMode = mode;
+  isAnnual = (mode === 'annual');
+  BILLING_MODES.forEach(m => {
+    const el = document.getElementById('lbl-' + m);
+    if (!el) return;
+    el.classList.toggle('active', m === mode);
+    el.setAttribute('aria-pressed', String(m === mode));
+  });
   updatePrices();
 }
 
@@ -857,6 +982,47 @@ function _ls(key, fallback) {
 function updatePrices() {
   const p = PRICES[currency];
   const s = p.sym;
+  const lifetime = (billingMode === 'lifetime');
+
+  // Swap which grid is mounted. display is set back to '' (not 'grid') so .tier-cards keeps
+  // owning the grid template, including the stacked one under the 900px media query.
+  const subGrid = document.getElementById('tier-cards-sub');
+  const ltGrid  = document.getElementById('tier-cards-lifetime');
+  if (subGrid) subGrid.style.display = lifetime ? 'none' : '';
+  if (ltGrid)  ltGrid.style.display  = lifetime ? '' : 'none';
+
+  // The trial microcopy is about the subscription cards. Under the Founding Member cards it
+  // would read as describing a one-time purchase, so it is swapped for the line that explains
+  // where the purchase actually happens. updatePrices() owns this element in BOTH modes —
+  // applyLandingLanguage() also writes it, and runs BEFORE its own updatePrices() call.
+  const micro = document.getElementById('pricingMicro');
+  if (micro) {
+    micro.textContent = lifetime
+      ? _ls('lt_micro', 'Create your account first. Founding Member is available in-app after signup.')
+      : _ls('price_micro', '7-day free trial · No card required · Cancel anytime');
+  }
+
+  // ── FOUNDING MEMBER ──
+  // Payback is COMPUTED, never written into the copy: months = round(one-time / annual x 12)
+  // against the annual price actually being shown, so it stays true when the currency changes
+  // and when LAUNCH_PRICING_LIVE flips. The word "standard" is deliberately absent — launch
+  // pricing is live and the subscription cards strike the standard price through.
+  ['iron','forge'].forEach(tier => {
+    const t = p[tier];
+    const priceEl = document.getElementById('lt-' + tier + '-price');
+    const noteEl  = document.getElementById('lt-' + tier + '-note');
+    if (!t || !t.lifetime || !priceEl || !noteEl) return;
+    const live = LAUNCH_PRICING_LIVE ? t.launch : t.std;
+    const months = Math.round(t.lifetime / live.ann * 12);
+    priceEl.innerHTML = fmt(s, t.lifetime) +
+      '<span class="tier-price-period">' + _ls('price_one_time', 'one-time') + '</span>';
+    noteEl.textContent = _ls('lt_' + tier + '_note', tier === 'iron'
+        ? 'At {annual}/year, this pays for itself in {n} months. Everything in Iron. Forever. No monthly fees.'
+        : 'At {annual}/year, this pays for itself in {n} months. The full coaching system. Forever.')
+      .replace('{annual}', fmt(s, live.ann))
+      .replace('{n}', months);
+  });
+
   ['iron','forge'].forEach(tier => {
     const t = p[tier];
     if (!t) return;
@@ -1346,10 +1512,10 @@ setCurrency(currency);
 const LANDING_STRINGS = {
   en: {
     hero_eyebrow:'AI Performance Coach',
-    hero_h1:"You're at the gym.<br>You're making it up as you go.",
-    hero_sub:"FORGE builds your programme, watches your progress, and adapts as your data grows. An AI coach that actually coaches. Built in under 2 minutes.",
+    hero_h1:"You've read the articles, tried the apps, maybe hired someone for a while.<br>None of it ever knew what you did last time.",
+    hero_sub:"FORGE builds your programme, coaches you through every session, and adapts as your data grows. Built in under 2 minutes.",
     hero_trust:"7-day free trial · No card required · Cancel anytime · 30-day money back",
-    nav_trial:"Start free trial",
+    nav_trial:"Start free trial", nav_coaches:"For Coaches", nav_coaches_short:"Coaches",
     auth_tab_signup:"Create account", auth_tab_signin:"Sign in",
     auth_name:"Full Name", auth_email:"Email", auth_password:"Password",
     auth_code_placeholder:"Have a code? Enter it here",
@@ -1360,15 +1526,15 @@ const LANDING_STRINGS = {
     auth_signin_btn:"Sign in", auth_name_ph:"Your name", auth_email_ph:"your@email.com",
     auth_pass_ph:"Min. 6 characters", auth_pass_ph2:"Your password",
     prob_label:"The problem",
-    prob_h2:"You're putting in the work. You're just not seeing the results.",
-    prob_body:"Every app gives you the same plan. It doesn't know your sport. It doesn't ask about your schedule. It doesn't know you had a bad week or that your shoulder's been playing up. You follow it for two weeks and quit — not because you lack discipline, but because it was never built for you. Because it wasn't.",
+    prob_h2:"You're putting in the work.<br>Nothing's actually tracking it.",
+    prob_body:"Every app gives you the same plan as everyone else. It doesn't know your sport. It doesn't know your schedule, or that your shoulder's been off, or that last week was a write-off. You follow it for a couple of weeks and quietly stop — not because you lack discipline, but because nothing about it was built to notice you specifically.",
     pain_1:'"I go to the gym and follow the same routine I made up two years ago."',
     pain_2:'"Three apps. Three generic programmes. Zero real results."',
     pain_3:'"A PT would be great. I just can\'t justify the cost per session."',
     pain_4:'"I need something that works around my sport, not against it."',
     feat_label:"What FORGE does",
     feat_h2:"A coach that coaches. Not just a plan that sits there.",
-    feat_body:"Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what a generic algorithm guessed about you at sign-up.",
+    feat_body:"Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what an algorithm guessed about you at sign-up.",
     feat_1_title:"Your coach reviews every session",
     feat_1_body:"After every workout, FORGE logs what happened and updates what comes next. Weekly AI performance review tells you exactly what to change — and why. Your data. Your programme. Your next move.",
     feat_2_title:"Built around your life, not someone else's",
@@ -1377,16 +1543,13 @@ const LANDING_STRINGS = {
     feat_3_body:"Your nutrition plan is built alongside your programme — not bolted on after. It knows your training days, your calorie targets, and what your body needs before and after a session.",
     feat_4_title:"Catches overtraining before you do",
     feat_4_body:"Deload detection built in. FORGE notices when the data says you need to back off — before your body forces you to. That's not a feature most apps have. That's what a good coach does.",
-    test_label:"What people are saying", test_h2:"Real users. Real results.",
-    test_body:"Early access members. Training with FORGE from day one.",
-    test_1:'"Built me a full programme in under 2 minutes. I\'ve tried four other apps. This is the first one that felt like it actually knew what I needed."',
-    test_1_ctx:"Training for football season",
-    test_2:'"The AI checked in after my first session and already adjusted my plan. I\'ve never had an app do that. It actually feels like someone\'s watching your progress."',
-    test_2_ctx:"Building around marathon training",
-    test_3:'"I was sceptical about AI coaching. Ten days in and my lifts are already progressing in a way they weren\'t after three months of doing it myself."',
-    test_3_ctx:"Intermediate lifter, hypertrophy goal",
-    test_4:'"The nutrition plan it gave me actually works around my training days. Not a generic meal plan — it knows when I train and what I need before and after."',
-    test_4_ctx:"Fitness and body composition",
+    // WHY THIS EXISTS. Replaced the eleven test_* keys behind the four invented
+    // testimonials. One attributable founder story; do not re-add composed ones.
+    why_label:"Why this exists",
+    why_h2:"Built by someone who lost years to bad advice.",
+    why_sub:"One verified story. More being added as our early members train.",
+    founder_quote:'"I paid CHF 360 once for a coaching programme that promised something built around me. It arrived about a minute after I signed up. There\'s no version of that where someone actually looked at my situation in sixty seconds. It took me almost three years of trial and error to actually understand what I was doing. FORGE exists so nobody else has to lose that time."',
+    founder_attr:"— Kevin, Founder",
     // PT anchor claim — TIED TO LAUNCH PRICING. CHF 98 = 2 x CHF 49 (launch annual). At the
     // standard CHF 79 annual two years is CHF 158 and the claim fails. Rewrite when
     // LAUNCH_PRICING_LIVE goes false. Mirrored in the .pt-bar markup and in fr below.
@@ -1397,17 +1560,33 @@ const LANDING_STRINGS = {
     price_iron_tag:"Start training with a real plan.",
     price_forge_tag:"The whole system. Nothing held back.",
     price_btn:"Start free trial", price_recommended:"MOST POPULAR",
-    billing_monthly:"Monthly", billing_annual:"Annual",
+    billing_monthly:"Monthly", billing_annual:"Annual", billing_lifetime:"Lifetime",
     price_save_badge:"Save 40%+",
+    // FOUNDING MEMBER. {annual} and {n} are substituted by updatePrices() — {n} is COMPUTED
+    // from the one-time price against the annual price on screen, never written as copy.
+    lt_iron_name:"⚙️ Iron — Founding Member",
+    lt_forge_name:"\uD83D\uDD25 Forge — Founding Member",
+    price_one_time:"one-time",
+    lt_iron_note:"At {annual}/year, this pays for itself in {n} months. Everything in Iron. Forever. No monthly fees.",
+    lt_forge_note:"At {annual}/year, this pays for itself in {n} months. The full coaching system. Forever.",
+    lt_btn:"Create account",
+    lt_micro:"Create your account first. Founding Member is available in-app after signup.",
+    lt_forge_unlimited:"Unlimited AI coach messages",
+    lt_forge_deepdive:"Monthly AI deep-dive coaching review",
+    lt_forge_videos:"Exercise video demonstrations",
     price_billed_year:"billed {amount}/year",
     price_if_annual:"{price}/mo if annual",
     price_micro:"7-day free trial · No card required · Cancel anytime",
     showing_prices:"Showing prices in", change_currency:"change currency",
     currency_charge_note:"You'll be charged in this currency",
-    feat_iron_1:"Personalised AI training plan",
-    feat_iron_2:"Personalised AI nutrition plan",
-    feat_iron_3:"AI coach — up to 20 messages/month",
-    feat_iron_4:"Progress tracking, streaks & badges",
+    feat_iron_1:"AI-generated workout programme",
+    feat_iron_2:"AI-generated 7-day nutrition plan",
+    feat_iron_3:"Workout logging (per-set)",
+    feat_iron_4:"Streak tracking & badges",
+    feat_iron_5:"Personal records detection",
+    feat_iron_6:"Daily push reminders",
+    feat_iron_7:"7 app themes · 2 languages",
+    feat_iron_8:"AI coach — 20 messages/month",
     feat_forge_0:"Everything in Iron",
     feat_forge_1:"Uncapped AI coach — unlimited daily messages",
     feat_forge_2:"Full exercise video demonstration library",
@@ -1424,11 +1603,13 @@ const LANDING_STRINGS = {
     feat_forge_13:"Deload detection & alerts",
     feat_forge_14:"Weekly shopping list",
     feat_forge_15:"Multiple saved programmes",
-    feat_forge_16:"Apple Health sync · Garmin sync · Nutrition barcode scanner · Priority support · Early access",
+    // feat_forge_16 retired: the coming-soon items are prose under the list now, not a
+    // ticked row, so the Forge feature array is exactly 16 keys for 16 ticked rows.
+    forge_soon:"Coming next: Apple Health sync, Garmin sync, nutrition barcode scanner, priority support, and early access to new features.",
     obj_label:"Common questions",
     obj_h2:"The things people ask before they sign up.",
     obj_1_q:'"I\'ve been burned by personalised apps before. They all give everyone the same thing."',
-    obj_1_a:'That\'s a fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE runs on a conversational AI that reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You\'ll feel the difference before you\'ve finished setting it up.',
+    obj_1_a:'Fair read of the market. Most "personalised" apps are decision trees wearing a friendly name. FORGE reads your actual data, asks what no other app asks during onboarding — your sport, your schedule, your injury history, your real goal — and builds from there. Try the first five minutes. You\'ll feel the difference before you\'ve finished setting it up.',
     obj_2_q:'"Is AI coaching actually as good as a real trainer?"',
     obj_2_a:"That's the wrong comparison for most people. The real question is: is it better than nothing? Better than a generic app you used for two weeks and abandoned? Better than showing up to the gym and guessing? For all of those: yes. Most people aren't choosing between FORGE and a £200/month coach. They're choosing between FORGE and going it alone. For that comparison, it's not close.",
     obj_3_q:'"I\'ll sign up and stop using it after two weeks."',
@@ -1446,10 +1627,10 @@ const LANDING_STRINGS = {
   },
   fr: {
     hero_eyebrow:"Coach Performance IA",
-    hero_h1:"Tu es à la salle.<br>Et tu improvises.",
-    hero_sub:"FORGE construit ton programme, suit tes progrès et s'adapte à mesure que tes données augmentent. Un coach IA qui coache vraiment. Prêt en moins de 2 minutes.",
+    hero_h1:"Tu as lu les articles, essayé les apps, peut-être payé quelqu'un pendant un temps.<br>Rien de tout ça ne savait ce que tu avais fait la fois d'avant.",
+    hero_sub:"FORGE construit ton programme, te coache à chaque séance et s'adapte à mesure que tes données s'accumulent. Prêt en moins de 2 minutes.",
     hero_trust:"7 jours gratuits · Annule quand tu veux · Remboursement 30 jours",
-    nav_trial:"Essai gratuit",
+    nav_trial:"Essai gratuit", nav_coaches:"Pour les coachs", nav_coaches_short:"Coachs",
     auth_tab_signup:"Créer un compte", auth_tab_signin:"Se connecter",
     auth_name:"Nom complet", auth_email:"Email", auth_password:"Mot de passe",
     auth_code_placeholder:"Tu as un code ? Saisis-le ici",
@@ -1460,15 +1641,15 @@ const LANDING_STRINGS = {
     auth_signin_btn:"Se connecter", auth_name_ph:"Ton prénom", auth_email_ph:"toi@email.com",
     auth_pass_ph:"Min. 6 caractères", auth_pass_ph2:"Ton mot de passe",
     prob_label:"Le problème",
-    prob_h2:"Tu fais des efforts. Tu ne vois pas les résultats.",
-    prob_body:"Chaque app te donne le même plan. Elle ne connaît pas ton sport. Elle ne demande pas ton planning. Elle ne sait pas que tu as eu une mauvaise semaine ou que ton épaule te fait souffrir. Tu suis deux semaines puis tu lâches — pas par manque de discipline, mais parce que ce n'était pas fait pour toi.",
+    prob_h2:"Tu fais le travail.<br>Rien ne le suit vraiment.",
+    prob_body:"Chaque app te donne le même programme qu'à tout le monde. Elle ne connaît pas ton sport. Elle ne connaît pas ton emploi du temps, ni le fait que ton épaule te gêne, ni que la semaine dernière était à jeter. Tu la suis deux ou trois semaines puis tu arrêtes sans bruit — pas par manque de discipline, mais parce que rien là-dedans n'a été conçu pour te remarquer, toi.",
     pain_1:'"Je vais à la salle et je suis la même routine que j\'ai inventée il y a deux ans."',
     pain_2:'"Trois apps. Trois programmes génériques. Zéro résultat réel."',
     pain_3:'"Un coach perso, c\'est bien. Je ne peux juste pas justifier le coût."',
     pain_4:'"J\'ai besoin de quelque chose qui s\'adapte à mon sport, pas contre lui."',
     feat_label:"Ce que fait FORGE",
     feat_h2:"Un coach qui coache. Pas juste un plan qui traîne là.",
-    feat_body:"La plupart des apps te donnent un programme et disparaissent. FORGE reste avec toi. L'IA lit tes séances, suit ta progression et ajuste la suite selon ce que tes données montrent vraiment.",
+    feat_body:"La plupart des apps te donnent un programme et disparaissent. FORGE reste avec toi. L'IA lit tes séances, suit ta progression et ajuste la suite selon ce que tes données montrent vraiment — pas selon ce qu'un algorithme a deviné à ton inscription.",
     feat_1_title:"Ton coach analyse chaque séance",
     feat_1_body:"Après chaque entraînement, FORGE enregistre ce qui s'est passé et met à jour la suite. Le bilan hebdomadaire IA te dit exactement quoi changer — et pourquoi.",
     feat_2_title:"Construit autour de ta vie, pas de celle de quelqu'un d'autre",
@@ -1477,16 +1658,11 @@ const LANDING_STRINGS = {
     feat_3_body:"Ton plan nutritionnel est construit en même temps que ton programme. Il connaît tes jours d'entraînement, tes objectifs caloriques et ce dont ton corps a besoin.",
     feat_4_title:"Détecte le surentraînement avant toi",
     feat_4_body:"Détection de décharge intégrée. FORGE remarque quand les données indiquent que tu dois lever le pied — avant que ton corps t'y force.",
-    test_label:"Ce que disent les utilisateurs", test_h2:"Vrais utilisateurs. Vrais résultats.",
-    test_body:"Membres en accès anticipé. S'entraînant avec FORGE dès le premier jour.",
-    test_1:'"Il m\'a construit un programme complet en moins de 2 minutes. J\'ai essayé quatre apps. C\'est la première qui semblait vraiment me connaître."',
-    test_1_ctx:"Préparation pour la saison de foot",
-    test_2:'"L\'IA a vérifié après ma première séance et a déjà ajusté mon programme. Aucune app n\'avait fait ça. C\'est comme si quelqu\'un suivait mes progrès."',
-    test_2_ctx:"Entraînement autour du marathon",
-    test_3:'"J\'étais sceptique sur le coaching IA. Dix jours plus tard, mes soulevés progressent comme ils ne l\'avaient pas fait en trois mois."',
-    test_3_ctx:"Pratiquant intermédiaire, objectif hypertrophie",
-    test_4:'"Le plan nutritionnel fonctionne autour de mes jours d\'entraînement. Ce n\'est pas un plan générique — il sait quand je m\'entraîne."',
-    test_4_ctx:"Fitness et composition corporelle",
+    why_label:"Pourquoi FORGE existe",
+    why_h2:"Créé par quelqu'un qui a perdu des années à cause de mauvais conseils.",
+    why_sub:"Un témoignage vérifié. D'autres arrivent à mesure que nos premiers membres s'entraînent.",
+    founder_quote:"« J'ai payé CHF 360 une fois pour un programme de coaching censé être construit autour de moi. Il est arrivé environ une minute après mon inscription. Il n'existe aucune version de cette histoire où quelqu'un a vraiment regardé ma situation en soixante secondes. Il m'a fallu presque trois ans d'essais et d'erreurs pour comprendre vraiment ce que je faisais. FORGE existe pour que personne d'autre n'ait à perdre ce temps. »",
+    founder_attr:"— Kevin, fondateur",
     // PT anchor claim — TIED TO LAUNCH PRICING (see the en block above). Rewrite when
     // LAUNCH_PRICING_LIVE goes false.
     pt_line1:"Deux ans de FORGE coûtent moins cher qu'une séance de coach.",
@@ -1496,17 +1672,31 @@ const LANDING_STRINGS = {
     price_iron_tag:"Commence à t'entraîner avec un vrai programme.",
     price_forge_tag:"Le système complet. Rien en moins.",
     price_btn:"Essai gratuit", price_recommended:"LE PLUS CHOISI",
-    billing_monthly:"Mensuel", billing_annual:"Annuel",
+    billing_monthly:"Mensuel", billing_annual:"Annuel", billing_lifetime:"À vie",
     price_save_badge:"Économise 40%+",
+    lt_iron_name:"⚙️ Iron — Membre Fondateur",
+    lt_forge_name:"\uD83D\uDD25 Forge — Membre Fondateur",
+    price_one_time:"paiement unique",
+    lt_iron_note:"À {annual}/an, c'est rentabilisé en {n} mois. Tout Iron. À vie. Sans abonnement.",
+    lt_forge_note:"À {annual}/an, c'est rentabilisé en {n} mois. Le système de coaching complet. À vie.",
+    lt_btn:"Créer un compte",
+    lt_micro:"Crée ton compte d'abord. L'offre Membre Fondateur est disponible dans l'app après l'inscription.",
+    lt_forge_unlimited:"Messages coach IA illimités",
+    lt_forge_deepdive:"Bilan de coaching IA approfondi chaque mois",
+    lt_forge_videos:"Vidéos de démonstration des exercices",
     price_billed_year:"facturé {amount}/an",
     price_if_annual:"{price}/mois en annuel",
     price_micro:"7 jours d'essai gratuit · Sans carte bancaire · Annule quand tu veux",
     showing_prices:"Prix en", change_currency:"changer la devise",
     currency_charge_note:"Tu seras débité dans cette devise",
-    feat_iron_1:"Programme d'entraînement IA personnalisé",
-    feat_iron_2:"Plan nutritionnel IA personnalisé",
-    feat_iron_3:"Coach IA — jusqu'à 20 messages/mois",
-    feat_iron_4:"Suivi des progrès, séries et badges",
+    feat_iron_1:"Programme d'entraînement généré par IA",
+    feat_iron_2:"Plan nutritionnel IA sur 7 jours",
+    feat_iron_3:"Journal d'entraînement (série par série)",
+    feat_iron_4:"Suivi des séries et badges",
+    feat_iron_5:"Détection des records personnels",
+    feat_iron_6:"Rappels push quotidiens",
+    feat_iron_7:"7 thèmes d'app · 2 langues",
+    feat_iron_8:"Coach IA — 20 messages/mois",
     feat_forge_0:"Tout d'Iron",
     feat_forge_1:"Coach IA sans limite — messages illimités chaque jour",
     feat_forge_2:"Bibliothèque complète de vidéos de démonstration",
@@ -1523,11 +1713,11 @@ const LANDING_STRINGS = {
     feat_forge_13:"Détection de décharge et alertes",
     feat_forge_14:"Liste de courses hebdomadaire",
     feat_forge_15:"Plusieurs programmes sauvegardés",
-    feat_forge_16:"Apple Health · Garmin · Scanner de code-barres · Support prioritaire · Accès anticipé",
+    forge_soon:"Bientôt : synchronisation Apple Health, synchronisation Garmin, scanner de code-barres nutrition, support prioritaire et accès anticipé aux nouveautés.",
     obj_label:"Questions fréquentes",
     obj_h2:"Ce que les gens demandent avant de s'inscrire.",
     obj_1_q:'"J\'ai été déçu par des apps personnalisées. Elles donnent toutes la même chose."',
-    obj_1_a:"C'est une lecture juste du marché. La plupart des apps « personnalisées » sont des arbres de décision avec un nom sympathique. FORGE fonctionne avec une IA conversationnelle qui lit tes données réelles et construit à partir de là.",
+    obj_1_a:"Lecture juste du marché. La plupart des apps « personnalisées » sont des arbres de décision avec un nom sympathique. FORGE lit tes données réelles, pose à l'inscription les questions qu'aucune autre app ne pose — ton sport, ton emploi du temps, ton historique de blessures, ton vrai objectif — et construit à partir de là. Essaie les cinq premières minutes. Tu sentiras la différence avant même d'avoir fini de configurer.",
     obj_2_q:'"Le coaching IA est-il aussi bon qu\'un vrai coach ?"',
     obj_2_a:"C'est la mauvaise comparaison pour la plupart. La vraie question : est-ce mieux que rien ? Pour ça : oui. La plupart ne choisissent pas entre FORGE et un coach à 200€/mois. Ils choisissent entre FORGE et se débrouiller seul.",
     obj_3_q:'"Je vais m\'inscrire et arrêter après deux semaines."',
@@ -1565,6 +1755,8 @@ function applyLandingLanguage(code) {
 
   // Nav
   document.querySelectorAll('[data-i18n="nav_trial_btn"]').forEach(el => el.textContent = s.nav_trial || s.nav_trial_btn || 'Start free trial');
+  document.querySelectorAll('[data-i18n="nav_coaches"]').forEach(el => { if (s.nav_coaches) el.textContent = s.nav_coaches; });
+  document.querySelectorAll('[data-i18n="nav_coaches_short"]').forEach(el => { if (s.nav_coaches_short) el.textContent = s.nav_coaches_short; });
 
   // Hero
   setText('.hero-eyebrow', 'hero_eyebrow', false);
@@ -1612,19 +1804,28 @@ function applyLandingLanguage(code) {
 
   // Section labels
   const labels = document.querySelectorAll('.section-label');
-  const labelKeys = ['prob_label','feat_label','test_label','price_label','obj_label'];
+  // 5 keys for 5 .section-label elements: problem · features · why · pricing · objections.
+  const labelKeys = ['prob_label','feat_label','why_label','price_label','obj_label'];
   let li = 0;
   labels.forEach(el => { if (labelKeys[li]) el.textContent = s[labelKeys[li++]]; });
 
   // H2s
   const h2s = document.querySelectorAll('h2');
-  const h2Keys = ['prob_h2','feat_h2','test_h2','price_h2','obj_h2','final_h2'];
+  // 6 keys for 6 <h2>: problem · features · why · pricing · objections · final CTA.
+  const h2Keys = ['prob_h2','feat_h2','why_h2','price_h2','obj_h2','final_h2'];
   h2s.forEach((el, i) => { if (h2Keys[i] && s[h2Keys[i]]) el.innerHTML = s[h2Keys[i]]; });
 
   // Section bodies
+  // 3 keys for 3 .section-body elements: problem · features · why. The 4th entry used to be
+  // 'price_sub', but the pricing sub-line is .pricing-sub and has never been a .section-body,
+  // so that entry was dead and the French pricing sub-line silently stayed English. It is set
+  // by id below instead.
   const bodies = document.querySelectorAll('.section-body');
-  const bodyKeys = ['prob_body','feat_body','test_body','price_sub'];
+  const bodyKeys = ['prob_body','feat_body','why_sub'];
   bodies.forEach((el, i) => { if (bodyKeys[i] && s[bodyKeys[i]]) el.innerHTML = s[bodyKeys[i]]; });
+
+  const pricingSub = document.querySelector('.pricing-sub');
+  if (pricingSub && s.price_sub) pricingSub.textContent = s.price_sub;
 
   // Pain cards
   const painCards = document.querySelectorAll('.card-a');
@@ -1636,13 +1837,12 @@ function applyLandingLanguage(code) {
   ['feat_1_title','feat_2_title','feat_3_title','feat_4_title'].forEach((k, i) => { if (featTitles[i] && s[k]) featTitles[i].textContent = s[k]; });
   ['feat_1_body','feat_2_body','feat_3_body','feat_4_body'].forEach((k, i) => { if (featBodies[i] && s[k]) featBodies[i].textContent = s[k]; });
 
-  // Testimonial quotes
-  const quotes = document.querySelectorAll('.testimonial-quote');
-  ['test_1','test_2','test_3','test_4'].forEach((k, i) => { if (quotes[i] && s[k]) quotes[i].textContent = s[k]; });
-
-  // Testimonial contexts
-  const ctxs = document.querySelectorAll('.attr-ctx');
-  ['test_1_ctx','test_2_ctx','test_3_ctx','test_4_ctx'].forEach((k, i) => { if (ctxs[i] && s[k]) ctxs[i].textContent = s[k]; });
+  // Founder story. Replaced the two positional testimonial loops (.testimonial-quote and
+  // .attr-ctx, four each) — neither selector exists on the page any more.
+  const fq = document.getElementById('founderQuote');
+  if (fq && s.founder_quote) fq.textContent = s.founder_quote;
+  const fa = document.getElementById('founderAttr');
+  if (fa && s.founder_attr) fa.textContent = s.founder_attr;
 
   // PT bar
   const ptLine1 = document.querySelector('.pt-bar-line1');
@@ -1658,15 +1858,27 @@ function applyLandingLanguage(code) {
   const recBadge = document.querySelector('.tier-badge');
   if (recBadge && s.price_recommended) recBadge.textContent = s.price_recommended;
 
-  // Pricing buttons
-  document.querySelectorAll('.tier-btn').forEach(btn => { if (s.price_btn) btn.textContent = s.price_btn; });
+  // Pricing buttons. SCOPED, not a flat .tier-btn sweep: the two Founding Member CTAs read
+  // "Create account", and an unscoped loop relabelled them "Start free trial".
+  document.querySelectorAll('#tier-cards-sub .tier-btn').forEach(btn => { if (s.price_btn) btn.textContent = s.price_btn; });
+  document.querySelectorAll('#tier-cards-lifetime .tier-btn').forEach(btn => { if (s.lt_btn) btn.textContent = s.lt_btn; });
 
-  // Billing toggle labels
-  const toggleLabels = document.querySelectorAll('.toggle-label');
-  if (toggleLabels[0] && s.billing_monthly) toggleLabels[0].childNodes[0].textContent = s.billing_monthly + ' ';
-  if (toggleLabels[1] && s.billing_annual) {
-    const badge = toggleLabels[1].querySelector('.save-badge');
-    toggleLabels[1].childNodes[0].textContent = s.billing_annual + ' ';
+  // Founding Member card names
+  const ltIronName = document.getElementById('lt-iron-name');
+  if (ltIronName && s.lt_iron_name) ltIronName.textContent = s.lt_iron_name;
+  const ltForgeName = document.getElementById('lt-forge-name');
+  if (ltForgeName && s.lt_forge_name) ltForgeName.textContent = s.lt_forge_name;
+
+  // Billing toggle labels — THREE segments now. Monthly and Lifetime are plain text nodes;
+  // Annual keeps its .save-badge child, so only its first child node is rewritten.
+  const mLbl = document.getElementById('lbl-monthly');
+  if (mLbl && s.billing_monthly) mLbl.textContent = s.billing_monthly;
+  const lLbl = document.getElementById('lbl-lifetime');
+  if (lLbl && s.billing_lifetime) lLbl.textContent = s.billing_lifetime;
+  const aLbl = document.getElementById('lbl-annual');
+  if (aLbl && s.billing_annual && aLbl.childNodes[0]) {
+    aLbl.childNodes[0].textContent = s.billing_annual + ' ';
+    const badge = aLbl.querySelector('.save-badge');
     if (badge && s.price_save_badge) badge.textContent = s.price_save_badge;
   }
 
@@ -1678,15 +1890,34 @@ function applyLandingLanguage(code) {
   // carries a sibling SOON badge, and textContent on a last-child span would have wiped it.
   // Each array MUST have exactly one key per rendered row — a short array leaves the tail
   // rows in English and the `s[k]` guard makes that silent.
+  // 8 keys / 8 rows.
+  const IRON_KEYS = ['feat_iron_1','feat_iron_2','feat_iron_3','feat_iron_4',
+                     'feat_iron_5','feat_iron_6','feat_iron_7','feat_iron_8'];
   const ironFeats = document.querySelectorAll('#iron-features .tf-text');
-  ['feat_iron_1','feat_iron_2','feat_iron_3','feat_iron_4']
-    .forEach((k,i) => { if (ironFeats[i] && s[k]) ironFeats[i].textContent = s[k]; });
+  IRON_KEYS.forEach((k,i) => { if (ironFeats[i] && s[k]) ironFeats[i].textContent = s[k]; });
 
+  // 16 keys / 16 rows. feat_forge_16 is gone — the coming-soon items are prose in #forgeSoon
+  // now, not a 17th ticked row.
   const forgeFeats = document.querySelectorAll('#forge-features .tf-text');
   ['feat_forge_0','feat_forge_1','feat_forge_2','feat_forge_3','feat_forge_4','feat_forge_5',
    'feat_forge_6','feat_forge_7','feat_forge_8','feat_forge_9','feat_forge_10','feat_forge_11',
-   'feat_forge_12','feat_forge_13','feat_forge_14','feat_forge_15','feat_forge_16']
+   'feat_forge_12','feat_forge_13','feat_forge_14','feat_forge_15']
     .forEach((k,i) => { if (forgeFeats[i] && s[k]) forgeFeats[i].textContent = s[k]; });
+
+  const soon = document.getElementById('forgeSoon');
+  if (soon && s.forge_soon) soon.textContent = s.forge_soon;
+
+  // Founding Member lists. Iron reuses the same 8 keys as the Iron card above — the copy is
+  // the same list. Forge reuses the ten identical Forge rows and adds three of its own, so
+  // the array is 12 keys for 12 rows.
+  const ltIronFeats = document.querySelectorAll('#lt-iron-features .tf-text');
+  IRON_KEYS.forEach((k,i) => { if (ltIronFeats[i] && s[k]) ltIronFeats[i].textContent = s[k]; });
+
+  const ltForgeFeats = document.querySelectorAll('#lt-forge-features .tf-text');
+  ['feat_forge_0','lt_forge_unlimited','feat_forge_8','feat_forge_9','feat_forge_10',
+   'feat_forge_11','feat_forge_12','feat_forge_13','feat_forge_14','feat_forge_15',
+   'lt_forge_deepdive','lt_forge_videos']
+    .forEach((k,i) => { if (ltForgeFeats[i] && s[k]) ltForgeFeats[i].textContent = s[k]; });
 
   // Prices carry translated notes ("billed X/year"), so re-render them in the new language.
   if (typeof updatePrices === 'function') updatePrices();
