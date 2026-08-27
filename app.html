@@ -850,6 +850,26 @@ body.pwa-mode .chat-input-area {
    scales by min(containerW/320, height/200), so 300 yields 480x300 on any viewport wide
    enough and leaves narrow screens, which are already full-width, effectively unchanged. */
 .coach-bw-chart svg { height:300px; }
+/* Bodyweight chart inside the two FULL-SCREEN history overlays — the client's own
+   (openBodyweightHistory) and the coach's (openClientBodyweightHistory). Both bodies are
+   `padding:16px 18px 40px` on a `position:fixed;inset:0` overlay, so the card spans the
+   viewport while the SVG, at height="200" over a 320x200 viewBox, could never draw wider
+   than 320: preserveAspectRatio scales by min(containerW/320, height/200) and the height
+   term pinned it to 1.0. The chart sat marooned in a 1404px card.
+   400 lets the height term reach 2.0, so the chart draws 640x400 — it very nearly fills
+   the card at tablet width and reads as the card's content everywhere above phone size.
+   Phones are unchanged: at 390 the WIDTH term (1.0125) is the smaller of the two, as it
+   already was, so the chart stays full-bleed and 203 tall rather than becoming a monolith.
+   Same mechanism as .coach-bw-chart above; the shared renderer and the viewBox are
+   untouched, so gridlines, labels and dots scale with everything else.
+   NOTE: on a 1440 desktop the chart is still centred with margins. Filling 1374px at a
+   locked 1.6 aspect would need an 859px-tall chart; the real fix there is capping the
+   overlay's content width, which is a layout change, not a sizing one. */
+/* No padding change: the card's 14px is already right. An 18px bump was tried and
+   REVERTED — above phone size the drawn size is governed by the height term so the extra
+   padding bought nothing, while at 390px the WIDTH term governs and it shrank the chart
+   from 324x203 to 316x198. Mobile must not regress for a desktop gain. */
+.bwh-chart-lg svg { height:400px; }
 .bwh-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); }
 .bwh-row:last-child { border-bottom:none; }
 .bwh-row-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); letter-spacing:0.5px; }
@@ -7076,7 +7096,7 @@ async function openBodyweightHistory() {
         <div class="bwh-summary-val">${history.length} <span style="font-size:14px;color:var(--muted)">${history.length === 1 ? 'entry' : 'entries'}</span></div>
       </div>
     </div>
-    <div class="bwh-chart-wrap">${buildBodyweightChart(history)}</div>
+    <div class="bwh-chart-wrap bwh-chart-lg">${buildBodyweightChart(history)}</div>
     <div class="section-label" style="padding:18px 0 8px;">${t('bw_all_entries')}</div>
     ${buildBodyweightList(history)}`;
 }
@@ -14430,7 +14450,7 @@ function openClientBodyweightHistory() {
         <div class="bwh-summary-card"><div class="bwh-summary-lbl">${t('bw_change')}</div><div class="bwh-summary-val">${changeSign}${change} kg</div></div>
         <div class="bwh-summary-card"><div class="bwh-summary-lbl">${t('bw_logged')}</div><div class="bwh-summary-val">${history.length} <span style="font-size:14px;color:var(--muted)">${history.length === 1 ? 'entry' : 'entries'}</span></div></div>
       </div>
-      <div class="bwh-chart-wrap">${buildBodyweightChart(history)}</div>
+      <div class="bwh-chart-wrap bwh-chart-lg">${buildBodyweightChart(history)}</div>
       <div class="section-label" style="padding:18px 0 8px;">${t('bw_all_entries')}</div>
       ${buildBodyweightList(history)}
     </div>`;
