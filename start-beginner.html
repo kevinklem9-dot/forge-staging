@@ -238,7 +238,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .pt-bar::before,.pt-bar::after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
 .pt-bar::before{top:0}.pt-bar::after{bottom:0}
 .pt-bar-line1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,4.5vw,52px);line-height:1.05;letter-spacing:1.5px;color:var(--text);max-width:900px;margin:0 auto 22px}
-.pt-bar-line1 .pt-highlight{color:var(--accent2);text-shadow:0 0 30px rgba(255,107,53,0.35)}
+.pt-bar .pt-highlight{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.35)}
+/* Brand yellow, not --accent2 orange. The glow had to move with it or a yellow word
+   sat in an orange halo. index.html has no --accent-rgb token, and its established
+   pattern for accent-derived translucency is a literal rgba(232,255,61,a) — 34 uses
+   across this sheet, 3 of them already at this exact 0.35. Radius and alpha are
+   unchanged from the orange version: this is a hue swap, nothing else.
+   --shadow-glow was NOT reused: it is 0 0 60px / 0.18, which would have changed the
+   glow's size and strength as well as its colour. */
 .pt-bar-line2{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;letter-spacing:0;color:var(--muted2);text-transform:none;max-width:640px;margin:0 auto;line-height:1.65}
 
 /* ── PRICING ── */
@@ -480,6 +487,122 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   .hero h1{font-size:clamp(28px,5.4vw,34px)}
   .hero-subhead{font-size:clamp(20px,3.6vw,24px)}
 }
+/* ── NAV BUDGET — TWO LINKS ──────────────────────────────────────────────────
+   The nav carried ONE link (For Coaches) until Pricing was added beside it, and
+   every breakpoint below was sized for that. Measured headless before and after:
+
+     full-label nav, one link  : needs 833px EN / 839px FR
+     full-label nav, two links : needs ~925px EN / ~931px FR
+   so the short-label swap has to happen at 920px, not 720px. Same breakpoint the
+   ad pages adopted for the same reason.
+
+     short-label nav at 390px, one link  : needed 380px EN (10px spare)
+     short-label nav at 360px, one link  : needed 357px EN (3px spare)
+   "Pricing" adds ~51px at that size, so ≤720 and ≤380 give it back through the
+   currency select, the link padding and the CTA padding. Numbers re-measured
+   after the change; see known-bugs.md. */
+@media (max-width: 920px){
+  .nav-logo-sub{display:none}
+  .nav-link-full{display:none}
+  .nav-link-short{display:inline}
+  .currency-select{max-width:72px}
+  .nav-cta{padding:9px 11px;letter-spacing:1.2px}
+}
+@media (max-width: 720px){
+  .currency-select{max-width:56px}
+  .nav-link{letter-spacing:0.4px;padding:6px 1px}
+  .nav-cta{padding:8px 7px;letter-spacing:0.5px}
+}
+/* 400, not 380: at 390px the two-link nav had only 3px of EN slack, which one font
+   fallback would eat. These tighter values now start before the common 390px phone
+   width rather than just below it. */
+@media (max-width: 400px){
+  /* 60, not 46: the two-link nav left 32px of EN slack at 390px, and at 46px the select
+     rendered as "E…" — unreadable as a currency. 60px shows "EUR…" / "CHF…" and still
+     leaves ~18px of margin. */
+  .currency-select{max-width:60px}
+  .nav-link{font-size:8px;letter-spacing:0.3px}
+  .nav-cta{padding:7px 5px;font-size:8.5px}
+}
+/* Below 385px the select tightens again. 390-430px keeps the wider 60px select (it
+   reads "EUR…"); 360-385px trades that back for nav margin, because those widths have
+   the least room. The select ellipsises by design at every one of these sizes —
+   index.html's own 720px comment notes the currency is spelled out in full under the
+   pricing heading anyway. */
+@media (max-width: 385px){
+  .currency-select{max-width:42px;padding:5px 3px}
+}
+/* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
+   Two treatments, defined ONCE. This block is authored in index.html and the ad-page
+   generator copies index.html's whole <style> verbatim, so start-intermediate.html and
+   start-beginner.html inherit it with no duplication. coaches.html carries its own
+   standalone stylesheet (its own tokens, nav, cards) and therefore needs the same block;
+   keep the two in step.
+
+   The accent ring is derived with color-mix() from var(--accent) rather than written as
+   an rgba literal — no brand colour is hardcoded anywhere here. The drop shadow is the
+   one value spelled out, and it is neutral black, matching --shadow-card's existing use.
+
+   .shot        desktop capture, bare with a soft edge
+   .shot-phone  phone capture in a slim device frame
+   .shot-split  copy one side, image the other; stacks under 900px
+   .shot-full   full-bleed inside the section
+   Images are display:block/width:100% and carry width+height attributes, so the box is
+   reserved before the file loads and nothing shifts.                                    */
+.shot {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot img { display: block; width: 100%; height: auto; }
+
+/* Slim device frame: 5px bezel, 30px outer radius, 25px inner so the corners stay
+   concentric (30 - 5). Capped at 260px on desktop, 210px on phones where the column is
+   already narrow. */
+.shot-phone {
+  /* width:100% is load-bearing, not decoration. With width:auto the auto margins below
+     make this a shrink-to-fit box, and a lazy image that has not arrived yet contributes
+     no intrinsic width — the frame collapsed to 12px (its padding and border) until the
+     file landed, then snapped to 260. A definite width resolves against the track or the
+     container instead of the image, so the box is correct before the first byte arrives. */
+  width: 100%;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot-phone img { display: block; width: 100%; height: auto; border-radius: 25px; }
+
+/* The image track is a FIXED 260px, not a second 1fr. With two 1fr tracks the copy
+   column's min-content contribution ate the whole grid and squeezed the phone frame to
+   12px — its padding and border, nothing else. min-width:0 on the copy column was not
+   enough, because the phone column has no intrinsic width to defend itself with. A
+   definite track removes the negotiation entirely. */
+.shot-split { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: center; margin-top: 40px; }
+.shot-split > :first-child { min-width: 0; }
+.shot-full { margin-top: 36px; }
+.shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; margin-top: 40px; }
+
+@media (max-width: 900px) {
+  .shot-split { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+}
+@media (max-width: 720px) {
+  .shot-phone { max-width: 210px; }
+  .shot-pair { gap: 20px; }
+  .shot-split { margin-top: 30px; }
+  .shot-full { margin-top: 26px; }
+}
+@media (max-width: 420px) {
+  .shot-pair { grid-template-columns: 1fr; gap: 26px; }
+}
+
 </style>
 <style>
 /* ══ AD LANDING PAGE ONLY ══
@@ -694,11 +817,17 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="section-inner ad-inner">
     <div class="section-label reveal" data-i18n="s5_label">What actually works</div>
     <h2 class="reveal" data-i18n="s5_h2">You need something that knows what happened last time.</h2>
-    <div class="ad-prose reveal">
+    <div class="shot-split">
+      <div class="ad-prose reveal">
       <p data-i18n="s5_p1">Two things, and they have to come together.</p>
       <p data-i18n="s5_p2">Something that tells you exactly what to do when you walk in — which exercise, how many sets, what weight, what to do if it's too easy or too hard.</p>
       <p data-i18n="s5_p3">And something that changes it based on how it actually went.</p>
       <p data-i18n="s5_p4">That second part is what everything free is missing. A list can't know that leg day wrecked you for three days. A PDF can't know you couldn't work out how to use the machine so you skipped it.</p>
+      </div>
+      <div class="shot-phone reveal">
+        <img src="img/weekly-review.webp" width="560" height="1154" loading="lazy" decoding="async"
+             alt="A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week." data-i18n-alt="shot_alt_weekly">
+      </div>
     </div>
   </div>
 </section>
@@ -732,6 +861,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
       </div>
     </div>
     <div class="ad-after reveal" data-i18n="s6_after">Then it goes again.</div>
+    <div class="shot-full"><div class="shot-phone shot-full reveal">
+        <img src="img/session-history.webp" width="560" height="1159" loading="lazy" decoding="async"
+             alt="Session history in FORGE: the most recent session expanded to show every exercise with the weight and reps for each set, and earlier sessions listed by date below." data-i18n-alt="shot_alt_history">
+      </div></div>
   </div>
 </section>
 
@@ -749,15 +882,23 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     </div>
     <div class="ad-block reveal">
       <div class="ad-block-t" data-i18n="s7_2_t">When you can't do something, you say so.</div>
-      <div class="ad-prose">
+      <div class="shot-split">
+        <div>
+          <div class="ad-prose">
 
-      </div>
+          </div>
       <blockquote class="founder-quote ad-quote">
         <p class="founder-quote-text" data-i18n="q7_text">My gym didn't have a hack squat once. FORGE swapped it for something that did the same job — I didn't have to stand there guessing what to do instead. Another time, a hamstring curl machine was giving me discomfort. I told it, and it moved me to Romanian deadlifts instead. The discomfort went.</p>
         <div class="founder-attr" data-i18n="q7_attr">— Kevin, founder</div>
       </blockquote>
       <div class="ad-prose ad-prose-after">
       <p data-i18n="s7_2_p1">That's a small thing that isn't small. With a normal programme, the answer when something doesn't work for you is: well, that's what it says, do it anyway.</p>
+      </div>
+        </div>
+        <div class="shot-phone reveal">
+        <img src="img/ai-coach-chat.webp" width="560" height="1149" loading="lazy" decoding="async"
+             alt="The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap." data-i18n-alt="shot_alt_chat">
+      </div>
       </div>
     </div>
     <div class="ad-block reveal">
@@ -1172,6 +1313,12 @@ function applyAdLanguage(code) {
   document.querySelectorAll('[data-i18n-html]').forEach(el => {
     const key = el.getAttribute('data-i18n-html');
     if (s[key]) el.innerHTML = s[key];
+  });
+
+  // Alt text is an ATTRIBUTE, not a text node, so the sweeps above cannot reach it.
+  document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-alt');
+    if (s[key]) el.alt = s[key];
   });
 
   // Placeholders are attributes, not text nodes.
@@ -1626,18 +1773,19 @@ function _getAppUrl() {
   return loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/') + 'app.html';
 }
 
+// ── SCROLL TO PRICING ─────────────────────────────────
+// Matches the ad pages' implementation exactly (tools/build-ad-pages.js): same
+// href="#pricing" fallback underneath, same smooth-scroll idiom as scrollToAuth(),
+// same price_label key on both the full and short spans.
+function scrollToPricing() {
+  const el = document.getElementById('pricing');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── SCROLL TO AUTH ────────────────────────────────────
 function scrollToAuth() {
   document.getElementById('hero-auth').scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => document.getElementById('hero-name')?.focus(), 600);
-}
-
-// ── SCROLL TO PRICING ─────────────────────────────────
-// The nav's Pricing link. Same smooth-scroll idiom as the ported scrollToAuth(), and
-// the href="#pricing" underneath it still works if this never runs.
-function scrollToPricing() {
-  const el = document.getElementById('pricing');
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── HANDLE URL PARAMS (email confirmation) ─────────────
@@ -2000,6 +2148,9 @@ const AD_STRINGS = {
     s9_label: "It starts where you are",
     s9_p1: "Three days a week. Two, if that's what's realistic. Thirty-five minutes on the days you're pushed.",
     s9_p2: "Just machines, if the free weights area still feels like too much. It'll get you there when you're ready — and moving there is a step it plans, not a leap you make on your own.",
+    shot_alt_chat: "The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap.",
+    shot_alt_history: "Session history in FORGE: the most recent session expanded to show every exercise with the weight and reps for each set, and earlier sessions listed by date below.",
+    shot_alt_weekly: "A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week.",
     showing_prices: "Showing prices in",
   },
   fr: {
@@ -2194,6 +2345,9 @@ const AD_STRINGS = {
     s9_label: "Il part d'où tu en es",
     s9_p1: "Trois jours par semaine. Deux, si c'est ce qui est réaliste. Trente-cinq minutes les jours où tu es pris à la gorge.",
     s9_p2: "Uniquement des machines, si la zone poids libres te paraît encore trop. Il t'y amènera quand tu seras prêt — et y aller est une étape qu'il planifie, pas un saut que tu fais tout seul.",
+    shot_alt_chat: "Le coach IA de FORGE en pleine conversation : l'athlète explique que son épaule le gêne et demande de remplacer le développé militaire ; le coach répond par un landmine press en expliquant pourquoi.",
+    shot_alt_history: "L'historique des séances dans FORGE : la séance la plus récente développée pour montrer chaque exercice avec la charge et les répétitions de chaque série, et les séances précédentes listées par date en dessous.",
+    shot_alt_weekly: "Un bilan hebdomadaire dans FORGE : trois séances sur quatre réalisées et deux records personnels, avec un résumé écrit de la semaine, les points forts et un objectif pour la semaine suivante.",
     showing_prices: "Prix en",
   },
 };

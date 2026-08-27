@@ -530,6 +530,77 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 @media (max-width: 385px){
   .currency-select{max-width:42px;padding:5px 3px}
 }
+/* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
+   Two treatments, defined ONCE. This block is authored in index.html and the ad-page
+   generator copies index.html's whole <style> verbatim, so start-intermediate.html and
+   start-beginner.html inherit it with no duplication. coaches.html carries its own
+   standalone stylesheet (its own tokens, nav, cards) and therefore needs the same block;
+   keep the two in step.
+
+   The accent ring is derived with color-mix() from var(--accent) rather than written as
+   an rgba literal — no brand colour is hardcoded anywhere here. The drop shadow is the
+   one value spelled out, and it is neutral black, matching --shadow-card's existing use.
+
+   .shot        desktop capture, bare with a soft edge
+   .shot-phone  phone capture in a slim device frame
+   .shot-split  copy one side, image the other; stacks under 900px
+   .shot-full   full-bleed inside the section
+   Images are display:block/width:100% and carry width+height attributes, so the box is
+   reserved before the file loads and nothing shifts.                                    */
+.shot {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot img { display: block; width: 100%; height: auto; }
+
+/* Slim device frame: 5px bezel, 30px outer radius, 25px inner so the corners stay
+   concentric (30 - 5). Capped at 260px on desktop, 210px on phones where the column is
+   already narrow. */
+.shot-phone {
+  /* width:100% is load-bearing, not decoration. With width:auto the auto margins below
+     make this a shrink-to-fit box, and a lazy image that has not arrived yet contributes
+     no intrinsic width — the frame collapsed to 12px (its padding and border) until the
+     file landed, then snapped to 260. A definite width resolves against the track or the
+     container instead of the image, so the box is correct before the first byte arrives. */
+  width: 100%;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot-phone img { display: block; width: 100%; height: auto; border-radius: 25px; }
+
+/* The image track is a FIXED 260px, not a second 1fr. With two 1fr tracks the copy
+   column's min-content contribution ate the whole grid and squeezed the phone frame to
+   12px — its padding and border, nothing else. min-width:0 on the copy column was not
+   enough, because the phone column has no intrinsic width to defend itself with. A
+   definite track removes the negotiation entirely. */
+.shot-split { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: center; margin-top: 40px; }
+.shot-split > :first-child { min-width: 0; }
+.shot-full { margin-top: 36px; }
+.shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; margin-top: 40px; }
+
+@media (max-width: 900px) {
+  .shot-split { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+}
+@media (max-width: 720px) {
+  .shot-phone { max-width: 210px; }
+  .shot-pair { gap: 20px; }
+  .shot-split { margin-top: 30px; }
+  .shot-full { margin-top: 26px; }
+}
+@media (max-width: 420px) {
+  .shot-pair { grid-template-columns: 1fr; gap: 26px; }
+}
+
 </style>
 </head>
 <body>
@@ -649,12 +720,22 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="section-inner">
     <div class="section-label reveal">What FORGE does</div>
     <h2 class="reveal">A coach that coaches.<br>Not just a plan that sits there.</h2>
-    <p class="section-body reveal">Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what an algorithm guessed about you at sign-up.</p>
+    <div class="shot-split">
+      <p class="section-body reveal">Most apps hand you a programme and disappear. FORGE stays in it with you. The AI reads your sessions, tracks your progression, and adjusts what's next based on what your data actually shows — not what an algorithm guessed about you at sign-up.</p>
+      <div class="shot-phone reveal">
+        <img src="img/ai-coach-chat.webp" width="560" height="1149" loading="lazy" decoding="async"
+             alt="The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap." data-i18n-alt="shot_alt_chat">
+      </div>
+    </div>
     <div class="grid-2 reveal-stagger">
       <div class="card"><div class="card-title">Your coach reviews every session</div><div class="card-body">After every workout, FORGE logs what happened and updates what comes next. Weekly AI performance review tells you exactly what to change — and why. Your data. Your programme. Your next move.</div></div>
       <div class="card"><div class="card-title">Built around your life, not someone else's</div><div class="card-body">Your sport. Your schedule. Your equipment. Your injury history. FORGE asks the questions a real coach would ask before it builds anything. Most apps skip all of that.</div></div>
       <div class="card"><div class="card-title">Nutrition that knows when you train</div><div class="card-body">Your nutrition plan is built alongside your programme — not bolted on after. It knows your training days, your calorie targets, and what your body needs before and after a session.</div></div>
       <div class="card"><div class="card-title">Catches overtraining before you do</div><div class="card-body">Deload detection built in. FORGE notices when the data says you need to back off — before your body forces you to. That's not a feature most apps have. That's what a good coach does.</div></div>
+    </div>
+    <div class="shot-phone shot-full reveal">
+      <img src="img/weekly-review.webp" width="560" height="1154" loading="lazy" decoding="async"
+           alt="A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week." data-i18n-alt="shot_alt_weekly">
     </div>
   </div>
 </section>
@@ -1716,6 +1797,8 @@ const LANDING_STRINGS = {
     consent_label:'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
     marketing_label:'Email me training tips and FORGE offers. Optional, and you can turn this off any time.',
     consent_required:"Accept the Terms of Service and Privacy Policy to continue.",
+    shot_alt_chat:"The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap.",
+    shot_alt_weekly:"A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week.",
     // Added so the surfaces below can be translated at all. Every English value here is
     // copied VERBATIM from the markup it keys — no new English copy was written.
     auth_remember:"REMEMBER ME",
@@ -1841,6 +1924,8 @@ const LANDING_STRINGS = {
     consent_label:'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
     marketing_label:'Recevoir des conseils d\'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.',
     consent_required:"Accepte les CGU et la Politique de confidentialité pour continuer.",
+    shot_alt_chat:"Le coach IA de FORGE en pleine conversation : l'athlète explique que son épaule le gêne et demande de remplacer le développé militaire ; le coach répond par un landmine press en expliquant pourquoi.",
+    shot_alt_weekly:"Un bilan hebdomadaire dans FORGE : trois séances sur quatre réalisées et deux records personnels, avec un résumé écrit de la semaine, les points forts et un objectif pour la semaine suivante.",
     // Same fourteen keys. These French values already ship on start-intermediate.html and
     // start-beginner.html; reused verbatim so all four pages read identically.
     auth_remember:"SE SOUVENIR DE MOI",
@@ -1879,6 +1964,11 @@ function applyLandingLanguage(code) {
   document.querySelectorAll('[data-i18n-html]').forEach(el => {
     const key = el.getAttribute('data-i18n-html');
     if (s[key]) el.innerHTML = s[key];
+  });
+  // Alt text is an ATTRIBUTE, not a text node, so the sweeps above cannot reach it.
+  document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-alt');
+    if (s[key]) el.alt = s[key];
   });
 
   function setText(sel, key, html) {

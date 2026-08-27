@@ -276,6 +276,77 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
   .hero{padding:130px 20px 70px}
   .objection-cards .card{padding:24px 22px 26px}
 }
+/* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
+   Two treatments, defined ONCE. This block is authored in index.html and the ad-page
+   generator copies index.html's whole <style> verbatim, so start-intermediate.html and
+   start-beginner.html inherit it with no duplication. coaches.html carries its own
+   standalone stylesheet (its own tokens, nav, cards) and therefore needs the same block;
+   keep the two in step.
+
+   The accent ring is derived with color-mix() from var(--accent) rather than written as
+   an rgba literal — no brand colour is hardcoded anywhere here. The drop shadow is the
+   one value spelled out, and it is neutral black, matching --shadow-card's existing use.
+
+   .shot        desktop capture, bare with a soft edge
+   .shot-phone  phone capture in a slim device frame
+   .shot-split  copy one side, image the other; stacks under 900px
+   .shot-full   full-bleed inside the section
+   Images are display:block/width:100% and carry width+height attributes, so the box is
+   reserved before the file loads and nothing shifts.                                    */
+.shot {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot img { display: block; width: 100%; height: auto; }
+
+/* Slim device frame: 5px bezel, 30px outer radius, 25px inner so the corners stay
+   concentric (30 - 5). Capped at 260px on desktop, 210px on phones where the column is
+   already narrow. */
+.shot-phone {
+  /* width:100% is load-bearing, not decoration. With width:auto the auto margins below
+     make this a shrink-to-fit box, and a lazy image that has not arrived yet contributes
+     no intrinsic width — the frame collapsed to 12px (its padding and border) until the
+     file landed, then snapped to 260. A definite width resolves against the track or the
+     container instead of the image, so the box is correct before the first byte arrives. */
+  width: 100%;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.shot-phone img { display: block; width: 100%; height: auto; border-radius: 25px; }
+
+/* The image track is a FIXED 260px, not a second 1fr. With two 1fr tracks the copy
+   column's min-content contribution ate the whole grid and squeezed the phone frame to
+   12px — its padding and border, nothing else. min-width:0 on the copy column was not
+   enough, because the phone column has no intrinsic width to defend itself with. A
+   definite track removes the negotiation entirely. */
+.shot-split { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: center; margin-top: 40px; }
+.shot-split > :first-child { min-width: 0; }
+.shot-full { margin-top: 36px; }
+.shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; margin-top: 40px; }
+
+@media (max-width: 900px) {
+  .shot-split { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+}
+@media (max-width: 720px) {
+  .shot-phone { max-width: 210px; }
+  .shot-pair { gap: 20px; }
+  .shot-split { margin-top: 30px; }
+  .shot-full { margin-top: 26px; }
+}
+@media (max-width: 420px) {
+  .shot-pair { grid-template-columns: 1fr; gap: 26px; }
+}
+
 </style>
 </head>
 <body>
@@ -485,8 +556,16 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
       <p data-i18n-html="s6_p2"><strong>Generating a programme and selling it as custom coaching is dishonest.</strong> We agree. If a client is paying you <span id="s6-fee">CHF 200</span> a month and an algorithm is doing the thinking unsupervised, that's not coaching — and you'd be right to want no part of it.</p>
       <p data-i18n="s6_p3">That's not how FORGE works, and the difference is structural rather than a promise.</p>
       <div class="punch" data-i18n="s6_punch">The AI produces a draft. It lands on your dashboard. It goes nowhere else.</div>
+      <div class="shot shot-full">
+        <img src="img/coach-client-overview.webp" width="1456" height="788" loading="lazy" decoding="async"
+             alt="A client overview in FORGE, showing an AI-written summary of the client alongside sessions this week, current streak, last session and personal records this month." data-i18n-alt="shot_alt_overview">
+      </div>
       <p data-i18n="s6_p4">You review it. You edit it. You approve it. Only then does your client see anything.</p>
       <p data-i18n="s6_p5">There is no path from a generated programme to your client that doesn't pass through you. The generator writes nothing — no plan saved, no notification sent — until you save it yourself. That isn't a setting you could leave switched on. It's how the builder is wired.</p>
+      <div class="shot shot-full">
+        <img src="img/coach-programme-builder.webp" width="1456" height="798" loading="lazy" decoding="async"
+             alt="The FORGE programme builder open on a training week, with editable exercises, sets, reps, rest and coach notes, and Save to library and Save and assign buttons along the bottom." data-i18n-alt="shot_alt_builder">
+      </div>
       <p data-i18n="s6_p6">Your client's own AI coach is a separate thing, and it does speak to them directly — check-ins after a session, weekly and monthly reviews. That's the part they're paying for. You can switch any of it off, per client, from their card.</p>
       <p data-i18n="s6_p7">What the AI is doing for you is the arithmetic — periodisation maths, progression logic, volume tracking, equipment substitutions, flagging the client who has quietly stopped logging. The part of your week that's data entry.</p>
       <p data-i18n="s6_p8">What stays yours is everything you actually charge for. Exercise selection judgement. Knowing which client needs pushing and which needs backing off. The relationship. The accountability. The reason they picked you.</p>
@@ -524,6 +603,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
         <div class="card-body" data-i18n="s7_c5_b">The moment someone connects, their onboarding answers come back to you as a readable summary — goals, history, what they've got to train with. You walk into the first call already knowing them.</div>
       </div>
     </div>
+    <div class="shot shot-full">
+        <img src="img/coach-client-roster.webp" width="1456" height="826" loading="lazy" decoding="async"
+             alt="The FORGE coach client list: seven clients with their training goal, when each was last active and a status dot, filtered by All, Active and Needs attention." data-i18n-alt="shot_alt_roster">
+      </div>
   </div>
 </section>
 
@@ -1077,6 +1160,11 @@ function applyCoachLanguage(code) {
     const key = el.getAttribute('data-i18n-html');
     if (s[key]) el.innerHTML = s[key];
   });
+  // Alt text is an ATTRIBUTE, not a text node, so the sweeps above cannot reach it.
+  document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-alt');
+    if (s[key]) el.alt = s[key];
+  });
 
   // Placeholders are attributes, not text nodes.
   const ph = (id, key) => { const el = document.getElementById(id); if (el && s[key]) el.placeholder = s[key]; };
@@ -1594,6 +1682,9 @@ const COACH_STRINGS = {
     footer_terms: 'Terms',
     footer_contact: 'Contact',
     footer_bottom: '© FORGE · Built for coaches who take their clients seriously.',
+    shot_alt_roster: 'The FORGE coach client list: seven clients with their training goal, when each was last active and a status dot, filtered by All, Active and Needs attention.',
+    shot_alt_overview: 'A client overview in FORGE, showing an AI-written summary of the client alongside sessions this week, current streak, last session and personal records this month.',
+    shot_alt_builder: 'The FORGE programme builder open on a training week, with editable exercises, sets, reps, rest and coach notes, and Save to library and Save and assign buttons along the bottom.',
   },
 
   fr: {
@@ -1840,6 +1931,9 @@ const COACH_STRINGS = {
     footer_terms: 'CGU',
     footer_contact: 'Contact',
     footer_bottom: '© FORGE · Conçu pour les coachs qui prennent leurs clients au sérieux.',
+    shot_alt_roster: 'La liste de clients du coach dans FORGE : sept clients avec leur objectif, leur dernière activité et une pastille de statut, filtrables par Tous, Actifs et À relancer.',
+    shot_alt_overview: 'La fiche d\'un client dans FORGE : un résumé rédigé par l\'IA, accompagné des séances de la semaine, de la série en cours, de la dernière séance et des records du mois.',
+    shot_alt_builder: 'L\'éditeur de programmes FORGE ouvert sur une semaine d\'entraînement, avec exercices, séries, répétitions, repos et notes du coach modifiables, et les boutons Enregistrer dans la bibliothèque et Enregistrer et assigner en bas.',
   },
 };
 
