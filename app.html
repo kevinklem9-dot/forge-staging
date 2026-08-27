@@ -7345,7 +7345,7 @@ function appendCoachReviewBlock(card, coachReviews) {
         <span class="review-chevron">›</span>
       </summary>
       <div class="review-details-body">
-        <div class="review-details-text">${escHtml(r.review_content || '')}</div>
+        <div class="review-details-text">${fmtSummaryBody(r.review_content || '')}</div>
       </div>
     </details>
   `).join('');
@@ -7374,7 +7374,7 @@ function renderWeeklyReviewData(review) {
       </summary>
       <div class="review-details-body">
         ${statsLine ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;padding-top:12px;">${statsLine}</div>` : ''}
-        <div class="review-details-text">${escHtml(review.summary || review.ai_insights || '')}</div>
+        <div class="review-details-text">${fmtSummaryBody(review.summary || review.ai_insights || '')}</div>
         <button onclick="generateWeeklyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review').toUpperCase()}</button>
       </div>
     </details>
@@ -7453,7 +7453,7 @@ async function renderMonthlyReview() {
         </summary>
         <div class="review-details-body">
           ${mStats ? `<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:12px;">${mStats}</div>` : ''}
-          <div class="review-details-text">${escHtml(review.summary || review.ai_insights || '')}</div>
+          <div class="review-details-text">${fmtSummaryBody(review.summary || review.ai_insights || '')}</div>
           <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
         </div>
       </details>`;
@@ -7498,7 +7498,7 @@ function renderMonthlyReviewData(review) {
       </summary>
       <div class="review-details-body">
         ${stats ? `<div style="display:flex;gap:12px;flex-wrap:wrap;padding-top:12px;">${stats}</div>` : ''}
-        <div class="review-details-text">${escHtml(review.summary || review.review_content || '')}</div>
+        <div class="review-details-text">${fmtSummaryBody(review.summary || review.review_content || '')}</div>
         <button onclick="generateMonthlyReview(this)" style="width:100%;margin-top:14px;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;font-size:12px;cursor:pointer;font-family:'DM Mono',sans-serif;letter-spacing:1px;">${t('regenerate_review')}</button>
       </div>
     </details>`;
@@ -16731,7 +16731,7 @@ async function renderClientAITab(body) {
             ${(cv.messages || []).map(m => `
               <div style="margin-bottom:10px;">
                 <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">${m.role === 'user' ? t('client_ai_client_label') : t('client_ai_coach_label')}</div>
-                <div style="font-size:13px;color:var(--text);line-height:1.5;">${escHtml(m.content || '')}</div>
+                <div style="font-size:13px;color:var(--text);line-height:1.5;">${m.role === 'user' ? escHtml(m.content || '') : fmtSummaryBody(m.content || '')}</div>
               </div>`).join('') || '<div style="font-size:12px;color:var(--muted);">' + t('client_ai_no_messages') + '</div>'}
           </div>
         </details>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">' + t('client_ai_no_conversations') + '</div>'}
@@ -16750,7 +16750,7 @@ async function renderClientAITab(body) {
           const content = r.summary || r.review_content || r.ai_insights || r.content || '';
           return `<div style="padding:10px 0;border-top:1px solid var(--border);">
             <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.5px;margin-bottom:4px;">${badge} ${typeLabel}${dateLabel ? ' · ' + dateLabel : ''}</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml(String(content).slice(0, 600))}</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${escHtml(stripMarkdown(content).slice(0, 600))}</div>
           </div>`;
         }).join('') : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">' + t('client_ai_no_reviews') + '</div>'}
       </div>
