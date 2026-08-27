@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  (function() {
+    try {
+      var session = localStorage.getItem('forge-session');
+      if (!session) return;
+      var s = JSON.parse(session);
+      if (!s || !s.access_token || !s.user) return;
+      var nowSecs = Math.floor(Date.now() / 1000);
+      var expiresAt = s.expires_at;
+      // Redirect if token is valid OR if we have a refresh token
+      // (app.html will handle the refresh). Build the target relative to the
+      // current directory so it works under the /forge/ subpath deploy too.
+      if ((expiresAt && expiresAt > nowSecs) || s.refresh_token) {
+        var target = location.pathname.endsWith('/')
+          ? location.pathname + 'app.html'
+          : location.pathname.replace(/\/[^\/]*$/, '/app.html');
+        window.location.replace(target);
+      }
+    } catch(e) {}
+  })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORGE — Know exactly what to do when you walk in</title>
+<meta name="description" content="A gym membership you've barely used, because nobody ever told you what to do. FORGE tells you the exercise, the sets and the weight, then changes it based on how it went. 7 days free, no card.">
+
+<!-- GENERATED FILE — DO NOT HAND-EDIT.
+     Built by tools/build-ad-pages.js from index.html + tools/pages/beginner.json.
+     The stylesheet, nav, lang drawer, auth cards, reset overlay, footer, ENVIRONMENT
+     CONFIG block and the entire pricing section (PRICES, setBilling, updatePrices,
+     both lifetime cards and the computed payback months) are cut out of index.html at
+     build time, verbatim. Edit index.html or the JSON, then re-run the build. -->
+
+<!-- Favicon & PWA icons. RELATIVE, not root-absolute: this deploys under a
+     /forge-staging/ subpath on GitHub Pages, where /icon-192.png 404s. -->
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0a0a0a">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kevinklem9-dot.github.io/forge-staging/start-beginner.html">
+<meta property="og:title" content="FORGE — Know exactly what to do when you walk in">
+<meta property="og:description" content="A gym membership you've barely used, because nobody ever told you what to do. FORGE tells you the exercise, the sets and the weight, then changes it based on how it went. 7 days free, no card.">
+<meta property="og:image" content="https://kevinklem9-dot.github.io/forge-staging/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FORGE — Know exactly what to do when you walk in">
+<meta name="twitter:description" content="A gym membership you've barely used, because nobody ever told you what to do. FORGE tells you the exercise, the sets and the weight, then changes it based on how it went. 7 days free, no card.">
+<meta name="twitter:image" content="https://kevinklem9-dot.github.io/forge-staging/icon-512.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111111;--surface2:#1a1a1a;--surface3:#161616;--border:#222222;--border2:#2a2a2a;
+  /* --muted / --muted2 raised for legibility. Measured against --bg #0a0a0a and, where the
+     token sits on a card, --surface2 #1a1a1a (the worst case: .card-pain and the recommended
+     tier card).
+       --muted   #666666 -> #8f8f8f   3.45:1 -> 6.12:1 on --bg   (worst case 5.38:1)
+       --muted2  #8a8a8a -> #a6a6a6   5.73:1 -> 8.13:1 on --bg   (worst case 7.15:1)
+     --muted2 already cleared 4.5:1; it was raised anyway because raising --muted alone would
+     have pushed the LABEL token brighter than the BODY token and inverted the hierarchy.
+     Order is still --text > --muted2 > --muted, and body stays 2.14:1 clear of headings.
+     --dim is new: the struck-through old price is superseded information and should not
+     compete with the live price, so it keeps a deliberately quiet value. It is still
+     BRIGHTER than the --muted it replaces there (3.94:1 vs 3.45:1 on --bg). */
+  --accent:#e8ff3d;--accent-dim:#b8cc2e;--accent2:#ff6b35;--text:#f0f0f0;--muted:#8f8f8f;--muted2:#a6a6a6;--dim:#6f6f6f;
+  --red:#ff4444;--green:#39d98a;--accent-pressed:#d4eb1e;
+  --shadow-glow:0 0 60px rgba(232,255,61,0.18);
+  --shadow-card:0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.6);
+  --grid-color:rgba(255,255,255,0.025);
+  /* Pricing card widths. 366px is what one card measured in the retired three-up track
+     ((1140 - 2 gaps) / 3), so the two remaining cards keep their original proportions
+     instead of stretching to half the container each. */
+  --tier-card-max:366px;--tier-card-stack-max:460px;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;min-height:100vh;width:100%;max-width:100vw}
+img,svg,video{max-width:100%}
+
+/* Subtle global noise + grid */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:
+    linear-gradient(var(--grid-color) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse at top, rgba(0,0,0,0.6), transparent 70%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>");
+}
+nav,section,footer,.pt-bar,.section-divider{position:relative;z-index:2}
+
+/* ── NAV ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.72);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(232,255,61,0.35),transparent)}
+.nav-logo{display:flex;align-items:baseline;gap:10px}
+.nav-logo-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:5px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.35)}
+.nav-logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
+.nav-right{display:flex;align-items:center;gap:10px}
+.currency-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;padding:8px 12px;border-radius:8px;cursor:pointer;outline:none;transition:all .15s}
+.currency-select:hover{border-color:var(--border2);background:var(--surface2)}
+.currency-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,61,0.1)}
+.nav-cta{background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;white-space:nowrap;flex-shrink:0;line-height:1}
+.nav-cta::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.4) 50%,transparent 70%);transform:translateX(-100%);transition:transform .6s}
+.nav-cta:hover{background:var(--accent-pressed);box-shadow:0 8px 30px rgba(232,255,61,0.35),0 0 0 1px rgba(232,255,61,0.4);transform:translateY(-1px)}
+.nav-cta:hover::after{transform:translateX(100%)}
+
+/* ── FOCUS-VISIBLE (a11y) ── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+button:focus-visible,a:focus-visible,.auth-tab:focus-visible,.lang-option:focus-visible,.toggle-pill:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.field-input:focus-visible{outline:none}
+
+/* ── LANG DRAWER ── */
+.lang-drawer{position:fixed;top:68px;right:16px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;z-index:1001;min-width:200px;overflow:hidden;display:none;box-shadow:0 20px 50px rgba(0,0,0,0.5);animation:fadeDown .18s ease-out}
+.lang-drawer.open{display:block}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.lang-option{padding:11px 18px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .12s;border-left:2px solid transparent}
+.lang-option:hover{background:var(--surface2);border-left-color:var(--accent);padding-left:20px}
+
+/* ── SECTIONS ── */
+.section{width:100%;padding:120px 24px;position:relative}
+.section-inner{max-width:1140px;margin:0 auto}
+.section-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border2) 30%,var(--border2) 70%,transparent);position:relative}
+.section-divider::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 16px var(--accent)}
+
+.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;color:var(--accent);margin-bottom:20px;display:inline-flex;align-items:center;gap:10px}
+.section-label::before{content:"";width:24px;height:1px;background:var(--accent)}
+[style*="text-align:center"].section-label{justify-content:center}
+
+h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-height:0.98;letter-spacing:1px;color:var(--text);margin-bottom:24px;font-weight:400}
+.section-body{font-size:17px;color:var(--muted2);max-width:700px;line-height:1.7;margin-bottom:48px}
+
+/* ── HERO ── */
+.hero{padding:160px 24px 100px;position:relative;text-align:center;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;top:-10%;left:50%;transform:translateX(-50%);width:1300px;height:1000px;
+  background:
+    radial-gradient(ellipse 600px 400px at center 45%,rgba(232,255,61,0.22),transparent 65%),
+    radial-gradient(ellipse at center,rgba(232,255,61,0.10),transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.hero::after{
+  content:"";position:absolute;bottom:0;left:0;right:0;height:200px;
+  background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none;z-index:0;
+}
+.hero > *{position:relative;z-index:2}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(232,255,61,0.06);border:1px solid rgba(232,255,61,0.25);padding:8px 16px;border-radius:100px;margin-bottom:32px}
+.hero-eyebrow::before{content:"";width:6px;height:6px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+/* THREE type tiers in the hero, each smaller than the one above:
+     h1 .............. clamp(38px, 5.4vw, 72px)   was clamp(54px, 8.2vw, 108px)
+     .hero-subhead ... clamp(26px, 3.6vw, 46px)   NEW — was the second half of the h1
+     .hero-sub ....... 19px                       unchanged
+   Both display lines used to live in one <h1> split by a <br>, so the punch line rendered at
+   the same 108px as the headline and the two fought each other. The subhead keeps --text and
+   the Bebas face — size alone carries the hierarchy — but not the h1's glow, so the headline
+   still reads as primary. */
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,5.4vw,72px);line-height:0.95;letter-spacing:1.5px;font-weight:400;max-width:980px;margin:0 auto 12px;color:var(--text);text-shadow:0 0 60px rgba(232,255,61,0.12),0 0 120px rgba(232,255,61,0.06)}
+.hero-subhead{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,3.6vw,46px);line-height:1.02;letter-spacing:1px;font-weight:400;max-width:860px;margin:0 auto 26px;color:var(--text)}
+.hero-sub{font-size:19px;color:var(--muted2);max-width:640px;margin:0 auto 24px;line-height:1.6}
+.hero-trust{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:48px}
+
+/* ── AUTH CARD ── */
+.auth-wrap{max-width:440px;margin:0 auto;position:relative}
+.auth-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border2);border-radius:16px;padding:32px;position:relative;box-shadow:var(--shadow-card),0 0 80px rgba(232,255,61,0.04);text-align:left}
+.auth-card::before,.auth-card::after{content:"";position:absolute;width:18px;height:18px;border:1px solid var(--accent);pointer-events:none}
+.auth-card::before{top:-1px;left:-1px;border-right:none;border-bottom:none;border-top-left-radius:16px}
+.auth-card::after{bottom:-1px;right:-1px;border-left:none;border-top:none;border-bottom-right-radius:16px}
+.auth-tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:4px}
+.auth-tab{flex:1;padding:10px 14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:center;cursor:pointer;border-radius:7px;transition:all .15s}
+.auth-tab.active{background:var(--surface2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--border2)}
+.auth-tab:not(.active):hover{color:var(--text)}
+.field-group{margin-bottom:14px}
+.field-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.field-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:all .15s}
+.field-input::placeholder{color:#444}
+.field-input:hover{border-color:var(--border2)}
+.field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,61,0.1);background:var(--surface)}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px 8px;border-radius:6px;transition:background .15s}
+.pw-toggle:hover{background:var(--surface2)}
+.auth-error{color:var(--red);font-size:12px;margin:8px 0;display:none;font-family:'DM Mono',monospace;letter-spacing:0.5px}
+/* Required Terms + Privacy consent. Deliberately NOT .field-label / .auth-note —
+   applyLandingLanguage() maps both of those positionally and a new node would shift it. */
+.consent-row{display:flex;align-items:flex-start;gap:9px;margin:12px 0 10px}
+.consent-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex:0 0 auto;margin-top:1px}
+.consent-text{font-family:'DM Mono',monospace;font-size:10px;line-height:1.6;color:var(--muted);cursor:pointer;letter-spacing:0.3px}
+.consent-text a{color:var(--accent);text-decoration:underline}
+.auth-btn{width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;margin-top:8px;transition:all .2s;position:relative;overflow:hidden}
+.auth-btn:hover:not(:disabled){background:var(--accent-pressed);box-shadow:0 10px 30px rgba(232,255,61,0.3),0 0 0 1px rgba(232,255,61,0.5);transform:translateY(-1px)}
+.auth-btn:disabled{opacity:0.6;cursor:not-allowed}
+.auth-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:14px;letter-spacing:0.5px;line-height:1.6}
+.auth-note a{color:var(--accent);cursor:pointer;text-decoration:none}
+.auth-note a:hover{text-decoration:underline}
+
+/* ── PASSWORD RESET OVERLAY (Supabase recovery) ── */
+.reset-overlay{position:fixed;inset:0;z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:90px 20px 40px;background:rgba(8,8,8,0.94);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%)}
+.reset-overlay.open{display:flex}
+.reset-overlay .auth-wrap{width:100%;max-width:440px}
+.reset-logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:6px;color:var(--accent);text-align:center;margin-bottom:24px;text-shadow:0 0 24px rgba(232,255,61,0.3)}
+.reset-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1.5px;color:var(--text);margin-bottom:8px;line-height:1.02}
+.reset-sub{font-size:13px;color:var(--muted2);margin-bottom:22px;line-height:1.6}
+
+/* ── GRIDS / CARDS ── */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
+.card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:14px;padding:32px;position:relative;transition:all .25s ease;overflow:hidden}
+.card::before{content:"";position:absolute;inset:0;border-radius:14px;padding:1px;background:linear-gradient(135deg,rgba(232,255,61,0.0),rgba(232,255,61,0.0));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;transition:background .3s}
+.card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 20px 50px -20px rgba(0,0,0,0.6)}
+.card:hover::before{background:linear-gradient(135deg,rgba(232,255,61,0.4),rgba(232,255,61,0))}
+
+/* Pain card variant — italic raw quotes */
+.card-a{font-family:'DM Sans',sans-serif;font-size:18px;font-style:italic;color:var(--text);line-height:1.55;font-weight:400;letter-spacing:-0.2px;position:relative;padding-left:18px}
+.card-a::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--accent2);border-radius:2px}
+
+/* Feature card */
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:14px;line-height:1.1;display:flex;align-items:center;gap:12px}
+.card-title::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.card-body{font-size:15px;color:var(--muted2);line-height:1.7}
+
+/* Testimonials */
+/* Testimonial card CSS retired with the section it styled — .testimonial-quote,
+   .testimonial-attr, .avatar, .attr-name and .attr-ctx have no elements left. */
+
+/* ── PT ANCHOR BAR ── */
+.pt-bar{
+  width:100%;padding:80px 24px;text-align:center;
+  background:
+    radial-gradient(ellipse at center,rgba(232,255,61,0.08),transparent 70%),
+    linear-gradient(180deg,#0c0c0c,#080808);
+  border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);
+  position:relative;overflow:hidden;
+}
+.pt-bar::before,.pt-bar::after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.pt-bar::before{top:0}.pt-bar::after{bottom:0}
+.pt-bar-line1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,4.5vw,52px);line-height:1.05;letter-spacing:1.5px;color:var(--text);max-width:900px;margin:0 auto 22px}
+.pt-bar-line1 .pt-highlight{color:var(--accent2);text-shadow:0 0 30px rgba(255,107,53,0.35)}
+.pt-bar-line2{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;letter-spacing:0;color:var(--muted2);text-transform:none;max-width:640px;margin:0 auto;line-height:1.65}
+
+/* ── PRICING ── */
+#pricing{padding:120px 24px}
+.pricing-meta{text-align:center;margin-bottom:32px}
+.pricing-sub{color:var(--muted2);font-size:15px;margin-bottom:8px}
+.pricing-currency-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.pricing-currency-note a{color:var(--accent);cursor:pointer;text-decoration:none}
+.pricing-currency-note a:hover{text-decoration:underline}
+
+.billing-toggle{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:56px;flex-wrap:wrap}
+.toggle-label{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color .15s;display:inline-flex;align-items:center;gap:10px}
+.toggle-label.active{color:var(--text)}
+.toggle-pill{width:52px;height:28px;background:var(--surface2);border:1px solid var(--border2);border-radius:100px;position:relative;cursor:pointer;transition:background .2s}
+.toggle-knob{position:absolute;top:2px;right:2px;width:22px;height:22px;background:var(--accent);border-radius:50%;transition:right .2s ease,transform .2s ease;box-shadow:0 0 12px rgba(232,255,61,0.5)}
+.toggle-pill.monthly .toggle-knob{right:calc(100% - 24px)}
+.save-badge{background:rgba(232,255,61,0.12);color:var(--accent);font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,61,0.25)}
+
+/* Two cards, not three. The track is sized to the cards and centred, rather than the cards
+   being stretched to fill a three-column track. align-items:start keeps each card at its
+   natural height and tops them off the same line — Iron ends where its 4 feature rows end,
+   beside Forge's 17, rather than being padded out to match. */
+.tier-cards{display:grid;grid-template-columns:repeat(2,minmax(0,var(--tier-card-max)));justify-content:center;gap:20px;align-items:start}
+.tier-card{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:all .25s ease;display:flex;flex-direction:column}
+.tier-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 30px 60px -25px rgba(0,0,0,0.7)}
+.tier-card.recommended{
+  border:1px solid rgba(232,255,61,0.5);
+  background:linear-gradient(180deg,#161611,var(--surface3));
+  box-shadow:0 0 0 1px rgba(232,255,61,0.2),0 30px 80px -20px rgba(232,255,61,0.18),0 40px 80px -30px rgba(0,0,0,0.8);
+  transform:translateY(-12px) scale(1.02);
+  z-index:2;
+}
+.tier-card.recommended::before{
+  content:"";position:absolute;inset:-1px;border-radius:16px;padding:1px;
+  background:linear-gradient(135deg,var(--accent),transparent 40%,transparent 60%,var(--accent));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0.6;
+}
+.tier-card.recommended:hover{transform:translateY(-16px) scale(1.02)}
+.tier-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2.5px;padding:5px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(232,255,61,0.4),0 1px 0 rgba(255,107,53,0.6) inset,0 -2px 0 var(--accent2) inset}
+.tier-name{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--text);margin-bottom:6px}
+.tier-tagline{font-size:13px;color:var(--muted2);margin-bottom:24px;line-height:1.5;min-height:38px}
+
+/* The headline price had no base font-size — only a 42px rule inside the 720px query — so it
+   rendered at the inherited 16px on desktop and 42px on mobile, smaller on the larger screen.
+   38px is the largest size that holds the widest combination (CHF monthly Forge: struck
+   "CHF 11.99" + "CHF 6.99" + "/mo") inside the 308px card interior, with 14.6px to spare.
+   42px overflows it by 2.2px. The 720px override still wins on mobile. */
+.tier-price-main{font-size:38px}
+/* Pinned to --dim, not --muted: with --muted raised, a 16px struck-through price started
+   competing with the live price beside it. Still brighter than it was before the raise. */
+.tier-price-was{font-family:'DM Mono',monospace;font-size:16px;color:var(--dim);text-decoration:line-through;letter-spacing:0.5px;margin-right:10px;vertical-align:middle}
+/* One step brighter than the plain card's --dim, because the recommended card sits on the
+   lighter --surface2. Same relationship the original had, both ends lifted. */
+.tier-card.recommended .tier-price-was{color:var(--muted)}
+.tf-soon{background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:4px;letter-spacing:0.5px;white-space:nowrap}
+.pricing-micro{text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:28px}
+.tier-card.recommended .tier-price-main{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.3)}
+.tier-price-period{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);letter-spacing:1px;margin-left:6px;font-weight:400}
+.tier-card.recommended .tier-price-period{color:var(--muted2)}
+.tier-price-note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.tier-features{display:flex;flex-direction:column;gap:11px;margin-bottom:28px;flex:1}
+.tier-feature{display:flex;align-items:flex-start;gap:11px;font-size:14px;color:var(--text);line-height:1.5}
+.tier-check{color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px;font-size:13px}
+.tier-btn{width:100%;border:none;border-radius:10px;padding:14px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:auto}
+.tier-btn.primary{background:var(--accent);color:var(--bg);box-shadow:0 6px 24px rgba(232,255,61,0.25)}
+.tier-btn.primary:hover{background:var(--accent-pressed);transform:translateY(-2px);box-shadow:0 12px 36px rgba(232,255,61,0.4)}
+.tier-btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.tier-btn.secondary:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,255,61,0.04)}
+
+/* ── OBJECTIONS ── */
+.objection-cards{display:flex;flex-direction:column;gap:16px;margin-top:48px}
+.objection-cards .card{padding:30px 36px 32px;background:linear-gradient(180deg,#121212,#0e0e0e);border-color:var(--border);position:relative}
+.objection-cards .card::after{content:"";position:absolute;left:36px;top:74px;bottom:30px;width:1px;background:linear-gradient(to bottom,var(--border2),transparent);pointer-events:none}
+.obj-q{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--accent);margin-bottom:14px;line-height:1.2;position:relative;padding-left:32px}
+.obj-q::before{content:"Q";position:absolute;left:0;top:1px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--bg);background:var(--accent);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+.obj-a{font-size:15px;color:var(--muted2);line-height:1.75;position:relative;padding-left:32px}
+.obj-a::before{content:"A";position:absolute;left:0;top:2px;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--muted2);background:transparent;border:1px solid var(--border2);width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:0;line-height:1}
+
+/* ── FINAL CTA ── */
+.final-cta{
+  background:
+    radial-gradient(ellipse at center top,rgba(232,255,61,0.07),transparent 60%),
+    var(--bg);
+  padding:140px 24px 120px;position:relative;
+}
+.final-cta h2{text-align:center}
+.final-cta-body{font-size:17px;color:var(--muted2);margin:24px auto 40px;line-height:1.7}
+
+/* ── FOOTER ── */
+.footer{padding:64px 28px 40px;border-top:1px solid var(--border);background:#070707;position:relative}
+.footer::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:300px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
+.footer-inner{max-width:1140px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap}
+.footer-brand{display:flex;flex-direction:column;gap:6px}
+.footer-wordmark{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:6px;color:var(--accent);text-shadow:0 0 24px rgba(232,255,61,0.3);line-height:1}
+.footer-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.footer-right{display:flex;gap:28px;align-items:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.footer-link{color:var(--muted);text-decoration:none;transition:color .15s;position:relative}
+.footer-link:hover{color:var(--accent)}
+.footer-bottom{max-width:1140px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#444;text-align:center}
+
+/* ── FOOTER CONTACT PANEL ──
+   The Contact footer link is a <button> (it reveals a panel, it does not navigate).
+   .footer-link gives it the same colour + hover as its <a> neighbours; these resets
+   strip the UA button styling so it sits on the same baseline in the flex row.
+   font: inherit does not carry letter-spacing or text-transform, so both are set. */
+.footer-link-btn{background:none;border:none;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.footer-link-btn[aria-expanded="true"]{color:var(--accent)}
+/* Wrapper is always in flow but collapses to zero height while the panel is
+   display:none, so opening the panel never shifts the footer above it. */
+.contact-panel-wrap{max-width:1140px;margin:0 auto;display:flex;justify-content:flex-end}
+.contact-panel{display:none;flex-direction:column;gap:10px;margin-top:18px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow-card);animation:fadeDown .18s ease-out;text-align:left}
+.contact-panel.open{display:flex}
+/* The address is real selectable text, not just an href target — it stays readable
+   and copyable on any browser with no mailto: handler registered. */
+.contact-email{font-family:'DM Mono',monospace;font-size:13px;letter-spacing:0.5px;color:var(--accent);text-decoration:none;word-break:break-all;-webkit-user-select:text;user-select:text}
+.contact-email:hover{text-decoration:underline}
+
+/* ── REVEAL ANIMATION ── */
+/* ── NEW COMPONENTS (homepage copy pass) ── */
+/* Nav route to the coaches landing page. Sits inside .nav-right, before the currency
+   selector, so it never competes with the CTA for the flex end. */
+.nav-link{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted2);text-decoration:none;white-space:nowrap;flex-shrink:0;padding:8px 4px;transition:color .15s}
+.nav-link:hover{color:var(--accent)}
+/* Two labels, one link. Below 720px the nav carries logo + this link + currency select +
+   language + CTA on a 390px line; the full "For Coaches" / "Pour les coachs" pushed the CTA
+   past the right edge, so the short label takes over. Both carry data-i18n, so the swap is
+   still translated. */
+.nav-link-short{display:none}
+
+/* Problem cards. Deliberately a FLAT --surface2 rather than the --surface -> --surface3
+   gradient every other .card carries, so the four composite reader lines read as a distinct
+   band between the paragraph above and the feature cards below. Radius is inherited from
+   .card, which is what keeps them matching the feature blocks. */
+.card-pain{background:var(--surface2);border-color:var(--border2)}
+
+/* Founder story. One verified quote replacing the four testimonial cards. */
+.why-sub{font-style:italic}
+.founder-quote{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:14px;padding:36px;max-width:760px;margin-top:8px}
+.founder-quote-text{font-family:'DM Sans',sans-serif;font-size:18px;font-style:italic;color:var(--text);line-height:1.7;letter-spacing:-0.2px}
+.founder-attr{margin-top:22px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+
+/* Three-way billing control. The two-state pill could not carry a third option, so the
+   labels themselves became the control. .toggle-label still supplies type and the .active
+   colour; .toggle-seg only adds the button reset and the selected chip. */
+.toggle-seg{background:transparent;border:1px solid transparent;border-radius:100px;padding:8px 14px;cursor:pointer;font:inherit;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;transition:color .15s,background .15s,border-color .15s}
+.toggle-seg:hover{color:var(--text)}
+.toggle-seg.active{background:var(--surface2);border-color:var(--border2)}
+
+/* Lifetime payback line. Same slot as .tier-price-note, but a sentence rather than a mono
+   label, so it drops the uppercase mono treatment and keeps the divider. */
+.tier-lt-note{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+/* Forge "coming next" line — prose under the ticked list, not a ticked row. */
+.tier-soon-note{font-size:12px;font-style:italic;color:var(--muted);line-height:1.6;margin:-14px 0 24px}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+.reveal-stagger > *{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal-stagger.in > *{opacity:1;transform:translateY(0)}
+.reveal-stagger.in > *:nth-child(1){transition-delay:.05s}
+.reveal-stagger.in > *:nth-child(2){transition-delay:.15s}
+.reveal-stagger.in > *:nth-child(3){transition-delay:.25s}
+.reveal-stagger.in > *:nth-child(4){transition-delay:.35s}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px){
+  /* Stack. One centred column, still capped, so a lone card never runs the full container
+     width. justify-content:center carries over from the base rule. */
+  .tier-cards{grid-template-columns:minmax(0,var(--tier-card-stack-max));gap:24px}
+  .tier-card.recommended{transform:none;order:-1}
+  .tier-card.recommended:hover{transform:translateY(-4px)}
+}
+@media (max-width: 720px){
+  .nav{padding:0 12px;height:56px;gap:8px}
+  .nav-logo-sub{display:none}
+  .nav-logo-name{font-size:20px;letter-spacing:3px}
+  .nav-right{gap:4px}
+  /* max-width trimmed 96 -> 80 to make room for the new .nav-link without pushing the CTA
+     off the right edge. The select already ellipsises at this size, so it reads "CHF — S…";
+     the currency is spelled out in full under the pricing heading either way.
+     Budget at 390px, EN worst case (DM Mono advance 0.60em, Bebas 0.42em):
+     padding 24 + logo 57 + link 51 + select 80 + lang 30 + cta 119 + 4 gaps 16 = 377. */
+  .currency-select{padding:6px 6px;font-size:10px;max-width:80px;text-overflow:ellipsis}
+  .nav-link{font-size:9px;letter-spacing:0.8px;padding:6px 2px}
+  .nav-link-full{display:none}
+  .nav-link-short{display:inline}
+  .billing-toggle{gap:6px}
+  .toggle-seg{padding:7px 10px;font-size:11px;letter-spacing:1.2px}
+  .founder-quote{padding:26px 22px}
+  .founder-quote-text{font-size:16px}
+  #langBtn{padding:6px 8px !important;font-size:14px !important}
+  /* Trimmed from 9.5px/1.2 to make room for .nav-link. Budget at 390px, EN worst case:
+     pad 24 + logo 57 + link 51 + select 84 + lang 30 + cta 119 + 4 gaps 20 = 385. */
+  .nav-cta{padding:8px 10px;font-size:9px;letter-spacing:0.8px;white-space:nowrap}
+  .section{padding:72px 16px}
+  .hero{padding:110px 16px 70px}
+  /* Continuous across the 720px boundary: the base clamps land on 38.9px / 25.9px at exactly
+     720px, and these pick up from there. At 390px: 30px / 22px / 15px. */
+  .hero h1{font-size:clamp(30px,5.4vw,40px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto}
+  .hero-subhead{font-size:clamp(22px,3.6vw,26px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;margin-bottom:20px}
+  .hero-sub{font-size:15px;padding:0 4px}
+  .hero-eyebrow{font-size:10px;letter-spacing:2px;padding:7px 12px}
+  .hero-trust{font-size:10px;letter-spacing:1.5px}
+  h2{font-size:clamp(34px,8.5vw,48px);letter-spacing:0.5px;word-wrap:break-word;overflow-wrap:break-word}
+  .grid-2{grid-template-columns:1fr;gap:14px;margin-top:32px}
+  .card{padding:24px 20px}
+  .pt-bar{padding:56px 16px}
+  .pt-bar-line1{font-size:clamp(26px,6.5vw,38px);letter-spacing:0.5px}
+  .pt-bar-line2{font-size:15px}
+  .auth-wrap{max-width:100%;padding:0 4px}
+  .auth-card{padding:22px 18px;border-radius:14px}
+  .field-input{font-size:16px}
+  .objection-cards .card{padding:24px 22px}
+  .objection-cards .card::after{left:22px;top:64px;bottom:24px}
+  .obj-q{font-size:20px;padding-left:28px}
+  .obj-a{padding-left:28px;font-size:14px}
+  .tier-card{padding:30px 22px}
+  .tier-name{font-size:28px}
+  /* Was a flat 42px, which wrapped every CHF price onto two lines below ~430px. The struck
+     price (16px) and /mo (13px) are a fixed ~133px of the card interior, so the headline has
+     only what is left: at 320px it can be 22px, at 390px 38px. This tracks the card, which is
+     viewport-led here (interior = 100vw - 94px), and keeps ~10% headroom for a fallback font.
+     Reaches the original 42px at 430px and holds it up to the 720px edge. */
+  .tier-price-main{font-size:clamp(20px,20vw - 44px,42px)}
+  .footer{padding:48px 18px 32px}
+  .footer-inner{flex-direction:column;align-items:center;text-align:center;gap:24px}
+  .footer-right{gap:18px;flex-wrap:wrap;justify-content:center}
+  .contact-panel-wrap{justify-content:center}
+  .contact-panel{width:100%}
+  .footer-wordmark{font-size:28px;letter-spacing:5px}
+  .section-divider::after{width:5px;height:5px}
+}
+@media (max-width: 380px){
+  .nav-logo-name{font-size:18px;letter-spacing:2.5px}
+  .nav-right{gap:4px}
+  .currency-select{font-size:9px;padding:5px;max-width:72px}
+  .nav-link{font-size:8.5px;letter-spacing:0.5px}
+  .nav-cta{padding:7px 8px}
+  .hero h1{font-size:clamp(28px,5.4vw,34px)}
+  .hero-subhead{font-size:clamp(20px,3.6vw,24px)}
+}
+</style>
+<style>
+/* ══ AD LANDING PAGE ONLY ══
+   Everything above this block is index.html's stylesheet, copied verbatim at build
+   time. Nothing here overrides it — these are the long-form prose classes index.html
+   has no equivalent for. Variables only, no literal colours. */
+/* --shadow-rgb is defined in coaches.html's token block but not in index.html's.
+   Declared here so the shadow below reads a token instead of a literal colour. */
+:root{--shadow-rgb:0,0,0}
+.nav-logo-link{text-decoration:none;color:inherit;display:block;flex-shrink:0}
+.ad-inner{max-width:760px;margin:0 auto}
+.ad-prose p{font-family:'DM Sans',sans-serif;font-size:17px;line-height:1.85;color:var(--muted2);margin-bottom:22px;letter-spacing:-0.1px}
+.ad-prose p:last-child{margin-bottom:0}
+.ad-quote{margin-top:34px;max-width:100%}
+.ad-prose-after{margin-top:22px}
+.ad-hero-cta{display:inline-block;background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:16px 28px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;cursor:pointer;margin-bottom:22px;transition:all .2s;line-height:1}
+.ad-hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(var(--shadow-rgb),0.45)}
+.ad-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:44px}
+.ad-step{background:linear-gradient(180deg,var(--surface),var(--surface3));border:1px solid var(--border);border-radius:14px;padding:30px 28px}
+.ad-step-n{display:block;font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;letter-spacing:2px;color:var(--accent);margin-bottom:14px}
+.ad-step-t{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:600;color:var(--text);line-height:1.4;letter-spacing:-0.3px;margin-bottom:10px}
+.ad-step-b{font-size:15px;line-height:1.7;color:var(--muted2)}
+.ad-after{margin-top:30px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+.ad-block{margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
+.ad-block:first-of-type{margin-top:44px;padding-top:0;border-top:none}
+.ad-block-t{font-family:'DM Sans',sans-serif;font-size:21px;font-weight:600;color:var(--text);line-height:1.4;letter-spacing:-0.3px;margin-bottom:18px}
+.ad-close-trust{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.5px;color:var(--muted);margin-top:16px}
+/* NAV BUDGET — these pages carry TWO .nav-link items (Home + For Coaches); index.html
+   carries one, so its own tightening at 720px is too late here. Measured headless: the
+   desktop-sized nav stops fitting at ~882px in EN and ~911px in FR ("Accueil" +
+   "Pour les coachs"), so the short labels and the tightened controls come in at 920px.
+   Above that the nav has 28px of clearance at every width tested up to 1440. */
+@media (max-width: 920px){
+  .nav-logo-sub{display:none}
+  .nav-link-full{display:none}
+  .nav-link-short{display:inline}
+  .currency-select{max-width:72px}
+  .nav-cta{padding:9px 11px;letter-spacing:1.2px}
+}
+@media (max-width: 900px){ .ad-steps{grid-template-columns:1fr} }
+@media (max-width: 380px){
+  .currency-select{max-width:56px}
+  .nav-link{font-size:8px;letter-spacing:0.4px}
+  .nav-cta{padding:7px 6px;font-size:8.5px}
+}
+@media (max-width: 720px){
+  /* index.html's nav budget at 390px was sized for ONE .nav-link and landed at 377/390.
+     These pages carry a second link (Home), so the select and the CTA give back the
+     ~33px it costs: select 80 -> 64, CTA padding 10 -> 7. Budget at 390px, EN worst case:
+     padding 24 + logo 57 + home 29 + coaches 47 + select 64 + lang 30 + cta 113
+     + 5 gaps 20 = 384. */
+  .currency-select{max-width:64px}
+  .nav-cta{padding:8px 7px;letter-spacing:0.6px}
+  .ad-prose p{font-size:16px;line-height:1.8;margin-bottom:20px}
+  .ad-step{padding:24px 20px}
+  .ad-block-t{font-size:19px}
+  .ad-hero-cta{font-size:11px;padding:14px 22px;letter-spacing:1.8px}
+  .ad-quote{margin-top:28px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a class="nav-logo-link" href="index.html" aria-label="FORGE home"><div class="nav-logo">
+    <span class="nav-logo-name">FORGE</span>
+    <span data-i18n="nav_logo_sub" class="nav-logo-sub">AI Performance Coach</span>
+  </div></a>
+  <div class="nav-right">
+    <a class="nav-link" href="index.html" aria-label="Home"><span class="nav-link-full" data-i18n="nav_home">Home</span><span class="nav-link-short" data-i18n="nav_home_short">Home</span></a>
+    <a class="nav-link" href="coaches.html" aria-label="For Coaches"><span class="nav-link-full" data-i18n="nav_coaches">For Coaches</span><span class="nav-link-short" data-i18n="nav_coaches_short">Coaches</span></a>
+    <select class="currency-select" id="currencySelect" onchange="setCurrency(this.value)">
+      <option value="CHF">CHF — Switzerland</option>
+      <option value="GBP">GBP — United Kingdom</option>
+      <option value="EUR">EUR — Europe</option>
+      <option value="USD">USD — United States</option>
+    </select>
+    <!-- Language selector -->
+    <button id="langBtn" onclick="toggleLangDrawer()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:16px;color:var(--text);line-height:1;transition:all .15s">🇬🇧</button>
+    <button class="nav-cta" onclick="scrollToAuth()" data-i18n="nav_trial_btn">Start free trial</button>
+  </div>
+</nav>
+
+<!-- LANG DRAWER -->
+<div id="langDrawer" class="lang-drawer">
+  <div class="lang-option" onclick="selectLang('en')">🇬🇧 English</div>
+  <div class="lang-option" onclick="selectLang('fr')">🇫🇷 Français</div>
+</div>
+
+<section class="hero" id="hero">
+  <div class="hero-eyebrow reveal" data-i18n="hero_eyebrow">For anyone starting out</div>
+  <h1 class="reveal" data-i18n="hero_h1">You've had a gym membership for a year. You've trained properly for about three months of it.</h1>
+  <p class="hero-sub reveal" data-i18n="hero_sub">The problem was never motivation. You just never knew what you were supposed to be doing when you got there.</p>
+  <button type="button" class="ad-hero-cta reveal" onclick="scrollToAuth()" data-i18n="hero_cta">Start free trial — no card</button>
+  <div class="hero-trust reveal" data-i18n="hero_trust">7 days free · No card required · Built for people starting out</div>
+
+  <div class="auth-wrap reveal" id="hero-auth">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-signup-hero" data-i18n="auth_tab_signup" onclick="switchTab('hero','signup')">Create account</div>
+          <div class="auth-tab" id="tab-signin-hero" data-i18n="auth_tab_signin" onclick="switchTab('hero','signin')">Sign in</div>
+        </div>
+        <!-- SIGNUP -->
+        <div id="form-signup-hero">
+          <div class="field-group"><div data-i18n="auth_name" class="field-label">Full Name</div><input class="field-input" type="text" id="hero-name" placeholder="Your name"></div>
+          <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
+          <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="hero-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+          <div class="consent-row">
+            <input type="checkbox" id="hero-consent">
+            <label class="consent-text" for="hero-consent" data-i18n-html="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+          </div>
+          <!-- Marketing consent. SEPARATE from the box above and UNTICKED BY DEFAULT — the
+               Terms/Privacy box does not cover marketing email, and a pre-ticked box is not
+               consent. Never add `checked` here. -->
+          <div class="consent-row">
+            <input type="checkbox" id="hero-marketing">
+            <label class="consent-text" for="hero-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
+          </div>
+          <div class="auth-error" id="hero-signup-error"></div>
+          <div data-i18n="auth_tab_note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
+          <div data-i18n="auth_note_below" class="auth-note">7 days free. No card required, cancel anytime.</div>
+        </div>
+        <!-- SIGNIN -->
+        <div id="form-signin-hero" style="display:none">
+          <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-signin-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-signin-password',this)" type="button">👁</button></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="hero-remember-me" style="width:15px;height:15px;accent-color:#e8ff3d;cursor:pointer;">
+              <label data-i18n="auth_remember" for="hero-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">REMEMBER ME</label>
+            </div>
+            <button data-i18n="auth_forgot" type="button" onclick="showForgotLanding('hero')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">FORGOT?</button>
+          </div>
+          <div class="auth-error" id="hero-signin-error"></div>
+          <button data-i18n="auth_signin_btn" class="auth-btn" onclick="doSignin('hero')">Sign in</button>
+          <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab('hero','signup')" data-i18n="auth_start_trial">Start your free trial</a></div>
+          <div id="hero-forgot" style="display:none;margin-top:8px;">
+            <div data-i18n="auth_reset_hint" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">Enter your email and we'll send you a reset link.</div>
+            <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-reset-email" placeholder="your@email.com"></div>
+            <div class="auth-error" id="hero-reset-error"></div>
+            <button data-i18n="auth_reset_btn" class="auth-btn" onclick="sendResetLanding('hero')">Send Reset Link</button>
+            <button data-i18n="auth_back_signin" type="button" onclick="hideForgotLanding('hero')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;">← Back to sign in</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s2_label">The actual problem</div>
+    <h2 class="reveal" data-i18n="s2_h2">You're the only one guessing.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s2_p1">You walk in. You do the machines you recognise. Maybe some treadmill. Some curls, because you know what curls are.</p>
+      <p data-i18n="s2_p2">You spend more time watching what everyone else is doing than actually training.</p>
+      <p data-i18n="s2_p3">You've got eight exercises saved in your Notes app and a folder of TikToks you've never opened twice. You don't know what order they go in. You don't know what weight you're supposed to use.</p>
+      <p data-i18n="s2_p4">So you pick whatever's free and hope it's roughly right.</p>
+      <p data-i18n="s2_p5">Then you go two weeks without going, because what's the point if you don't know if any of it's working.</p>
+      <p data-i18n="s2_p6">Everyone else in there looks like they know exactly what they're doing.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s3_label">You're not bad at this</div>
+    <h2 class="reveal" data-i18n="s3_h2">That's what it looks like when nobody ever told you what to do.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s3_p1">Somewhere in the last year you decided you're just not built for it.</p>
+      <p data-i18n="s3_p2">You watched someone load up a bar and thought yeah, that's not me. You used the same 10kg dumbbells for a month and never asked whether you should be on 12.5, because you had no idea how you'd know.</p>
+      <p data-i18n="s3_p3">That's not weakness. That's not bad genetics.</p>
+      <p data-i18n="s3_p4">Nobody is naturally good at the gym. Every single person in there who looks like they know what they're doing was taught, followed something, or spent years working it out badly.</p>
+      <p data-i18n="s3_p5">You just went straight to the working-it-out-badly part.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s4_label">Why the free stuff didn't work</div>
+    <h2 class="reveal" data-i18n="s4_h2">You needed someone to tell you what to do today.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s4_p1">It's not that the information was wrong. It's that it wasn't instructions.</p>
+      <p data-i18n="s4_p2">A saved workout tells you 3 sets of 10. With what weight? How long do you rest? What if you can't do ten? What if ten's easy — do you go up next time, and by how much?</p>
+      <p data-i18n="s4_p3">None of that's there. So you follow it for a week and quietly stop.</p>
+      <p data-i18n="s4_p4">A YouTube video teaches you one exercise. It doesn't tell you what to do on Tuesday.</p>
+      <p data-i18n="s4_p5">ChatGPT hands you a huge list with loads of exercises and no idea what you actually do when you walk in the door.</p>
+      <p data-i18n="s4_p6">A free app gives you a plan on day one and then never changes it. Have a terrible session, come back destroyed, and it says the same thing it was always going to say.</p>
+      <p data-i18n="s4_p7">Every one of those assumes you already know the things you're trying to find out.</p>
+      <p data-i18n="s4_p8">You didn't need more information.</p>
+    </div>
+    <blockquote class="founder-quote ad-quote reveal">
+      <p class="founder-quote-text" data-i18n="q4_text">I paid CHF 360 once for a coaching programme that promised exactly that. It arrived about a minute after I signed up. There's no version of that where someone actually looked at my situation in sixty seconds. That's not personal. That's a template with my name typed onto it.</p>
+      <div class="founder-attr" data-i18n="q4_attr">— Kevin, founder</div>
+    </blockquote>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s5_label">What actually works</div>
+    <h2 class="reveal" data-i18n="s5_h2">You need something that knows what happened last time.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s5_p1">Two things, and they have to come together.</p>
+      <p data-i18n="s5_p2">Something that tells you exactly what to do when you walk in — which exercise, how many sets, what weight, what to do if it's too easy or too hard.</p>
+      <p data-i18n="s5_p3">And something that changes it based on how it actually went.</p>
+      <p data-i18n="s5_p4">That second part is what everything free is missing. A list can't know that leg day wrecked you for three days. A PDF can't know you couldn't work out how to use the machine so you skipped it.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s6_label">How FORGE works</div>
+    <h2 class="reveal" data-i18n="s6_h2">Four steps.</h2>
+    <div class="ad-steps reveal-stagger">
+      <div class="ad-step">
+        <span class="ad-step-n">1</span>
+        <div class="ad-step-t" data-i18n="s6_1_t">It asks where you're actually at.</div>
+        <div class="ad-step-b" data-i18n="s6_1_b">Not a test. It asks what you've done, what equipment you've got, what days you can train, and what you want. No wrong answers. Under two minutes.</div>
+      </div>
+      <div class="ad-step">
+        <span class="ad-step-n">2</span>
+        <div class="ad-step-t" data-i18n="s6_2_t">It gives you a plan you can actually do.</div>
+        <div class="ad-step-b" data-i18n="s6_2_b">Not a six-day bodybuilding split. Something that fits your week and starts where you are.</div>
+      </div>
+      <div class="ad-step">
+        <span class="ad-step-n">3</span>
+        <div class="ad-step-t" data-i18n="s6_3_t">You log what you did.</div>
+        <div class="ad-step-b" data-i18n="s6_3_b">Tap the weight and reps. Say if something was too hard, too easy, or you couldn't do it.</div>
+      </div>
+      <div class="ad-step">
+        <span class="ad-step-n">4</span>
+        <div class="ad-step-t" data-i18n="s6_4_t">Next session changes.</div>
+        <div class="ad-step-b" data-i18n="s6_4_b">The target moves up when you are ready. It eases off when you overdid it. It swaps exercises you could not do.</div>
+      </div>
+    </div>
+    <div class="ad-after reveal" data-i18n="s6_after">Then it goes again.</div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s7_label">The first week</div>
+    <h2 class="reveal" data-i18n="s7_h2">What that looks like in week one.</h2>
+    <div class="ad-block reveal">
+      <div class="ad-block-t" data-i18n="s7_1_t">When you overdo it, it notices.</div>
+      <div class="ad-prose">
+      <p data-i18n="s7_1_p1">First couple of leg sessions leave you barely able to walk. Not injured — just wrecked. Tell it. The next session doesn't smash your legs again and tell you to push through. It pulls back.</p>
+      </div>
+    </div>
+    <div class="ad-block reveal">
+      <div class="ad-block-t" data-i18n="s7_2_t">When you can't do something, you say so.</div>
+      <div class="ad-prose">
+
+      </div>
+      <blockquote class="founder-quote ad-quote">
+        <p class="founder-quote-text" data-i18n="q7_text">My gym didn't have a hack squat once. FORGE swapped it for something that did the same job — I didn't have to stand there guessing what to do instead. Another time, a hamstring curl machine was giving me discomfort. I told it, and it moved me to Romanian deadlifts instead. The discomfort went.</p>
+        <div class="founder-attr" data-i18n="q7_attr">— Kevin, founder</div>
+      </blockquote>
+      <div class="ad-prose ad-prose-after">
+      <p data-i18n="s7_2_p1">That's a small thing that isn't small. With a normal programme, the answer when something doesn't work for you is: well, that's what it says, do it anyway.</p>
+      </div>
+    </div>
+    <div class="ad-block reveal">
+      <div class="ad-block-t" data-i18n="s7_3_t">It remembers.</div>
+      <div class="ad-prose">
+      <p data-i18n="s7_3_p1">You don't explain yourself twice. Tell it once that you can't do something and it stays gone.</p>
+      </div>
+    </div>
+    <div class="ad-block reveal">
+      <div class="ad-block-t" data-i18n="s7_4_t">It tells you when you've done enough.</div>
+      <div class="ad-prose">
+      <p data-i18n="s7_4_p1">There's a thing beginners get stuck on — if you're not completely destroyed, you assume you did it wrong. FORGE will tell you no, that was the right amount, go home.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s8_label">No judgement</div>
+    <h2 class="reveal" data-i18n="s8_h2">It won't make you feel stupid.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s8_p1">Fair warning about the AI thing: you're probably wondering how software knows what someone who's never trained properly should be doing.</p>
+      <p data-i18n="s8_p2">Two answers.</p>
+      <p data-i18n="s8_p3">It asks first. Nothing gets prescribed before it knows what you've actually done and what you've got access to.</p>
+      <p data-i18n="s8_p4">And it's built on training rules, not guesswork. It can't hand you the thirty-set nightmare programme that ChatGPT will confidently give anyone who asks. There are limits on what it's allowed to prescribe you, and those limits are the point.</p>
+      <p data-i18n="s8_p5">You can ask it anything. What the exercise is. Whether you're doing it right. Whether the weight's too light. Nobody's watching, nobody's judging, and it won't assume you already know.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s9_label">It starts where you are</div>
+    <h2 class="reveal" data-i18n="s9_h2">You don't need to be ready. You need to start.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s9_p1">Three days a week. Two, if that's what's realistic. Thirty-five minutes on the days you're pushed.</p>
+      <p data-i18n="s9_p2">Just machines, if the free weights area still feels like too much. It'll get you there when you're ready — and moving there is a step it plans, not a leap you make on your own.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-inner">
+    <div data-i18n="price_label" class="section-label reveal" style="text-align:center;display:flex;justify-content:center">Pricing</div>
+    <h2 data-i18n="price_h2" class="reveal" style="text-align:center">Choose your level.</h2>
+    <div class="pricing-meta reveal">
+      <div data-i18n="price_sub" class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
+      <div class="pricing-currency-note"><span data-i18n="showing_prices">Showing prices in</span> <span id="currencyLabel">CHF</span> — <a data-i18n="change_currency" onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span data-i18n="currency_charge_note" id="currency-charge-note">You'll be charged in the currency you choose</span></div>
+    </div>
+    <!-- Three-way billing control. The old two-state .toggle-pill could not carry a third
+         option, so the labels became the control itself. setBilling() drives it; there is no
+         toggleBilling() any more. -->
+    <div class="billing-toggle reveal" role="group" aria-label="Billing period">
+      <button data-i18n="billing_monthly" type="button" class="toggle-label toggle-seg" id="lbl-monthly" onclick="setBilling('monthly')">Monthly</button>
+      <button type="button" class="toggle-label toggle-seg active" id="lbl-annual" data-i18n-html="billing_annual_html" onclick="setBilling('annual')">Annual <span data-i18n="price_save_badge" class="save-badge">Save 40%+</span></button>
+      <button data-i18n="billing_lifetime" type="button" class="toggle-label toggle-seg" id="lbl-lifetime" onclick="setBilling('lifetime')">Lifetime</button>
+    </div>
+
+    <!-- SUBSCRIPTION CARDS (monthly / annual). Every figure below is placeholder markup —
+         updatePrices() overwrites #iron-price / #iron-note / #forge-price / #forge-note on
+         load and on every currency or billing change. Never hand-edit a price here. -->
+    <div class="tier-cards reveal-stagger" id="tier-cards-sub">
+      <!-- IRON -->
+      <div class="tier-card">
+        <div class="tier-name">⚙️ Iron</div>
+        <div data-i18n="price_iron_tag" class="tier-tagline">Start training with a real plan.</div>
+        <div class="tier-price-main" id="iron-price"><span class="tier-price-was">CHF 4.08</span>CHF 2.92<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="iron-note">billed CHF 35/year</div>
+        <div class="tier-features" id="iron-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_1" class="tf-text">AI-generated workout programme</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_2" class="tf-text">AI-generated 7-day nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_3" class="tf-text">Workout logging (per-set)</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_4" class="tf-text">Streak tracking &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_5" class="tf-text">Personal records detection</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_6" class="tf-text">Daily push reminders</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_7" class="tf-text">7 app themes · 2 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_8" class="tf-text">AI coach — 20 messages/month</span></div>
+        </div>
+        <button data-i18n="price_btn" class="tier-btn secondary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+      <!-- FORGE -->
+      <div class="tier-card recommended">
+        <div data-i18n="price_recommended" class="tier-badge">MOST POPULAR</div>
+        <div class="tier-name">🔥 Forge</div>
+        <div data-i18n="price_forge_tag" class="tier-tagline">The whole system. Nothing held back.</div>
+        <div class="tier-price-main" id="forge-price"><span class="tier-price-was">CHF 6.58</span>CHF 4.08<span class="tier-price-period">/mo</span></div>
+        <div class="tier-price-note" id="forge-note">billed CHF 49/year</div>
+        <div class="tier-features" id="forge-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_0" class="tf-text">Everything in Iron</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_1" class="tf-text">Uncapped AI coach — unlimited daily messages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_2" class="tf-text">Full exercise video demonstration library</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_3" class="tf-text">The Forge Audit — monthly performance deep-dive</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_4" class="tf-text">Progress trend report</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_5" class="tf-text">Programme recalibration</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_6" class="tf-text">Goal trajectory forecast</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_7" class="tf-text">Recovery &amp; consistency scoring</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_8" class="tf-text">Weekly AI performance review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_9" class="tf-text">Post-workout AI check-in</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_10" class="tf-text">Progressive overload tracker</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_11" class="tf-text">Body metrics &amp; AI insights</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_12" class="tf-text">Plan editing via AI chat</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_13" class="tf-text">Deload detection &amp; alerts</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_14" class="tf-text">Weekly shopping list</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_15" class="tf-text">Multiple saved programmes</span></div>
+        </div>
+        <div data-i18n="forge_soon" class="tier-soon-note" id="forgeSoon">Coming next: Apple Health sync, Garmin sync, nutrition barcode scanner, priority support, and early access to new features.</div>
+        <button data-i18n="price_btn" class="tier-btn primary" onclick="scrollToAuth()">Start free trial</button>
+      </div>
+    </div>
+
+    <!-- LIFETIME CARDS. Awareness only: both CTAs are scrollToAuth(), the SAME signup flow as
+         every other CTA on this page. There is no lifetime checkout from the landing page —
+         the purchase happens in-app after signup. Prices and the payback sentence are written
+         by updatePrices(); the markup below is placeholder.
+         No .reveal-stagger here on purpose: this grid starts display:none, so the
+         IntersectionObserver would never fire on it and it would unhide at opacity 0. -->
+    <div class="tier-cards" id="tier-cards-lifetime" style="display:none">
+      <div class="tier-card">
+        <div data-i18n="lt_iron_name" class="tier-name" id="lt-iron-name">⚙️ Iron — Founding Member</div>
+        <div class="tier-price-main" id="lt-iron-price">CHF 149<span class="tier-price-period">one-time</span></div>
+        <div class="tier-lt-note" id="lt-iron-note">At CHF 35/year, this pays for itself in 51 months. Everything in Iron. Forever. No monthly fees.</div>
+        <div class="tier-features" id="lt-iron-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_1" class="tf-text">AI-generated workout programme</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_2" class="tf-text">AI-generated 7-day nutrition plan</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_3" class="tf-text">Workout logging (per-set)</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_4" class="tf-text">Streak tracking &amp; badges</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_5" class="tf-text">Personal records detection</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_6" class="tf-text">Daily push reminders</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_7" class="tf-text">7 app themes · 2 languages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_iron_8" class="tf-text">AI coach — 20 messages/month</span></div>
+        </div>
+        <button data-i18n="lt_btn" class="tier-btn secondary" onclick="scrollToAuth()">Create account</button>
+      </div>
+      <div class="tier-card recommended">
+        <div data-i18n="lt_forge_name" class="tier-name" id="lt-forge-name">🔥 Forge — Founding Member</div>
+        <div class="tier-price-main" id="lt-forge-price">CHF 249<span class="tier-price-period">one-time</span></div>
+        <div class="tier-lt-note" id="lt-forge-note">At CHF 49/year, this pays for itself in 61 months. The full coaching system. Forever.</div>
+        <div class="tier-features" id="lt-forge-features">
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_0" class="tf-text">Everything in Iron</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="lt_forge_unlimited" class="tf-text">Unlimited AI coach messages</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_8" class="tf-text">Weekly AI performance review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_9" class="tf-text">Post-workout AI check-in</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_10" class="tf-text">Progressive overload tracker</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_11" class="tf-text">Body metrics &amp; AI insights</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_12" class="tf-text">Plan editing via AI chat</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_13" class="tf-text">Deload detection &amp; alerts</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_14" class="tf-text">Weekly shopping list</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="feat_forge_15" class="tf-text">Multiple saved programmes</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="lt_forge_deepdive" class="tf-text">Monthly AI deep-dive coaching review</span></div>
+          <div class="tier-feature"><span class="tier-check">✓</span><span data-i18n="lt_forge_videos" class="tf-text">Exercise video demonstrations</span></div>
+        </div>
+        <button data-i18n="lt_btn" class="tier-btn primary" onclick="scrollToAuth()">Create account</button>
+      </div>
+    </div>
+    <div class="pricing-micro reveal" id="pricingMicro">7-day free trial · No card required · Cancel anytime</div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner ad-inner">
+    <div class="section-label reveal" data-i18n="s11_label">What you're risking</div>
+    <h2 class="reveal" data-i18n="s11_h2">You're already paying for the gym.</h2>
+    <div class="ad-prose reveal">
+      <p data-i18n="s11_p1">You've been paying for it for a year. Every month you keep paying for a membership you're not using properly costs you more than this does.</p>
+      <p data-i18n="s11_p2">Seven days free. No card. Nothing to cancel if you decide it's not for you.</p>
+      <p data-i18n="s11_p3">If you do subscribe and it isn't what this page says, 30 days, money back, no argument.</p>
+      <p data-i18n="s11_p4">Day 8: if you haven't used it, nothing happens. No charge.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label reveal" data-i18n="s12_label">Common questions</div>
+    <h2 class="reveal" data-i18n="s12_h2">The things people ask before they sign up.</h2>
+    <div class="objection-cards reveal-stagger">
+      <div class="card">
+        <div class="obj-q" data-i18n="obj1_q">"I'm too much of a beginner for this."</div>
+        <div class="obj-a" data-i18n="obj1_a">That's who it's built for. It asks what you've done before anything gets written, and it starts there. There's no level you need to reach first.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj2_q">"Will it give me something ridiculous?"</div>
+        <div class="obj-a" data-i18n="obj2_a">No. It's built on hard limits about what's safe and recoverable for someone at your stage. The programme you get in week one will look almost too easy. That's deliberate.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj3_q">"I don't know how to do the exercises."</div>
+        <div class="obj-a" data-i18n="obj3_a">Ask it anything, any time, and it will explain without assuming you already know. Forge adds a video demonstration on every exercise.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj4_q">"I'll stop using it like everything else."</div>
+        <div class="obj-a" data-i18n="obj4_a">Most beginners quit because they don't know if it's working, not because they lost interest. You'll see your numbers move week to week, which is the thing that's been missing.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj5_q">"What if I miss a week?"</div>
+        <div class="obj-a" data-i18n="obj5_a">It adjusts and carries on. You don't restart, and nothing tells you off.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj6_q">"What if I've got barely any equipment?"</div>
+        <div class="obj-a" data-i18n="obj6_a">Tell it what you've got — a full gym, a few dumbbells, or nothing. It builds around that.</div>
+      </div>
+      <div class="card">
+        <div class="obj-q" data-i18n="obj7_q">"It's not in the App Store."</div>
+        <div class="obj-a" data-i18n="obj7_a">Add it to your home screen and it works like any other app. Nothing to install.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="section final-cta" id="final-cta">
+  <div class="section-inner" style="max-width:560px;margin:0 auto;text-align:center">
+    <h2 class="reveal" data-i18n="close_h2">Give yourself one week of actually knowing what you're doing.</h2>
+    <div class="final-cta-body reveal" data-i18n="close_body">You've had the membership for a year.</div>
+    <div class="auth-wrap reveal" id="final-auth">
+          <div class="auth-card">
+            <div class="auth-tabs">
+              <div class="auth-tab active" id="tab-signup-final" data-i18n="auth_tab_signup" onclick="switchTab('final','signup')">Create account</div>
+              <div class="auth-tab" id="tab-signin-final" data-i18n="auth_tab_signin" onclick="switchTab('final','signin')">Sign in</div>
+            </div>
+            <div id="form-signup-final">
+              <div class="field-group"><div data-i18n="auth_name" class="field-label">Full Name</div><input class="field-input" type="text" id="final-name" placeholder="Your name"></div>
+              <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
+              <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
+              <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="final-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+              <div class="consent-row">
+                <input type="checkbox" id="final-consent">
+                <label class="consent-text" for="final-consent" data-i18n-html="consent_label">I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.</label>
+              </div>
+              <!-- Marketing consent. SEPARATE and UNTICKED BY DEFAULT. Never add `checked`. -->
+              <div class="consent-row">
+                <input type="checkbox" id="final-marketing">
+                <label class="consent-text" for="final-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
+              </div>
+              <div class="auth-error" id="final-signup-error"></div>
+              <div data-i18n="auth_tab_note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
+              <div data-i18n="auth_note_below" class="auth-note">7 days free. No card required, cancel anytime.</div>
+            </div>
+            <div id="form-signin-final" style="display:none">
+              <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-signin-email" placeholder="your@email.com"></div>
+              <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-signin-password',this)" type="button">👁</button></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" id="final-remember-me" style="width:15px;height:15px;accent-color:#e8ff3d;cursor:pointer;">
+                  <label data-i18n="auth_remember" for="final-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">REMEMBER ME</label>
+                </div>
+                <button data-i18n="auth_forgot" type="button" onclick="showForgotLanding('final')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">FORGOT?</button>
+              </div>
+              <div class="auth-error" id="final-signin-error"></div>
+              <button data-i18n="auth_signin_btn" class="auth-btn" onclick="doSignin('final')">Sign in</button>
+              <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab('final','signup')" data-i18n="auth_start_trial">Start your free trial</a></div>
+              <div id="final-forgot" style="display:none;margin-top:8px;">
+                <div data-i18n="auth_reset_hint" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">Enter your email and we'll send you a reset link.</div>
+                <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-reset-email" placeholder="your@email.com"></div>
+                <div class="auth-error" id="final-reset-error"></div>
+                <button data-i18n="auth_reset_btn" class="auth-btn" onclick="sendResetLanding('final')">Send Reset Link</button>
+                <button data-i18n="auth_back_signin" type="button" onclick="hideForgotLanding('final')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;">← Back to sign in</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    <div class="ad-close-trust" data-i18n="close_trust">7 days free · No card required · 30-day money back</div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-wordmark">FORGE</div>
+      <div class="footer-tag" data-i18n="footer_tag">AI Performance Coach</div>
+    </div>
+    <div class="footer-right">
+      <button type="button" class="footer-link footer-link-btn" id="contactToggle" data-i18n="footer_contact"
+              aria-expanded="false" aria-controls="contactPanel" onclick="toggleContactPanel()">Contact</button>
+      <a class="footer-link" href="privacy.html" data-i18n="footer_privacy">Privacy</a>
+      <a class="footer-link" href="terms.html" data-i18n="footer_terms">Terms</a>
+    </div>
+  </div>
+  <!-- Contact panel — revealed by the Contact button above. The address is
+       rendered as visible, selectable text AND wrapped in mailto:, so the footer
+       still works when the browser has no mail handler and the mailto: no-ops.
+       One address only: hello@klemforge.com was never a provisioned mailbox.
+       No label — the Contact button already names the panel (aria-labelledby),
+       so a second "Support" caption above a single address just adds noise. -->
+  <div class="contact-panel-wrap">
+    <div class="contact-panel" id="contactPanel" role="group" aria-labelledby="contactToggle">
+      <a class="contact-email" href="mailto:support@klemforge.com">support@klemforge.com</a>
+    </div>
+  </div>
+  <div data-i18n="footer_bottom" class="footer-bottom">© FORGE · Built for athletes who don't make it up as they go.</div>
+</footer>
+
+<!-- ── PASSWORD RESET (Supabase recovery: …/?reset=true#access_token=…&type=recovery) ── -->
+<div id="reset-password-section" class="reset-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="reset-logo">FORGE</div>
+      <div data-i18n="reset_title" class="reset-title" id="reset-title">Set a new password</div>
+      <div data-i18n="reset_sub" class="reset-sub">Choose a new password for your account. Minimum 6 characters.</div>
+      <div class="field-group"><div data-i18n="reset_new_pw" class="field-label">New password</div><div style="position:relative"><input class="field-input" type="password" id="reset-new-password" placeholder="Min. 6 characters" autocomplete="new-password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('reset-new-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="field-group"><div data-i18n="reset_confirm_pw" class="field-label">Confirm password</div><div style="position:relative"><input class="field-input" type="password" id="reset-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')submitNewPassword()"><button class="pw-toggle" onclick="togglePw('reset-confirm-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="auth-error" id="reset-password-error"></div>
+      <button data-i18n="reset_submit" class="auth-btn" id="reset-submit-btn" onclick="submitNewPassword()">Update password</button>
+      <div class="auth-note" style="margin-top:14px"><span data-i18n="reset_remembered">Remembered it?</span> <a onclick="closeResetOverlay()" data-i18n="reset_back">Back to sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ ENVIRONMENT CONFIG — STAGING ══
+// ⚠️ NEVER COPY THIS BLOCK TO PRODUCTION
+const BACKEND_URL = 'https://forge-staging-production.up.railway.app';
+const SUPABASE_URL = 'https://qxyklijdrbwcsfozovxl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWtsaWpkcmJ3Y3Nmb3pvdnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Njg3MTIsImV4cCI6MjA5MjM0NDcxMn0.Db7sjRx986leohzQyVRmM3fhBA-iVaLDV_2WbA6J_Ls';
+// ══ END ENVIRONMENT CONFIG ══
+
+async function supabaseAuth(endpoint, body) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify(body)
+  });
+  return await res.json();
+}
+
+// ── LANGUAGE ─────────────────────────────────────────
+// Same localStorage key as index.html, coaches.html and app.html ('forge_language'),
+// so a visitor who picked French anywhere else lands here in French and carries it
+// into the app on signup.
+//
+// Declared ABOVE the pricing engine on purpose: _ls() inside updatePrices() reads
+// currentLang, and updatePrices() runs at init.
+const LANG_FLAGS = { en: '\uD83C\uDDEC\uD83C\uDDE7', fr: '\uD83C\uDDEB\uD83C\uDDF7' };
+const LANG_NAMES = { en: 'English', fr: 'Français' };
+let currentLang = 'en';
+try { currentLang = localStorage.getItem('forge_language') || 'en'; } catch(e) {}
+
+function toggleLangDrawer() {
+  const d = document.getElementById('langDrawer');
+  if (d) d.classList.toggle('open');
+}
+
+function selectLang(code) {
+  currentLang = code;
+  try { localStorage.setItem('forge_language', code); } catch(e) {}
+  const flag = LANG_FLAGS[code] || LANG_FLAGS.en;
+  const btn = document.getElementById('langBtn');
+  if (btn) btn.textContent = flag;
+  const d = document.getElementById('langDrawer');
+  if (d) d.classList.remove('open');
+  applyAdLanguage(code);
+  const s = AD_STRINGS[code] || AD_STRINGS.en;
+  showLandingToast(flag + ' ' + (LANG_NAMES[code] || code) + ' — ' + (s.lang_saved || 'language saved'));
+}
+
+function showLandingToast(msg) {
+  const existing = document.getElementById('landing-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'landing-toast';
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:12px 20px;border-radius:8px;z-index:9999;white-space:nowrap;letter-spacing:0.5px;";
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// Guarded, unlike index.html's copy: on a page where the drawer is missing, an
+// unguarded drawer.contains() throws on every document click and kills every
+// listener registered after it.
+document.addEventListener('click', e => {
+  const drawer = document.getElementById('langDrawer');
+  const btn = document.getElementById('langBtn');
+  if (!drawer || !drawer.classList.contains('open')) return;
+  if (drawer.contains(e.target) || (btn && btn.contains(e.target))) return;
+  drawer.classList.remove('open');
+});
+
+// ── i18n ──────────────────────────────────────────────
+// ATTRIBUTE-KEYED ONLY, exactly as coaches.html does it. There is not one positional
+// key array on this page — no querySelectorAll(...)[i] paired with a hand-maintained
+// list, which is the pattern that silently leaves tail rows in English on index.html
+// when a row is added and the array is not.
+//   data-i18n      -> textContent (safe for everything without markup)
+//   data-i18n-html -> innerHTML   (only for the strings that carry <a> or <span>)
+// A missing key degrades exactly ONE element and shifts nothing.
+//
+// The price spans deliberately carry no key: updatePrices() owns them, so a
+// translation pass can never overwrite a rendered amount with a stale literal.
+function applyAdLanguage(code) {
+  const s = AD_STRINGS[code] || AD_STRINGS.en;
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (s[key]) el.textContent = s[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (s[key]) el.innerHTML = s[key];
+  });
+
+  // Placeholders are attributes, not text nodes.
+  const ph = (id, key) => { const el = document.getElementById(id); if (el && s[key]) el.placeholder = s[key]; };
+  ['hero-name','final-name'].forEach(id => ph(id, 'auth_name_ph'));
+  ['hero-email','final-email','hero-signin-email','final-signin-email','hero-reset-email','final-reset-email'].forEach(id => ph(id, 'auth_email_ph'));
+  ['hero-password','final-password','reset-new-password'].forEach(id => ph(id, 'auth_pass_ph'));
+  ['hero-signin-password','final-signin-password'].forEach(id => ph(id, 'auth_pass_ph2'));
+  ['hero-code','final-code'].forEach(id => ph(id, 'auth_code_ph'));
+  ph('reset-confirm-password', 'reset_confirm_ph');
+
+  if (s.page_title) document.title = s.page_title;
+  const md = document.querySelector('meta[name="description"]');
+  if (md && s.page_desc) md.setAttribute('content', s.page_desc);
+  document.documentElement.setAttribute('lang', code);
+
+  // The price notes carry translated wording ("billed X/year"), so re-render them.
+  if (typeof updatePrices === 'function') updatePrices();
+}
+
+// ── CURRENCY ──────────────────────────────────────────
+// Two tiers, standard AND launch, in four currencies.
+// Annual values are the YEARLY TOTAL; the headline in annual mode is that total / 12.
+//
+// These are NOT display-only conversions. Since the multi-currency build, each Stripe Price
+// carries a currency_options entry per currency and Checkout is created with the currency the
+// visitor picked, so the figure below is the figure the card is charged. Nothing is converted
+// at checkout and no FX rate is applied anywhere in this file.
+//
+// THREE PLACES MUST AGREE, or a visitor is quoted one price and charged another:
+//   1. this map
+//   2. app.html's TIER_PRICING  (identical numbers, lowercase keys)
+//   3. each Stripe Price's currency_options
+// They drifted once already — every one of the 16 pairs disagreed, so a UK visitor saw
+// GBP 6.29/mo here and GBP 6.99/mo one screen later in the app. Change all three together.
+// `lifetime` is the FOUNDING MEMBER one-time price. It matches app.html's LIFETIME_PRICING
+// exactly (iron 149/137/160/187, forge 249/228/267/311) — the landing page must not quote a
+// figure the in-app founding page then contradicts. The landing page never starts a lifetime
+// checkout: both Founding Member CTAs go to signup and the purchase happens in-app.
+const PRICES = {
+  CHF: { sym:'CHF ', iron:{ std:{mo: 6.95, ann:49}, launch:{mo:4.95, ann:35}, lifetime:149 }, forge:{ std:{mo:11.95, ann:79}, launch:{mo:6.95, ann:49}, lifetime:249 } },
+  GBP: { sym:'£',    iron:{ std:{mo: 6.99, ann:45}, launch:{mo:4.99, ann:33}, lifetime:137 }, forge:{ std:{mo:10.99, ann:73}, launch:{mo:6.99, ann:45}, lifetime:228 } },
+  EUR: { sym:'€',    iron:{ std:{mo: 7.99, ann:53}, launch:{mo:5.99, ann:38}, lifetime:160 }, forge:{ std:{mo:12.99, ann:85}, launch:{mo:7.99, ann:53}, lifetime:267 } },
+  USD: { sym:'$',    iron:{ std:{mo: 8.99, ann:62}, launch:{mo:6.99, ann:44}, lifetime:187 }, forge:{ std:{mo:14.99, ann:99}, launch:{mo:8.99, ann:62}, lifetime:311 } },
+};
+
+// Launch pricing on the landing page is a hardcoded marketing switch. It does NOT read
+// GET /api/launch-pricing — this page is unauthenticated and makes no API calls. Flip this
+// to false when launch pricing ends, in the same change as the admin toggle in-app.
+const LAUNCH_PRICING_LIVE = true;
+
+// Shared with app.html, deliberately: SAME key, SAME lowercase codes. app.html reads this in
+// resolveDisplayCurrency() and writes it in setCurrency(), so a visitor who picks GBP here and
+// then signs up carries GBP into the app instead of being reset to CHF at the door.
+// This file works in UPPERCASE internally because PRICES is keyed that way, so every read
+// upper-cases and every write lower-cases. app.html's normaliseCurrency() would tolerate
+// either, but it stores lowercase, and one casing in one key is the point.
+const CURRENCY_STORAGE_KEY = 'forge-currency';
+
+// Mirrors app.html's tzDefaultCurrency() exactly — same five branches, same order:
+//   Europe/Zurich -> CHF · Europe/London -> GBP · America/* -> USD
+//   other Europe/* -> EUR · everything else -> CHF
+// The two MUST stay identical. A visitor shown GBP here and CHF one screen later in the app
+// is worse off than one shown no default at all.
+function tzDefaultCurrency() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return 'CHF'; }
+  if (tz === 'Europe/Zurich') return 'CHF';
+  if (tz === 'Europe/London') return 'GBP';
+  if (tz.startsWith('America/')) return 'USD';
+  if (tz.startsWith('Europe/')) return 'EUR';
+  return 'CHF';
+}
+
+// Precedence: stored choice -> timezone -> CHF. A stored value is only honoured if it names a
+// currency this page actually prices, so a stale or hand-edited key cannot make PRICES[currency]
+// undefined and take updatePrices() down at init.
+function initialCurrency() {
+  let stored = null;
+  try { stored = localStorage.getItem(CURRENCY_STORAGE_KEY); } catch(e) {}
+  if (typeof stored === 'string') {
+    const up = stored.trim().toUpperCase();
+    if (PRICES[up]) return up;
+  }
+  return tzDefaultCurrency();
+}
+
+let currency = initialCurrency();
+// Three states now: 'monthly' | 'annual' | 'lifetime'. `isAnnual` is kept as a DERIVED
+// mirror because updatePrices() reads it for the subscription cards; it is written only by
+// setBilling(), never assigned directly.
+let billingMode = 'annual';
+let isAnnual = true;
+
+function setCurrency(c) {
+  if (typeof c !== 'string') return;
+  const up = c.trim().toUpperCase();
+  if (!PRICES[up]) return;
+  currency = up;
+  try { localStorage.setItem(CURRENCY_STORAGE_KEY, up.toLowerCase()); } catch(e) { /* private mode */ }
+  const label = document.getElementById('currencyLabel');
+  if (label) label.textContent = up;
+  const sel = document.getElementById('currencySelect');
+  if (sel && sel.value !== up) sel.value = up;
+  updatePrices();
+}
+
+// Replaces toggleBilling(). The two-state pill is gone — a boolean flip cannot express three
+// states, and the old function dereferenced #billingToggle unguarded, so leaving it in place
+// against the new markup would have thrown on the first click.
+const BILLING_MODES = ['monthly','annual','lifetime'];
+function setBilling(mode) {
+  if (BILLING_MODES.indexOf(mode) === -1) return;
+  billingMode = mode;
+  isAnnual = (mode === 'annual');
+  BILLING_MODES.forEach(m => {
+    const el = document.getElementById('lbl-' + m);
+    if (!el) return;
+    el.classList.toggle('active', m === mode);
+    el.setAttribute('aria-pressed', String(m === mode));
+  });
+  updatePrices();
+}
+
+function fmt(sym, n) { return sym + n.toFixed(2).replace('.00',''); }
+
+// Landing string lookup with a TDZ guard: updatePrices() runs at INIT (further down this
+// block) before AD_STRINGS is declared, and `typeof` on a const in its temporal dead
+// zone throws rather than returning 'undefined'. Falls back to the English literal.
+function _ls(key, fallback) {
+  try {
+    const s = AD_STRINGS[currentLang] || AD_STRINGS.en;
+    return (s && s[key]) || fallback;
+  } catch (e) { return fallback; }
+}
+
+function updatePrices() {
+  const p = PRICES[currency];
+  const s = p.sym;
+  const lifetime = (billingMode === 'lifetime');
+
+  // Swap which grid is mounted. display is set back to '' (not 'grid') so .tier-cards keeps
+  // owning the grid template, including the stacked one under the 900px media query.
+  const subGrid = document.getElementById('tier-cards-sub');
+  const ltGrid  = document.getElementById('tier-cards-lifetime');
+  if (subGrid) subGrid.style.display = lifetime ? 'none' : '';
+  if (ltGrid)  ltGrid.style.display  = lifetime ? '' : 'none';
+
+  // The trial microcopy is about the subscription cards. Under the Founding Member cards it
+  // would read as describing a one-time purchase, so it is swapped for the line that explains
+  // where the purchase actually happens. updatePrices() owns this element in BOTH modes —
+  // applyLandingLanguage() also writes it, and runs BEFORE its own updatePrices() call.
+  const micro = document.getElementById('pricingMicro');
+  if (micro) {
+    micro.textContent = lifetime
+      ? _ls('lt_micro', 'Create your account first. Founding Member is available in-app after signup.')
+      : _ls('price_micro', '7-day free trial · No card required · Cancel anytime');
+  }
+
+  // ── FOUNDING MEMBER ──
+  // Payback is COMPUTED, never written into the copy: months = round(one-time / annual x 12)
+  // against the annual price actually being shown, so it stays true when the currency changes
+  // and when LAUNCH_PRICING_LIVE flips. The word "standard" is deliberately absent — launch
+  // pricing is live and the subscription cards strike the standard price through.
+  ['iron','forge'].forEach(tier => {
+    const t = p[tier];
+    const priceEl = document.getElementById('lt-' + tier + '-price');
+    const noteEl  = document.getElementById('lt-' + tier + '-note');
+    if (!t || !t.lifetime || !priceEl || !noteEl) return;
+    const live = LAUNCH_PRICING_LIVE ? t.launch : t.std;
+    const months = Math.round(t.lifetime / live.ann * 12);
+    priceEl.innerHTML = fmt(s, t.lifetime) +
+      '<span class="tier-price-period">' + _ls('price_one_time', 'one-time') + '</span>';
+    noteEl.textContent = _ls('lt_' + tier + '_note', tier === 'iron'
+        ? 'At {annual}/year, this pays for itself in {n} months. Everything in Iron. Forever. No monthly fees.'
+        : 'At {annual}/year, this pays for itself in {n} months. The full coaching system. Forever.')
+      .replace('{annual}', fmt(s, live.ann))
+      .replace('{n}', months);
+  });
+
+  ['iron','forge'].forEach(tier => {
+    const t = p[tier];
+    if (!t) return;
+    const priceEl = document.getElementById(tier + '-price');
+    const noteEl  = document.getElementById(tier + '-note');
+    if (!priceEl || !noteEl) return;
+    const live = LAUNCH_PRICING_LIVE ? t.launch : t.std;
+    // Headline is per-month in both modes; in annual mode it is the yearly total / 12.
+    const headline = isAnnual ? live.ann / 12 : live.mo;
+    const wasHead  = isAnnual ? t.std.ann / 12 : t.std.mo;
+    const struck = LAUNCH_PRICING_LIVE
+      ? '<span class="tier-price-was">' + fmt(s, wasHead) + '</span>'
+      : '';
+    priceEl.innerHTML = struck + fmt(s, headline) + '<span class="tier-price-period">/mo</span>';
+    noteEl.textContent = isAnnual
+      ? _ls('price_billed_year', 'billed {amount}/year').replace('{amount}', fmt(s, live.ann))
+      : _ls('price_if_annual', '{price}/mo if annual').replace('{price}', fmt(s, live.ann / 12));
+  });
+}
+
+// ── FOOTER CONTACT PANEL ─────────────────────────────
+// Replaces the old Support + Contact mailto: pair. Those put the address only in
+// the href, so on any browser with no registered mail handler the click silently
+// did nothing and the user was left with no address at all. The panel shows both
+// addresses as real text; the mailto: links still work where a handler exists.
+function toggleContactPanel() {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !btn) return;
+  const open = !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function closeContactPanel(refocus) {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !panel.classList.contains('open')) return;
+  panel.classList.remove('open');
+  if (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+  }
+}
+
+// Three ways out and no focus trap: press Contact again, click anywhere outside,
+// or hit Escape. The panel is inline in the footer, never a modal overlay.
+// No stopPropagation on the button — the lang drawer's own document listener
+// still needs to see this click so it closes too.
+document.addEventListener('click', e => {
+  const panel = document.getElementById('contactPanel');
+  const btn = document.getElementById('contactToggle');
+  if (!panel || !panel.classList.contains('open')) return;
+  if (panel.contains(e.target) || (btn && btn.contains(e.target))) return;
+  closeContactPanel(false);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeContactPanel(true);
+});
+
+// ── AUTH ──────────────────────────────────────────────
+function switchTab(instance, tab) {
+  const isSignup = tab === 'signup';
+  document.getElementById('tab-signup-' + instance).classList.toggle('active', isSignup);
+  document.getElementById('tab-signin-' + instance).classList.toggle('active', !isSignup);
+  document.getElementById('form-signup-' + instance).style.display = isSignup ? 'block' : 'none';
+  document.getElementById('form-signin-' + instance).style.display = isSignup ? 'none' : 'block';
+}
+
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
+
+// Escape before any user-supplied value goes into innerHTML. app.html has its own copy at
+// the same name; this file had none, which is why the signup confirmation card below was
+// concatenating a raw form value straight into markup.
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+}
+
+async function doSignup(instance) {
+  const name = document.getElementById(instance + '-name').value.trim();
+  const email = document.getElementById(instance + '-email').value.trim();
+  const password = document.getElementById(instance + '-password').value;
+  const code = document.getElementById(instance + '-code')?.value.trim() || '';
+  const consent = document.getElementById(instance + '-consent')?.checked === true;
+  // Marketing consent is OPTIONAL — never blocks the submit. Strict true so a missing
+  // element (older cached markup) reads as a decline, not an accidental opt-in.
+  const marketingOptIn = document.getElementById(instance + '-marketing')?.checked === true;
+  const errId = instance + '-signup-error';
+
+  if (!name) return showError(errId, 'Please enter your name.');
+  if (!email) return showError(errId, 'Please enter your email.');
+  if (!password || password.length < 6) return showError(errId, 'Password must be at least 6 characters.');
+  // UX guard only. /api/signup re-checks accepted_terms because it is a public endpoint.
+  if (!consent) return showError(errId, (AD_STRINGS[currentLang] || AD_STRINGS.en).consent_required || AD_STRINGS.en.consent_required);
+  showError(errId, '');
+
+  const btn = document.querySelector('#form-signup-' + instance + ' .auth-btn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+
+  // Carry the visitor's currency choice into the new profile so the app shows the same
+  // prices they just saw here. Read from storage rather than the in-memory `currency` so
+  // this sends exactly what was persisted. Sent LOWERCASE — the server validates against
+  // ['chf','eur','gbp','usd'] — and OMITTED entirely when nothing valid is stored, because
+  // a server-side default is what broke the handoff in the first place.
+  let signupCurrency = null;
+  try {
+    const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (typeof stored === 'string' && PRICES[stored.trim().toUpperCase()]) {
+      signupCurrency = stored.trim().toLowerCase();
+    }
+  } catch(e) {}
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
+        marketing_opt_in: marketingOptIn,
+        ...(signupCurrency ? { currency: signupCurrency } : {}) })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Start your free trial';
+
+    if (!res.ok || data.error) return showError(errId, data.error || 'Sign up failed. Please try again.');
+
+    if (data.requires_confirmation) {
+      // Show confirmation message
+      const card = btn.closest('.auth-card');
+      // `email` is whatever was typed into the signup field — escaped, never concatenated raw.
+      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
+    } else {
+      window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Start your free trial';
+    showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+async function doSignin(instance) {
+  try {
+    const email = document.getElementById(instance + '-signin-email').value.trim();
+    const password = document.getElementById(instance + '-signin-password').value;
+    const rememberMe = document.getElementById(instance + '-remember-me')?.checked ?? true;
+    const errId = instance + '-signin-error';
+
+    if (!email || !password) { showError(errId, 'Please fill in all fields.'); return; }
+    showError(errId, '');
+
+    const btn = document.querySelector('#form-signin-' + instance + ' .auth-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
+
+    const data = await supabaseAuth('token?grant_type=password', { email, password });
+
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+
+    // Supabase returns error in various formats depending on version
+    if (data.error || data.error_description || data.error_code || !data.access_token) {
+      showError(errId, 'Incorrect email or password. Please check and try again.');
+      return;
+    }
+
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      user: { ...data.user, email: data.user?.email || email },
+      // Was hard-coded true even when the box was unticked, so anything reading
+      // session.rememberMe downstream saw the wrong answer. Carries the real choice now.
+      rememberMe: !!rememberMe
+    };
+
+    // Record the choice for app.html. sessionStorage survives this same-tab navigation
+    // (which is how forge-session-temp already reaches app.html) and dies with the tab —
+    // so the flag can never outlive the session it exists to keep short-lived.
+    try { sessionStorage.setItem('forge-remember', rememberMe ? '1' : '0'); } catch(e) {}
+
+    if (rememberMe) {
+      localStorage.setItem('forge-session', JSON.stringify(session));
+    } else {
+      sessionStorage.setItem('forge-session-temp', JSON.stringify(session));
+      localStorage.removeItem('forge-session');
+    }
+
+    window.location.href = _getAppUrl();
+  } catch(e) {
+    console.error('doSignin error:', e);
+    const btn2 = document.querySelector('#form-signin-' + instance + ' .auth-btn');
+    if (btn2) { btn2.disabled = false; btn2.textContent = 'Sign in'; }
+    showError(instance + '-signin-error', 'Connection error — check your internet and try again.');
+  }
+}
+
+// ── FORGOT PASSWORD (landing) ─────────────────────────
+function showForgotLanding(prefix) {
+  const f = document.getElementById(prefix + '-forgot');
+  if (f) f.style.display = 'block';
+  const err = document.getElementById(prefix + '-reset-error');
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
+  // Convenience: carry the typed sign-in email over to the reset field.
+  const emailEl = document.getElementById(prefix + '-reset-email');
+  const signinEmail = document.getElementById(prefix + '-signin-email');
+  if (emailEl && signinEmail && !emailEl.value) emailEl.value = signinEmail.value || '';
+}
+
+function hideForgotLanding(prefix) {
+  const f = document.getElementById(prefix + '-forgot');
+  if (f) f.style.display = 'none';
+}
+
+async function sendResetLanding(prefix) {
+  const emailEl = document.getElementById(prefix + '-reset-email');
+  const errEl = document.getElementById(prefix + '-reset-error');
+  const email = (emailEl?.value || '').trim();
+  const show = (msg, color) => { if (errEl) { errEl.textContent = msg; errEl.style.color = color; errEl.style.display = msg ? 'block' : 'none'; } };
+  if (!email) { show('Please enter your email.', '#ff5a5a'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { show('Please enter a valid email address.', '#ff5a5a'); return; }
+  show('', '');
+  const btn = document.querySelector('#' + prefix + '-forgot .auth-btn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  try {
+    const res = await fetch(BACKEND_URL + '/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Send Reset Link'; }
+    if (res.ok && !data.error) {
+      show('Check your email for a reset link.', '#4ade80'); // success — green
+    } else {
+      show(data.error || 'Could not send reset link. Please try again.', '#ff5a5a'); // error — red
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Send Reset Link'; }
+    show('Connection error. Please try again.', '#ff5a5a');
+  }
+}
+
+// ── INSTANT SESSION CHECK ─────────────────────────────
+(function() {
+  try {
+    const _rq = new URLSearchParams(window.location.search);
+    if (_rq.get('reset_token') || _rq.get('reset') === 'true') return;
+    if (window.location.hash.includes('type=recovery')) return;
+    const session = JSON.parse(localStorage.getItem('forge-session') || 'null');
+    if (session?.access_token && session?.rememberMe) {
+      const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+      if (!(payload.exp && payload.exp * 1000 < Date.now())) {
+        window.location.replace(_getAppUrl());
+      } else {
+        localStorage.removeItem('forge-session');
+      }
+    }
+  } catch(e) {}
+})();
+
+function _getAppUrl() {
+  const loc = window.location;
+  if (loc.pathname.endsWith('/')) return loc.origin + loc.pathname + 'app.html';
+  return loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/') + 'app.html';
+}
+
+// ── SCROLL TO AUTH ────────────────────────────────────
+function scrollToAuth() {
+  document.getElementById('hero-auth').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => document.getElementById('hero-name')?.focus(), 600);
+}
+
+// ── HANDLE URL PARAMS (email confirmation) ─────────────
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('confirmed') === 'true') {
+  // Switch to sign in and show message
+  switchTab('hero', 'signin');
+  setTimeout(() => showError('hero-signin-error', ''), 0);
+}
+
+// ── PASSWORD RESET (Supabase recovery flow) ───────────
+// server.js /api/reset-password sets redirectTo = FRONTEND_URL + '?reset=true', so Supabase
+// returns the user to  …/?reset=true#access_token=<jwt>&type=recovery&refresh_token=…
+// No Supabase JS SDK is loaded on this page, so we update the password over REST:
+//   PUT /auth/v1/user  with the recovery access_token as the Bearer (what updateUser() does).
+(function initPasswordReset() {
+  if (urlParams.get('reset') !== 'true') return;
+  const overlay = document.getElementById('reset-password-section');
+  if (!overlay) return;
+
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const accessToken = hashParams.get('access_token');
+
+  if (!accessToken) {
+    // Link expired, already used, or opened without a token — Supabase puts an error in the hash.
+    showResetState('This reset link has expired or has already been used. Request a fresh one and try again.');
+    return;
+  }
+
+  window._resetToken = accessToken;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('reset-new-password')?.focus(), 120);
+})();
+
+function showResetState(message) {
+  const overlay = document.getElementById('reset-password-section');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  ['reset-new-password','reset-confirm-password'].forEach(id => {
+    const fg = document.getElementById(id)?.closest('.field-group');
+    if (fg) fg.style.display = 'none';
+  });
+  const err = document.getElementById('reset-password-error'); if (err) err.style.display = 'none';
+  const title = document.getElementById('reset-title'); if (title) title.textContent = 'Reset link expired';
+  const sub = overlay.querySelector('.reset-sub'); if (sub) sub.textContent = message;
+  const btn = document.getElementById('reset-submit-btn');
+  if (btn) { btn.textContent = 'Request a new link'; btn.onclick = requestNewLink; }
+}
+
+function requestNewLink() {
+  closeResetOverlay();
+  if (typeof scrollToAuth === 'function') scrollToAuth();
+  if (typeof showForgotLanding === 'function') showForgotLanding('hero');
+}
+
+function closeResetOverlay(keepUrl) {
+  const overlay = document.getElementById('reset-password-section');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  if (!keepUrl) { try { history.replaceState(null, '', window.location.pathname); } catch(e) {} }
+  if (typeof switchTab === 'function') switchTab('hero', 'signin');
+}
+
+async function submitNewPassword() {
+  const errId = 'reset-password-error';
+  const pw = (document.getElementById('reset-new-password')?.value) || '';
+  const confirmPw = (document.getElementById('reset-confirm-password')?.value) || '';
+
+  if (!pw || pw.length < 6) return showError(errId, 'Password must be at least 6 characters.');
+  if (pw !== confirmPw) return showError(errId, 'Passwords do not match.');
+  showError(errId, '');
+
+  const token = window._resetToken;
+  if (!token) return showError(errId, 'Your reset link has expired. Please request a new one.');
+
+  const btn = document.getElementById('reset-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (btn) { btn.disabled = false; btn.textContent = 'Update password'; }
+
+    const errMsg = data.error_description || data.error || data.msg || data.message || '';
+    if (!res.ok || errMsg) {
+      if (res.status === 401 || res.status === 403 || /expired|invalid|jwt|token/i.test(errMsg)) {
+        return showError(errId, 'Your reset link has expired. Please request a new one.');
+      }
+      return showError(errId, errMsg || 'Could not update password. Please try again.');
+    }
+
+    // Success — password changed. Drop the recovery token, clean the URL, send them to sign in.
+    let email = '';
+    try { email = JSON.parse(atob(token.split('.')[1])).email || ''; } catch (e) {}
+    window._resetToken = null;
+    closeResetOverlay();
+    const se = document.getElementById('hero-signin-email');
+    if (se && email) se.value = email;
+    if (typeof showLandingToast === 'function') showLandingToast('✓ Password updated — sign in with your new password.');
+    document.getElementById('hero-auth')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => document.getElementById('hero-signin-password')?.focus(), 450);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Update password'; }
+    showError(errId, 'Connection error. Please try again.');
+  }
+}
+
+// Check for ref code in URL — store it + prefill the signup code input.
+// The backend already credits FORGE- referral codes on signup (referred user gets 14 days).
+const refCode = urlParams.get('ref');
+if (refCode) {
+  try { localStorage.setItem('forge_referral', refCode); } catch(e) {}
+  const hc = document.getElementById('hero-code'); if (hc) hc.value = refCode;
+  const fc = document.getElementById('final-code'); if (fc) fc.value = refCode;
+  // Referral banner — referred users get 14 days free instead of 7.
+  // Offset by the fixed nav's height so it sits below the nav instead of hidden under it.
+  const navEl = document.querySelector('.nav');
+  const navH = navEl ? navEl.offsetHeight : 60;
+  const refBanner = document.createElement('div');
+  refBanner.style.cssText = "position:relative;z-index:2;margin-top:" + navH + "px;background:#e8ff3d;color:#000;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;text-align:center;padding:10px 44px;letter-spacing:0.5px;line-height:1.5;";
+  const refMsg = document.createElement('span');
+  refMsg.textContent = 'A friend invited you to FORGE. Sign up for 14 days free.';
+  const refDismiss = document.createElement('button');
+  refDismiss.type = 'button';
+  refDismiss.setAttribute('aria-label', 'Dismiss');
+  refDismiss.textContent = '✕';
+  refDismiss.style.cssText = "position:absolute;top:50%;right:10px;transform:translateY(-50%);background:transparent;border:none;color:#000;font-size:16px;font-weight:700;line-height:1;cursor:pointer;padding:4px 8px;";
+  refDismiss.onclick = function(){ refBanner.remove(); };
+  refBanner.appendChild(refMsg);
+  refBanner.appendChild(refDismiss);
+  document.body.insertBefore(refBanner, document.body.firstChild);
+}
+
+// ── SCROLL REVEAL (additive, design-only) ──────────────
+(function(){
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal,.reveal-stagger').forEach(el => el.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal,.reveal-stagger').forEach(el => io.observe(el));
+  // Hero items visible immediately
+  document.querySelectorAll('.hero .reveal').forEach(el => el.classList.add('in'));
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// AD LANDING PAGE STRINGS
+// ══════════════════════════════════════════════════════════════════════
+// Two complete tables, EN and FR, with IDENTICAL key sets — asserted at build time.
+// Every key is reached by a data-i18n / data-i18n-html attribute, by the placeholder
+// map, or by _ls() inside updatePrices(). There are no positional arrays.
+//
+// The shared half (nav, auth, consent, footer, and EVERY pricing string in both
+// languages) is HARVESTED from index.html's LANDING_STRINGS at build time, so it
+// cannot drift from the page it was ported from.
+const AD_STRINGS = {
+  en: {
+    auth_back_signin: "← Back to sign in",
+    auth_btn: "Start your free trial",
+    auth_code_ph: "Have a code? Enter it here",
+    auth_email: "Email",
+    auth_email_ph: "your@email.com",
+    auth_forgot: "FORGOT?",
+    auth_name: "Full Name",
+    auth_name_ph: "Your name",
+    auth_no_account: "No account yet?",
+    auth_note_below: "7 days free. No card required, cancel anytime.",
+    auth_pass_ph: "Min. 6 characters",
+    auth_pass_ph2: "Your password",
+    auth_password: "Password",
+    auth_remember: "REMEMBER ME",
+    auth_reset_btn: "Send Reset Link",
+    auth_reset_hint: "Enter your email and we'll send you a reset link.",
+    auth_signin_btn: "Sign in",
+    auth_start_trial: "Start your free trial",
+    auth_tab_note: "Full access. Nothing locked. No commitment until your trial ends.",
+    auth_tab_signin: "Sign in",
+    auth_tab_signup: "Create account",
+    billing_annual_html: "Annual <span class=\"save-badge\">Save 40%+</span>",
+    billing_lifetime: "Lifetime",
+    billing_monthly: "Monthly",
+    change_currency: "change currency",
+    close_body: "You've had the membership for a year.",
+    close_h2: "Give yourself one week of actually knowing what you're doing.",
+    close_trust: "7 days free · No card required · 30-day money back",
+    consent_label: "I agree to the <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Terms of Service</a> and <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Privacy Policy</a>, and I confirm I am 18 or over.",
+    consent_required: "Accept the Terms of Service and Privacy Policy to continue.",
+    currency_charge_note: "You'll be charged in the currency you choose",
+    feat_forge_0: "Everything in Iron",
+    feat_forge_1: "Uncapped AI coach — unlimited daily messages",
+    feat_forge_10: "Progressive overload tracker",
+    feat_forge_11: "Body metrics & AI insights",
+    feat_forge_12: "Plan editing via AI chat",
+    feat_forge_13: "Deload detection & alerts",
+    feat_forge_14: "Weekly shopping list",
+    feat_forge_15: "Multiple saved programmes",
+    feat_forge_2: "Full exercise video demonstration library",
+    feat_forge_3: "The Forge Audit — monthly performance deep-dive",
+    feat_forge_4: "Progress trend report",
+    feat_forge_5: "Programme recalibration",
+    feat_forge_6: "Goal trajectory forecast",
+    feat_forge_7: "Recovery & consistency scoring",
+    feat_forge_8: "Weekly AI performance review",
+    feat_forge_9: "Post-workout AI check-in",
+    feat_iron_1: "AI-generated workout programme",
+    feat_iron_2: "AI-generated 7-day nutrition plan",
+    feat_iron_3: "Workout logging (per-set)",
+    feat_iron_4: "Streak tracking & badges",
+    feat_iron_5: "Personal records detection",
+    feat_iron_6: "Daily push reminders",
+    feat_iron_7: "7 app themes · 2 languages",
+    feat_iron_8: "AI coach — 20 messages/month",
+    footer_bottom: "© FORGE · Built for athletes who don't make it up as they go.",
+    footer_contact: "Contact",
+    footer_privacy: "Privacy",
+    footer_tag: "AI Performance Coach",
+    footer_terms: "Terms",
+    forge_soon: "Coming next: Apple Health sync, Garmin sync, nutrition barcode scanner, priority support, and early access to new features.",
+    hero_cta: "Start free trial — no card",
+    hero_eyebrow: "For anyone starting out",
+    hero_h1: "You've had a gym membership for a year. You've trained properly for about three months of it.",
+    hero_sub: "The problem was never motivation. You just never knew what you were supposed to be doing when you got there.",
+    hero_trust: "7 days free · No card required · Built for people starting out",
+    lang_saved: "language saved. Your app will open in this language.",
+    lt_btn: "Create account",
+    lt_forge_deepdive: "Monthly AI deep-dive coaching review",
+    lt_forge_name: "🔥 Forge — Founding Member",
+    lt_forge_note: "At {annual}/year, this pays for itself in {n} months. The full coaching system. Forever.",
+    lt_forge_unlimited: "Unlimited AI coach messages",
+    lt_forge_videos: "Exercise video demonstrations",
+    lt_iron_name: "⚙️ Iron — Founding Member",
+    lt_iron_note: "At {annual}/year, this pays for itself in {n} months. Everything in Iron. Forever. No monthly fees.",
+    lt_micro: "Create your account first. Founding Member is available in-app after signup.",
+    marketing_label: "Email me training tips and FORGE offers. Optional, and you can turn this off any time.",
+    nav_coaches: "For Coaches",
+    nav_coaches_short: "Coaches",
+    nav_home: "Home",
+    nav_home_short: "Home",
+    nav_logo_sub: "AI Performance Coach",
+    nav_trial_btn: "Start free trial",
+    obj1_a: "That's who it's built for. It asks what you've done before anything gets written, and it starts there. There's no level you need to reach first.",
+    obj1_q: "\"I'm too much of a beginner for this.\"",
+    obj2_a: "No. It's built on hard limits about what's safe and recoverable for someone at your stage. The programme you get in week one will look almost too easy. That's deliberate.",
+    obj2_q: "\"Will it give me something ridiculous?\"",
+    obj3_a: "Ask it anything, any time, and it will explain without assuming you already know. Forge adds a video demonstration on every exercise.",
+    obj3_q: "\"I don't know how to do the exercises.\"",
+    obj4_a: "Most beginners quit because they don't know if it's working, not because they lost interest. You'll see your numbers move week to week, which is the thing that's been missing.",
+    obj4_q: "\"I'll stop using it like everything else.\"",
+    obj5_a: "It adjusts and carries on. You don't restart, and nothing tells you off.",
+    obj5_q: "\"What if I miss a week?\"",
+    obj6_a: "Tell it what you've got — a full gym, a few dumbbells, or nothing. It builds around that.",
+    obj6_q: "\"What if I've got barely any equipment?\"",
+    obj7_a: "Add it to your home screen and it works like any other app. Nothing to install.",
+    obj7_q: "\"It's not in the App Store.\"",
+    page_desc: "A gym membership you've barely used, because nobody ever told you what to do. FORGE tells you the exercise, the sets and the weight, then changes it based on how it went. 7 days free, no card.",
+    page_title: "FORGE — Know exactly what to do when you walk in",
+    price_billed_year: "billed {amount}/year",
+    price_btn: "Start free trial",
+    price_forge_tag: "The whole system. Nothing held back.",
+    price_h2: "Choose your level.",
+    price_if_annual: "{price}/mo if annual",
+    price_iron_tag: "Start training with a real plan.",
+    price_label: "Pricing",
+    price_micro: "7-day free trial · No card required · Cancel anytime",
+    price_one_time: "one-time",
+    price_recommended: "MOST POPULAR",
+    price_save_badge: "Save 40%+",
+    price_sub: "Start free for 7 days. No commitment until you're ready.",
+    q4_attr: "— Kevin, founder",
+    q4_text: "I paid CHF 360 once for a coaching programme that promised exactly that. It arrived about a minute after I signed up. There's no version of that where someone actually looked at my situation in sixty seconds. That's not personal. That's a template with my name typed onto it.",
+    q7_attr: "— Kevin, founder",
+    q7_text: "My gym didn't have a hack squat once. FORGE swapped it for something that did the same job — I didn't have to stand there guessing what to do instead. Another time, a hamstring curl machine was giving me discomfort. I told it, and it moved me to Romanian deadlifts instead. The discomfort went.",
+    reset_back: "Back to sign in",
+    reset_confirm_ph: "Re-enter new password",
+    reset_confirm_pw: "Confirm password",
+    reset_new_pw: "New password",
+    reset_remembered: "Remembered it?",
+    reset_sub: "Choose a new password for your account. Minimum 6 characters.",
+    reset_submit: "Update password",
+    reset_title: "Set a new password",
+    s11_h2: "You're already paying for the gym.",
+    s11_label: "What you're risking",
+    s11_p1: "You've been paying for it for a year. Every month you keep paying for a membership you're not using properly costs you more than this does.",
+    s11_p2: "Seven days free. No card. Nothing to cancel if you decide it's not for you.",
+    s11_p3: "If you do subscribe and it isn't what this page says, 30 days, money back, no argument.",
+    s11_p4: "Day 8: if you haven't used it, nothing happens. No charge.",
+    s12_h2: "The things people ask before they sign up.",
+    s12_label: "Common questions",
+    s2_h2: "You're the only one guessing.",
+    s2_label: "The actual problem",
+    s2_p1: "You walk in. You do the machines you recognise. Maybe some treadmill. Some curls, because you know what curls are.",
+    s2_p2: "You spend more time watching what everyone else is doing than actually training.",
+    s2_p3: "You've got eight exercises saved in your Notes app and a folder of TikToks you've never opened twice. You don't know what order they go in. You don't know what weight you're supposed to use.",
+    s2_p4: "So you pick whatever's free and hope it's roughly right.",
+    s2_p5: "Then you go two weeks without going, because what's the point if you don't know if any of it's working.",
+    s2_p6: "Everyone else in there looks like they know exactly what they're doing.",
+    s3_h2: "That's what it looks like when nobody ever told you what to do.",
+    s3_label: "You're not bad at this",
+    s3_p1: "Somewhere in the last year you decided you're just not built for it.",
+    s3_p2: "You watched someone load up a bar and thought yeah, that's not me. You used the same 10kg dumbbells for a month and never asked whether you should be on 12.5, because you had no idea how you'd know.",
+    s3_p3: "That's not weakness. That's not bad genetics.",
+    s3_p4: "Nobody is naturally good at the gym. Every single person in there who looks like they know what they're doing was taught, followed something, or spent years working it out badly.",
+    s3_p5: "You just went straight to the working-it-out-badly part.",
+    s4_h2: "You needed someone to tell you what to do today.",
+    s4_label: "Why the free stuff didn't work",
+    s4_p1: "It's not that the information was wrong. It's that it wasn't instructions.",
+    s4_p2: "A saved workout tells you 3 sets of 10. With what weight? How long do you rest? What if you can't do ten? What if ten's easy — do you go up next time, and by how much?",
+    s4_p3: "None of that's there. So you follow it for a week and quietly stop.",
+    s4_p4: "A YouTube video teaches you one exercise. It doesn't tell you what to do on Tuesday.",
+    s4_p5: "ChatGPT hands you a huge list with loads of exercises and no idea what you actually do when you walk in the door.",
+    s4_p6: "A free app gives you a plan on day one and then never changes it. Have a terrible session, come back destroyed, and it says the same thing it was always going to say.",
+    s4_p7: "Every one of those assumes you already know the things you're trying to find out.",
+    s4_p8: "You didn't need more information.",
+    s5_h2: "You need something that knows what happened last time.",
+    s5_label: "What actually works",
+    s5_p1: "Two things, and they have to come together.",
+    s5_p2: "Something that tells you exactly what to do when you walk in — which exercise, how many sets, what weight, what to do if it's too easy or too hard.",
+    s5_p3: "And something that changes it based on how it actually went.",
+    s5_p4: "That second part is what everything free is missing. A list can't know that leg day wrecked you for three days. A PDF can't know you couldn't work out how to use the machine so you skipped it.",
+    s6_1_b: "Not a test. It asks what you've done, what equipment you've got, what days you can train, and what you want. No wrong answers. Under two minutes.",
+    s6_1_t: "It asks where you're actually at.",
+    s6_2_b: "Not a six-day bodybuilding split. Something that fits your week and starts where you are.",
+    s6_2_t: "It gives you a plan you can actually do.",
+    s6_3_b: "Tap the weight and reps. Say if something was too hard, too easy, or you couldn't do it.",
+    s6_3_t: "You log what you did.",
+    s6_4_b: "The target moves up when you are ready. It eases off when you overdid it. It swaps exercises you could not do.",
+    s6_4_t: "Next session changes.",
+    s6_after: "Then it goes again.",
+    s6_h2: "Four steps.",
+    s6_label: "How FORGE works",
+    s7_1_p1: "First couple of leg sessions leave you barely able to walk. Not injured — just wrecked. Tell it. The next session doesn't smash your legs again and tell you to push through. It pulls back.",
+    s7_1_t: "When you overdo it, it notices.",
+    s7_2_p1: "That's a small thing that isn't small. With a normal programme, the answer when something doesn't work for you is: well, that's what it says, do it anyway.",
+    s7_2_t: "When you can't do something, you say so.",
+    s7_3_p1: "You don't explain yourself twice. Tell it once that you can't do something and it stays gone.",
+    s7_3_t: "It remembers.",
+    s7_4_p1: "There's a thing beginners get stuck on — if you're not completely destroyed, you assume you did it wrong. FORGE will tell you no, that was the right amount, go home.",
+    s7_4_t: "It tells you when you've done enough.",
+    s7_h2: "What that looks like in week one.",
+    s7_label: "The first week",
+    s8_h2: "It won't make you feel stupid.",
+    s8_label: "No judgement",
+    s8_p1: "Fair warning about the AI thing: you're probably wondering how software knows what someone who's never trained properly should be doing.",
+    s8_p2: "Two answers.",
+    s8_p3: "It asks first. Nothing gets prescribed before it knows what you've actually done and what you've got access to.",
+    s8_p4: "And it's built on training rules, not guesswork. It can't hand you the thirty-set nightmare programme that ChatGPT will confidently give anyone who asks. There are limits on what it's allowed to prescribe you, and those limits are the point.",
+    s8_p5: "You can ask it anything. What the exercise is. Whether you're doing it right. Whether the weight's too light. Nobody's watching, nobody's judging, and it won't assume you already know.",
+    s9_h2: "You don't need to be ready. You need to start.",
+    s9_label: "It starts where you are",
+    s9_p1: "Three days a week. Two, if that's what's realistic. Thirty-five minutes on the days you're pushed.",
+    s9_p2: "Just machines, if the free weights area still feels like too much. It'll get you there when you're ready — and moving there is a step it plans, not a leap you make on your own.",
+    showing_prices: "Showing prices in",
+  },
+  fr: {
+    auth_back_signin: "← Retour à la connexion",
+    auth_btn: "Commencer l'essai gratuit",
+    auth_code_ph: "Tu as un code ? Saisis-le ici",
+    auth_email: "Email",
+    auth_email_ph: "toi@email.com",
+    auth_forgot: "OUBLIÉ ?",
+    auth_name: "Nom complet",
+    auth_name_ph: "Ton prénom",
+    auth_no_account: "Pas de compte ?",
+    auth_note_below: "7 jours gratuits. Sans carte bancaire, annule quand tu veux.",
+    auth_pass_ph: "Min. 6 caractères",
+    auth_pass_ph2: "Ton mot de passe",
+    auth_password: "Mot de passe",
+    auth_remember: "SE SOUVENIR DE MOI",
+    auth_reset_btn: "Envoyer le lien",
+    auth_reset_hint: "Saisis ton email et on t'envoie un lien de réinitialisation.",
+    auth_signin_btn: "Se connecter",
+    auth_start_trial: "Commencer l'essai gratuit",
+    auth_tab_note: "Accès complet. Rien de verrouillé. Sans engagement jusqu'à la fin de l'essai.",
+    auth_tab_signin: "Se connecter",
+    auth_tab_signup: "Créer un compte",
+    billing_annual_html: "Annuel <span class=\"save-badge\">Économise 40%+</span>",
+    billing_lifetime: "À vie",
+    billing_monthly: "Mensuel",
+    change_currency: "changer la devise",
+    close_body: "Tu as l'abonnement depuis un an.",
+    close_h2: "Offre-toi une semaine où tu sais enfin ce que tu fais.",
+    close_trust: "7 jours gratuits · Sans carte bancaire · Remboursement 30 jours",
+    consent_label: "J'accepte les <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">CGU</a> et la <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.",
+    consent_required: "Accepte les CGU et la Politique de confidentialité pour continuer.",
+    currency_charge_note: "Tu seras débité dans la devise que tu choisis",
+    feat_forge_0: "Tout d'Iron",
+    feat_forge_1: "Coach IA sans limite — messages illimités chaque jour",
+    feat_forge_10: "Suivi de surcharge progressive",
+    feat_forge_11: "Métriques corporelles et insights IA",
+    feat_forge_12: "Modification du plan via chat IA",
+    feat_forge_13: "Détection de décharge et alertes",
+    feat_forge_14: "Liste de courses hebdomadaire",
+    feat_forge_15: "Plusieurs programmes sauvegardés",
+    feat_forge_2: "Bibliothèque complète de vidéos de démonstration",
+    feat_forge_3: "Le Forge Audit — bilan mensuel approfondi",
+    feat_forge_4: "Rapport de tendance des progrès",
+    feat_forge_5: "Recalibrage du programme",
+    feat_forge_6: "Projection de trajectoire vers ton objectif",
+    feat_forge_7: "Score de récupération et de régularité",
+    feat_forge_8: "Bilan hebdomadaire de performance IA",
+    feat_forge_9: "Check-in post-entraînement",
+    feat_iron_1: "Programme d'entraînement généré par IA",
+    feat_iron_2: "Plan nutritionnel IA sur 7 jours",
+    feat_iron_3: "Journal d'entraînement (série par série)",
+    feat_iron_4: "Suivi des séries et badges",
+    feat_iron_5: "Détection des records personnels",
+    feat_iron_6: "Rappels push quotidiens",
+    feat_iron_7: "7 thèmes d'app · 2 langues",
+    feat_iron_8: "Coach IA — 20 messages/mois",
+    footer_bottom: "© FORGE · Conçu pour ceux qui n'improvisent pas.",
+    footer_contact: "Contact",
+    footer_privacy: "Confidentialité",
+    footer_tag: "Coach Performance IA",
+    footer_terms: "CGU",
+    forge_soon: "Bientôt : synchronisation Apple Health, synchronisation Garmin, scanner de code-barres nutrition, support prioritaire et accès anticipé aux nouveautés.",
+    hero_cta: "Essai gratuit — sans carte",
+    hero_eyebrow: "Pour ceux qui débutent",
+    hero_h1: "Tu as un abonnement à la salle depuis un an. Tu t'es vraiment entraîné pendant environ trois mois.",
+    hero_sub: "Le problème n'a jamais été la motivation. Tu n'as juste jamais su ce que tu étais censé faire une fois sur place.",
+    hero_trust: "7 jours gratuits · Sans carte bancaire · Conçu pour les débutants",
+    lang_saved: "langue enregistrée. Ton app s'ouvrira dans cette langue.",
+    lt_btn: "Créer un compte",
+    lt_forge_deepdive: "Bilan de coaching IA approfondi chaque mois",
+    lt_forge_name: "🔥 Forge — Membre Fondateur",
+    lt_forge_note: "À {annual}/an, c'est rentabilisé en {n} mois. Le système de coaching complet. À vie.",
+    lt_forge_unlimited: "Messages coach IA illimités",
+    lt_forge_videos: "Vidéos de démonstration des exercices",
+    lt_iron_name: "⚙️ Iron — Membre Fondateur",
+    lt_iron_note: "À {annual}/an, c'est rentabilisé en {n} mois. Tout Iron. À vie. Sans abonnement.",
+    lt_micro: "Crée ton compte d'abord. L'offre Membre Fondateur est disponible dans l'app après l'inscription.",
+    marketing_label: "Recevoir des conseils d'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.",
+    nav_coaches: "Pour les coachs",
+    nav_coaches_short: "Coachs",
+    nav_home: "Accueil",
+    nav_home_short: "Accueil",
+    nav_logo_sub: "Coach Performance IA",
+    nav_trial_btn: "Essai gratuit",
+    obj1_a: "C'est exactement pour toi que c'est fait. Il demande ce que tu as déjà fait avant d'écrire quoi que ce soit, et il part de là. Il n'y a aucun niveau à atteindre d'abord.",
+    obj1_q: "« Je suis bien trop débutant pour ça. »",
+    obj2_a: "Non. Il est construit sur des limites strictes de ce qui est sûr et récupérable pour quelqu'un à ton stade. Le programme que tu reçois la première semaine te paraîtra presque trop facile. C'est voulu.",
+    obj2_q: "« Est-ce qu'il va me donner un truc ridicule ? »",
+    obj3_a: "Demande-lui n’importe quoi, à n’importe quel moment, et il t’expliquera sans supposer que tu sais déjà. Forge ajoute une vidéo de démonstration sur chaque exercice.",
+    obj3_q: "« Je ne sais pas faire les exercices. »",
+    obj4_a: "La plupart des débutants arrêtent parce qu'ils ne savent pas si ça marche, pas parce qu'ils ont perdu l'envie. Tu verras tes chiffres bouger de semaine en semaine, et c'est précisément ce qui manquait.",
+    obj4_q: "« Je vais arrêter comme avec tout le reste. »",
+    obj5_a: "Il s'ajuste et continue. Tu ne recommences pas, et personne ne te fait la morale.",
+    obj5_q: "« Et si je rate une semaine ? »",
+    obj6_a: "Dis-lui ce que tu as — une salle complète, quelques haltères, ou rien du tout. Il construit autour de ça.",
+    obj6_q: "« Et si je n'ai presque aucun matériel ? »",
+    obj7_a: "Ajoute-la à ton écran d'accueil et elle fonctionne comme n'importe quelle autre app. Rien à installer.",
+    obj7_q: "« Ce n'est pas sur l'App Store. »",
+    page_desc: "Un abonnement de salle que tu n'utilises presque pas, parce que personne ne t'a jamais dit quoi faire. FORGE te donne l'exercice, les séries et le poids, puis ajuste selon comment ça s'est passé. 7 jours gratuits, sans carte.",
+    page_title: "FORGE — Sache exactement quoi faire en arrivant à la salle",
+    price_billed_year: "facturé {amount}/an",
+    price_btn: "Essai gratuit",
+    price_forge_tag: "Le système complet. Rien en moins.",
+    price_h2: "Choisis ton niveau.",
+    price_if_annual: "{price}/mois en annuel",
+    price_iron_tag: "Commence à t'entraîner avec un vrai programme.",
+    price_label: "Tarifs",
+    price_micro: "7 jours d'essai gratuit · Sans carte bancaire · Annule quand tu veux",
+    price_one_time: "paiement unique",
+    price_recommended: "LE PLUS CHOISI",
+    price_save_badge: "Économise 40%+",
+    price_sub: "Essai gratuit 7 jours. Sans engagement jusqu'à ce que tu sois prêt.",
+    q4_attr: "— Kevin, fondateur",
+    q4_text: "J'ai payé CHF 360 une fois pour un programme de coaching qui promettait exactement ça. Il est arrivé environ une minute après mon inscription. Il n'existe aucune version de cette histoire où quelqu'un a vraiment regardé ma situation en soixante secondes. Ce n'est pas personnalisé. C'est un modèle avec mon nom tapé dessus.",
+    q7_attr: "— Kevin, fondateur",
+    q7_text: "Une fois, ma salle n'avait pas de hack squat. FORGE l'a remplacé par autre chose qui faisait le même travail — je n'ai pas eu à rester planté là à deviner quoi faire à la place. Une autre fois, une machine à ischios me faisait mal. Je le lui ai dit, et il m'a basculé sur du soulevé de terre roumain. La gêne est partie.",
+    reset_back: "Retour à la connexion",
+    reset_confirm_ph: "Ressaisis le nouveau mot de passe",
+    reset_confirm_pw: "Confirme le mot de passe",
+    reset_new_pw: "Nouveau mot de passe",
+    reset_remembered: "Ça te revient ?",
+    reset_sub: "Choisis un nouveau mot de passe pour ton compte. Minimum 6 caractères.",
+    reset_submit: "Mettre à jour",
+    reset_title: "Choisis un nouveau mot de passe",
+    s11_h2: "Tu paies déjà la salle.",
+    s11_label: "Ce que tu risques",
+    s11_p1: "Tu la paies depuis un an. Chaque mois où tu continues de payer un abonnement que tu n'utilises pas correctement te coûte plus cher que ça.",
+    s11_p2: "Sept jours gratuits. Sans carte. Rien à annuler si tu décides que ce n'est pas pour toi.",
+    s11_p3: "Et si tu t'abonnes et que ce n'est pas ce que cette page dit : 30 jours, remboursé, sans discussion.",
+    s11_p4: "Jour 8 : si tu ne l'as pas utilisé, il ne se passe rien. Pas de débit.",
+    s12_h2: "Ce que les gens demandent avant de s'inscrire.",
+    s12_label: "Questions fréquentes",
+    s2_h2: "Tu es le seul à deviner.",
+    s2_label: "Le vrai problème",
+    s2_p1: "Tu entres. Tu fais les machines que tu reconnais. Un peu de tapis, peut-être. Quelques curls, parce que tu sais ce qu'est un curl.",
+    s2_p2: "Tu passes plus de temps à regarder ce que font les autres qu'à t'entraîner.",
+    s2_p3: "Tu as huit exercices notés dans ton app Notes et un dossier de TikToks que tu n'as jamais rouverts. Tu ne sais pas dans quel ordre les faire. Tu ne sais pas quel poids tu es censé mettre.",
+    s2_p4: "Alors tu prends ce qui est libre et tu espères que c'est à peu près bon.",
+    s2_p5: "Puis tu passes deux semaines sans y aller, parce qu'à quoi bon si tu ne sais pas si quoi que ce soit fonctionne.",
+    s2_p6: "Tous les autres ont l'air de savoir exactement ce qu'ils font.",
+    s3_h2: "C'est ce que ça donne quand personne ne t'a jamais dit quoi faire.",
+    s3_label: "Tu n'es pas mauvais pour ça",
+    s3_p1: "Quelque part cette année, tu as décidé que tu n'étais simplement pas fait pour ça.",
+    s3_p2: "Tu as vu quelqu'un charger une barre et tu t'es dit ouais, ce n'est pas pour moi. Tu as gardé les mêmes haltères de 10 kg pendant un mois sans jamais te demander si tu devais passer à 12,5, parce que tu n'avais aucune idée de comment le savoir.",
+    s3_p3: "Ce n'est pas de la faiblesse. Ce n'est pas de la mauvaise génétique.",
+    s3_p4: "Personne n'est naturellement bon à la salle. Chaque personne là-dedans qui a l'air de savoir ce qu'elle fait a été formée, a suivi quelque chose, ou a passé des années à mal s'y prendre.",
+    s3_p5: "Toi, tu es passé directement à la partie mal s'y prendre.",
+    s4_h2: "Il te fallait quelqu'un pour te dire quoi faire aujourd'hui.",
+    s4_label: "Pourquoi le gratuit n'a pas marché",
+    s4_p1: "Ce n'est pas que l'information était fausse. C'est que ce n'étaient pas des instructions.",
+    s4_p2: "Une séance enregistrée te dit 3 séries de 10. Avec quel poids ? Combien de temps de repos ? Et si tu ne peux pas en faire dix ? Et si dix, c'est facile — tu montes la fois d'après, et de combien ?",
+    s4_p3: "Rien de tout ça n'y est. Alors tu la suis une semaine et tu arrêtes sans bruit.",
+    s4_p4: "Une vidéo YouTube t'apprend un exercice. Elle ne te dit pas quoi faire mardi.",
+    s4_p5: "ChatGPT te sort une liste énorme avec plein d'exercices et aucune idée de ce que tu fais concrètement en passant la porte.",
+    s4_p6: "Une app gratuite te donne un plan le premier jour et ne le change plus jamais. Fais une séance catastrophique, reviens détruit, elle te dira exactement ce qu'elle avait toujours prévu de dire.",
+    s4_p7: "Chacune de ces solutions suppose que tu sais déjà ce que tu cherches justement à découvrir.",
+    s4_p8: "Il ne te fallait pas plus d'informations.",
+    s5_h2: "Il te faut quelque chose qui sait ce qui s'est passé la fois d'avant.",
+    s5_label: "Ce qui marche vraiment",
+    s5_p1: "Deux choses, et elles doivent aller ensemble.",
+    s5_p2: "Quelque chose qui te dit exactement quoi faire en arrivant — quel exercice, combien de séries, quel poids, quoi faire si c'est trop facile ou trop dur.",
+    s5_p3: "Et quelque chose qui ajuste tout ça selon comment ça s'est réellement passé.",
+    s5_p4: "Cette deuxième partie, c'est ce qui manque à tout ce qui est gratuit. Une liste ne peut pas savoir que le jour des jambes t'a détruit pendant trois jours. Un PDF ne peut pas savoir que tu n'as pas réussi à comprendre la machine et que tu l'as sautée.",
+    s6_1_b: "Ce n'est pas un test. Il demande ce que tu as déjà fait, quel matériel tu as, quels jours tu peux t'entraîner et ce que tu veux. Pas de mauvaise réponse. En moins de deux minutes.",
+    s6_1_t: "Il demande où tu en es vraiment.",
+    s6_2_b: "Pas un split de musculation sur six jours. Quelque chose qui rentre dans ta semaine et qui part d'où tu en es.",
+    s6_2_t: "Il te donne un plan que tu peux vraiment suivre.",
+    s6_3_b: "Tu tapes le poids et les reps. Tu dis si c'était trop dur, trop facile, ou si tu n'as pas pu le faire.",
+    s6_3_t: "Tu notes ce que tu as fait.",
+    s6_4_b: "La cible monte quand tu es prêt. Elle redescend quand tu en as trop fait. Il remplace les exercices que tu n’as pas pu faire.",
+    s6_4_t: "La séance suivante change.",
+    s6_after: "Puis ça recommence.",
+    s6_h2: "Quatre étapes.",
+    s6_label: "Comment FORGE fonctionne",
+    s7_1_p1: "Les deux premières séances de jambes te laissent à peine capable de marcher. Pas blessé — juste détruit. Dis-le-lui. La séance suivante ne redétruit pas tes jambes en te disant de serrer les dents. Elle lève le pied.",
+    s7_1_t: "Quand tu en fais trop, il le remarque.",
+    s7_2_p1: "C'est un petit détail qui n'en est pas un. Avec un programme classique, la réponse quand quelque chose ne te convient pas, c'est : c'est ce qui est écrit, fais-le quand même.",
+    s7_2_t: "Quand tu ne peux pas faire quelque chose, tu le dis.",
+    s7_3_p1: "Tu ne t'expliques pas deux fois. Dis-lui une fois que tu ne peux pas faire quelque chose et ça reste écarté.",
+    s7_3_t: "Il se souvient.",
+    s7_4_p1: "Il y a un truc sur lequel les débutants bloquent — si tu n'es pas complètement détruit, tu supposes que tu t'y es mal pris. FORGE te dira non, c'était la bonne dose, rentre chez toi.",
+    s7_4_t: "Il te dit quand tu en as fait assez.",
+    s7_h2: "À quoi ça ressemble la première semaine.",
+    s7_label: "La première semaine",
+    s8_h2: "Il ne te fera pas te sentir bête.",
+    s8_label: "Aucun jugement",
+    s8_p1: "Un mot honnête sur l'IA : tu te demandes sûrement comment un logiciel peut savoir ce que devrait faire quelqu'un qui ne s'est jamais vraiment entraîné.",
+    s8_p2: "Deux réponses.",
+    s8_p3: "Il demande d'abord. Rien n'est prescrit avant qu'il sache ce que tu as réellement fait et à quoi tu as accès.",
+    s8_p4: "Et il est construit sur des règles d'entraînement, pas sur des suppositions. Il ne peut pas te donner le programme cauchemar à trente séries que ChatGPT sortira avec assurance à quiconque le lui demande. Il y a des limites à ce qu'il a le droit de te prescrire, et ces limites sont tout l'intérêt.",
+    s8_p5: "Tu peux tout lui demander. Ce qu'est un exercice. Si tu le fais correctement. Si le poids est trop léger. Personne ne te regarde, personne ne te juge, et il ne suppose pas que tu sais déjà.",
+    s9_h2: "Tu n'as pas besoin d'être prêt. Tu as besoin de commencer.",
+    s9_label: "Il part d'où tu en es",
+    s9_p1: "Trois jours par semaine. Deux, si c'est ce qui est réaliste. Trente-cinq minutes les jours où tu es pris à la gorge.",
+    s9_p2: "Uniquement des machines, si la zone poids libres te paraît encore trop. Il t'y amènera quand tu seras prêt — et y aller est une étape qu'il planifie, pas un saut que tu fais tout seul.",
+    showing_prices: "Prix en",
+  },
+};
+
+// ── INIT ──────────────────────────────────────────────
+// Order matters. Everything here runs AFTER AD_STRINGS, so nothing reads it in its
+// temporal dead zone.
+(function init() {
+  // The markup ships CHF selected and "CHF" in the label. Push the RESOLVED currency
+  // into both before the first paint, or a returning GBP visitor sees GBP prices under
+  // a CHF label. setCurrency() calls updatePrices().
+  setCurrency(currency);
+
+  const btn = document.getElementById('langBtn');
+  if (btn) btn.textContent = LANG_FLAGS[currentLang] || LANG_FLAGS.en;
+
+  // Guarded to non-English, exactly as index.html and coaches.html are. The markup on
+  // this page is GENERATED FROM AD_STRINGS.en, so the English pass is a no-op by
+  // construction. The EN table still has to be complete — selectLang('en') needs it.
+  if (currentLang && currentLang !== 'en') applyAdLanguage(currentLang);
+})();
+</script>
+<div style="position:fixed;top:68px;right:14px;z-index:99989;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);color:#ff6b35;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:3px 7px;border-radius:4px;pointer-events:none;">STAGING</div>
+</body>
+</html>
