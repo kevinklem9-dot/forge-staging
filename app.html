@@ -834,8 +834,10 @@ body.pwa-mode .chat-input-area {
 .bwh-summary-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
 .bwh-summary-lbl { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
 .bwh-summary-val { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1.1; margin-top:6px; color:var(--accent); }
-.bwh-summary-val.pos { color:var(--red); }
-.bwh-summary-val.neg { color:var(--green); }
+/* Same reasoning as .bwh-row-delta above. This is the "Change" figure sitting
+   directly over that list, so leaving it red/green while the rows went neutral
+   would have made one card contradict the other. */
+.bwh-summary-val.pos, .bwh-summary-val.neg { color:var(--text); }
 .bwh-summary-val.flat { color:var(--muted); }
 .bwh-chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:14px; }
 /* Coach client-overview bodyweight chart ONLY. buildBodyweightChart() is shared with the
@@ -853,8 +855,13 @@ body.pwa-mode .chat-input-area {
 .bwh-row-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); letter-spacing:0.5px; }
 .bwh-row-right { display:flex; align-items:baseline; gap:8px; }
 .bwh-row-delta { font-family:'DM Mono',monospace; font-size:10px; }
-.bwh-row-delta.up { color:var(--red); }
-.bwh-row-delta.down { color:var(--green); }
+/* Deltas are NEUTRAL in both directions. They were red for any increase and green
+   for any decrease, which tells a bulking client that gaining weight is a warning.
+   The app does not know whether up is good for this user — only the user's goal
+   does, and this list never sees it. The +/- sign and the number carry the
+   direction; the colour no longer passes judgement on it.
+   .up / .down are kept as hooks so a goal-aware treatment can be added later. */
+.bwh-row-delta.up, .bwh-row-delta.down { color:var(--muted); }
 .bwh-row-weight { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; color:var(--text); }
 
 /* ── COACH PROGRAMME TABS (Build 2 layout) ── */
@@ -7078,12 +7085,30 @@ function closeBodyweightHistory() {
   document.getElementById('bwHistoryOverlay')?.remove();
 }
 
-// Inline SVG line chart — no external library. Accent polyline + dots, muted grid.
+// Inline SVG line chart — no external library. Accent line over a gradient fill,
+// muted grid. Shared by THREE call sites: the client's own history overlay
+// (openBodyweightHistory), the coach client-overview card
+// (renderClientBodyweightSection) and the coach's history overlay
+// (openClientBodyweightHistory). Outer dimensions are deliberately unchanged —
+// the coach card sizes this via `.coach-bw-chart svg { height:300px }`.
+//
+// Each render needs its own gradient id: two of these SVGs can be in the DOM at
+// once (the coach card, with the history overlay open on top of it), and a
+// duplicate id would make the second chart reference the first one's gradient.
+let _bwChartSeq = 0;
 function buildBodyweightChart(history) {
-  if (history.length === 1) {
-    const w = history[0].weight_kg;
+  // GUARD: a non-empty history whose weight_kg are all null used to reach the
+  // label code with n === 0, where labelIdx became [0,-1] and history[0] was
+  // undefined — one bad row threw and took the whole coach overview with it.
+  const rows = (history || []).filter(h => h && h.weight_kg != null && !isNaN(Number(h.weight_kg)));
+  if (!rows.length) return '';
+
+  if (rows.length === 1) {
+    const w = rows[0].weight_kg;
+    // preserveAspectRatio="none" dropped: it stretched the dot into an ellipse
+    // once the coach card gave this SVG a taller box.
     return `
-      <svg viewBox="0 0 320 200" width="100%" height="200" preserveAspectRatio="none">
+      <svg viewBox="0 0 320 200" width="100%" height="200">
         <circle cx="160" cy="100" r="4" fill="var(--accent)" />
       </svg>
       <div style="text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;">${displayWeightValue(w)} ${displayWeightUnit()} · Log more entries to see your progression</div>`;
@@ -7092,46 +7117,78 @@ function buildBodyweightChart(history) {
   const W = 320, H = 200, padL = 38, padR = 12, padT = 14, padB = 26;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  const weights = history.map(h => Number(h.weight_kg));
-  let minW = Math.min(...weights) - 2;
-  let maxW = Math.max(...weights) + 2;
-  if (maxW === minW) { maxW += 1; minW -= 1; }
+  const weights = rows.map(h => Number(h.weight_kg));
+  // Y-RANGE FITS THE DATA. It used to be a flat min-2 / max+2, so a realistic
+  // 81.3-82.0 spread was drawn inside a 4.7kg window and the line sat in a thin
+  // band with most of the chart empty. Pad by a share of the actual range with a
+  // floor, so a wide series breathes and a flat one still lands mid-height
+  // instead of pinned to an edge.
+  const dataMin = Math.min(...weights), dataMax = Math.max(...weights);
+  const spanY = dataMax - dataMin;
+  const padY = Math.max(spanY * 0.18, 0.4);
+  const minW = dataMin - padY;
+  const maxW = dataMax + padY;
 
-  const n = history.length;
+  const n = rows.length;
   const x = i => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
   const y = v => padT + plotH - ((v - minW) / (maxW - minW)) * plotH;
 
-  const pts = history.map((h, i) => `${x(i).toFixed(1)},${y(Number(h.weight_kg)).toFixed(1)}`);
+  const pts = rows.map((h, i) => `${x(i).toFixed(1)},${y(Number(h.weight_kg)).toFixed(1)}`);
 
-  // 4 horizontal grid lines + y-axis weight labels
+  // 4 horizontal grid lines + y-axis weight labels. Gridlines are dialled back:
+  // at full --border strength they competed with the data.
+  // Labels carry a decimal once the window is tight, or a 1.5kg range rounds to
+  // "81 81 82 82 82" and reads as broken.
+  const yRange = maxW - minW;
+  const yDp = yRange < 4 ? 1 : 0;
+  const fmtY = v => (getUserUnits() === 'lbs' ? kgToLbs(v) : v).toFixed(yDp);
   let grid = '';
   const gridLines = 4;
   for (let g = 0; g <= gridLines; g++) {
     const val = minW + (g / gridLines) * (maxW - minW);
     const gy = y(val);
-    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="0.5" />`;
-    grid += `<text x="${padL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${Math.round(getUserUnits() === 'lbs' ? kgToLbs(val) : val)}</text>`;
+    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="0.5" opacity="0.45" />`;
+    grid += `<text x="${padL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" font-family="'DM Mono',monospace" font-size="8" letter-spacing="0.4" fill="var(--muted)">${fmtY(val)}</text>`;
   }
 
-  // X-axis labels: first, middle, last — "MMM YY"
+  // X-axis labels: first, middle, last.
+  // THE BUG: the format was { month:'short', year:'2-digit' } — no day component —
+  // so every entry inside one month rendered the same string ("Aug 26" is August
+  // 2026, not the 26th). The index arithmetic below was always correct.
   const xLabel = iso => {
     const dt = new Date(iso);
     if (isNaN(dt.getTime())) return '';
-    return dt.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    return dt.toLocaleDateString(typeof appLanguage !== 'undefined' && appLanguage === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short' });
   };
   const labelIdx = n <= 2 ? [0, n - 1] : [0, Math.floor((n - 1) / 2), n - 1];
   const xLabels = [...new Set(labelIdx)].map(i =>
-    `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-family="'DM Mono',monospace" font-size="8" fill="var(--muted)">${xLabel(history[i].recorded_at)}</text>`
+    `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-family="'DM Mono',monospace" font-size="9" letter-spacing="0.5" fill="var(--muted)">${xLabel(rows[i].recorded_at)}</text>`
   ).join('');
 
-  const dots = history.map((h, i) =>
-    `<circle cx="${x(i).toFixed(1)}" cy="${y(Number(h.weight_kg)).toFixed(1)}" r="3" fill="var(--accent)" />`
+  // Dots carry a surface-coloured rim so neighbouring points stay distinct.
+  const dots = rows.map((h, i) =>
+    `<circle cx="${x(i).toFixed(1)}" cy="${y(Number(h.weight_kg)).toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--surface)" stroke-width="1" />`
   ).join('');
+
+  // Gradient fill under the line. stop-color is var(--accent) in BOTH stops, so it
+  // follows the theme: a bright wash on the dark themes, a soft grey-ink wash on
+  // the light ones where --accent is near-black. Never a hardcoded colour.
+  const gid = 'bwGrad' + (++_bwChartSeq);
+  const baseY = (padT + plotH).toFixed(1);
+  const area = `${x(0).toFixed(1)},${baseY} ${pts.join(' ')} ${x(n - 1).toFixed(1)},${baseY}`;
+  const fill = `
+      <defs>
+        <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.30" />
+          <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points="${area}" fill="url(#${gid})" />`;
 
   return `
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="200">
-      ${grid}
-      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      ${grid}${fill}
+      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" />
       ${dots}
       ${xLabels}
     </svg>`;
