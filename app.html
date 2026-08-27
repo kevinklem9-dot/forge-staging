@@ -8278,6 +8278,39 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
+// ── COACH CLIENT SUMMARY ──────────────────────────────
+// The model writes markdown headings ("## Client Overview: …"), which used to render
+// literally. fmt() above handles **bold**, *italic* and line breaks but NOT headings, and
+// fmt() is shared with the AI chat, so headings are added HERE rather than by widening
+// fmt() and changing how every chat message renders.
+//
+// SAFETY: this runs fmt() FIRST, so escaping has already happened before anything below
+// touches the string. The heading capture is [^<]*, which cannot match a '<' because
+// fmt() escaped every one to '&lt;' — so no markup can be injected through a heading.
+function fmtSummaryBody(t) {
+  return fmt(String(t == null ? '' : t))
+    .replace(/(^|<br>)\s*#{1,6}\s+([^<]*)/g, '$1<span class="sum-h">$2</span>')
+    // A markdown heading is followed by a blank line, which fmt() turned into <br><br>.
+    // .sum-h is display:block with its own margin, so those breaks stack on top of it and
+    // leave a visible hole under every heading. Drop the breaks and let the margin space it.
+    .replace(/(<span class="sum-h">[^<]*<\/span>)(?:<br>)+/g, '$1');
+}
+
+// Plain-text reduction for the COLLAPSED preview line, which must show no syntax at all.
+// Strips markup from the RAW string; the caller still escapes the result before it reaches
+// innerHTML — this only removes characters, it never produces markup.
+function stripMarkdown(t) {
+  return String(t == null ? '' : t)
+    .replace(/^\s*#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function formatDate(iso) {
   const d = new Date(iso);
   const now = new Date();
@@ -14268,6 +14301,9 @@ function formatDateSession(dateStr) {
   return d;
 }
 
+// DEAD AT RUNTIME — a later <script> block reassigns renderClientSummaryCard (search
+// "FIX 2: collapsible client overview summary card"). That version is the one that runs.
+// Kept in step with it deliberately, so the two cannot drift if the override is removed.
 function renderClientSummaryCard(ov) {
   if (ov && ov.summary) {
     return `<details id="clientSummaryCard" open style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">
@@ -14275,7 +14311,7 @@ function renderClientSummaryCard(ov) {
           <span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;">CLIENT OVERVIEW</span>
           <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;font-family:'DM Mono',monospace;">Regenerate</button>
         </summary>
-        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);margin-top:10px;">${escHtml(ov.summary).replace(/\n/g,'<br>')}</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);margin-top:10px;">${fmtSummaryBody(ov.summary)}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:'DM Mono',monospace;">Generated ${ov.summary_generated_at ? relTime(ov.summary_generated_at) : 'just now'}</div>
       </details>`;
   }
@@ -17987,6 +18023,12 @@ function urlBase64ToUint8Array(base64String) {
 
 <style>
 /* FIX 2 — collapsible client overview card */
+/* Markdown headings inside the AI summary body. The model emits "## Heading" lines;
+   fmtSummaryBody() turns them into this span. Sized just above body text rather than
+   as a true heading — it sits inside a card that already has its own label. */
+.sum-h { display:block; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+         color:var(--text); letter-spacing:-0.2px; margin:14px 0 4px; }
+.sum-h:first-child { margin-top:0; }
 .summary-card summary::-webkit-details-marker { display:none; }
 .summary-card summary { list-style:none; }
 .summary-card[open] .summary-chevron { transform: rotate(90deg); }
@@ -18036,7 +18078,7 @@ renderClientSummaryCard = function (ov, opened) {
   var lbl = "font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;flex-shrink:0;";
   var chev = "color:var(--muted);font-size:11px;display:inline-block;flex-shrink:0;";
   if (ov && ov.summary) {
-    var oneLine = String(ov.summary).replace(/\s+/g, ' ').trim();
+    var oneLine = stripMarkdown(ov.summary);
     var preview = escHtml(oneLine.slice(0, 60)) + (oneLine.length > 60 ? '…' : '');
     var gen = ov.summary_generated_at ? (typeof relTime === 'function' ? relTime(ov.summary_generated_at) : '') : t('client_overview_just_now');
     return `<details id="clientSummaryCard" class="summary-card"${openAttr} style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;overflow:hidden;">
@@ -18046,7 +18088,7 @@ renderClientSummaryCard = function (ov, opened) {
         <span style="flex:1;min-width:0;font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</span>
       </summary>
       <div style="padding:0 14px 14px;">
-        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);">${escHtml(ov.summary).replace(/\n/g, '<br>')}</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;color:var(--text);">${fmtSummaryBody(ov.summary)}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;">
           <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${t('client_overview_generated')} ${gen}</span>
           <button onclick="regenerateClientSummary()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('client_overview_regenerate')}</button>
