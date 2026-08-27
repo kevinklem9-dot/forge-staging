@@ -236,7 +236,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .pt-bar::before,.pt-bar::after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.5}
 .pt-bar::before{top:0}.pt-bar::after{bottom:0}
 .pt-bar-line1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,4.5vw,52px);line-height:1.05;letter-spacing:1.5px;color:var(--text);max-width:900px;margin:0 auto 22px}
-.pt-bar .pt-highlight{color:var(--accent2);text-shadow:0 0 30px rgba(255,107,53,0.35)}
+.pt-bar .pt-highlight{color:var(--accent);text-shadow:0 0 30px rgba(232,255,61,0.35)}
+/* Brand yellow, not --accent2 orange. The glow had to move with it or a yellow word
+   sat in an orange halo. index.html has no --accent-rgb token, and its established
+   pattern for accent-derived translucency is a literal rgba(232,255,61,a) — 34 uses
+   across this sheet, 3 of them already at this exact 0.35. Radius and alpha are
+   unchanged from the orange version: this is a hue swap, nothing else.
+   --shadow-glow was NOT reused: it is 0 0 60px / 0.18, which would have changed the
+   glow's size and strength as well as its colour. */
 .pt-bar-line2{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;letter-spacing:0;color:var(--muted2);text-transform:none;max-width:640px;margin:0 auto;line-height:1.65}
 
 /* ── PRICING ── */
