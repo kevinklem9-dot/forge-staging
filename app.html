@@ -838,6 +838,16 @@ body.pwa-mode .chat-input-area {
 .bwh-summary-val.neg { color:var(--green); }
 .bwh-summary-val.flat { color:var(--muted); }
 .bwh-chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-top:14px; }
+/* Coach client-overview bodyweight chart ONLY. buildBodyweightChart() is shared with the
+   client's own history overlay (openBodyweightHistory) and the coach's history overlay
+   (openClientBodyweightHistory) — both of which use .bwh-chart-wrap and are untouched — so
+   the size change is made here at the call site rather than in the function.
+   The SVG ships height="200" as an attribute; CSS wins over presentation attributes, and
+   preserveAspectRatio keeps every proportion, so this scales the whole chart, labels and
+   all. Nothing is redrawn. 300 is a deliberate cap: with a 320x200 viewBox the content
+   scales by min(containerW/320, height/200), so 300 yields 480x300 on any viewport wide
+   enough and leaves narrow screens, which are already full-width, effectively unchanged. */
+.coach-bw-chart svg { height:300px; }
 .bwh-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); }
 .bwh-row:last-child { border-bottom:none; }
 .bwh-row-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); letter-spacing:0.5px; }
@@ -14240,8 +14250,13 @@ function renderClientOverviewTab(body) {
   }
   const notes = _currentClientDetail.notes?.notes;
   const feedback = _currentClientDetail.feedback || [];
-  const metrics = ov.body_metrics || [];
-  const chart = renderWeightChart(metrics.map(r => ({ ...r, recorded_at: r.logged_at })));
+  // The "Weight (last 30 days)" chart was removed from this view. It read ov.body_metrics
+  // and duplicated the bodyweight-history chart directly below it, which is the better of
+  // the two (grid lines, y-axis kg labels, x-axis month labels, tappable through to the full
+  // history). It also dominated the page: renderWeightChart's SVG is width:100%/height:auto
+  // over a 300x100 viewBox, so on a 1440 overlay it drew 1374x458.
+  // The endpoint still returns body_metrics and renderCoachMetricsCard() still renders the
+  // client's measurements below — only this one chart is gone.
   const lastSessionLabel = ov.last_session?.logged_at ? formatDateSession(ov.last_session.logged_at) : t('client_overview_never');
   const recent = ov.recent_sessions || [];
   const lastSessionId = recent[0]?.id || ov.last_session?.id || null;
@@ -14253,10 +14268,6 @@ function renderClientOverviewTab(body) {
       ${statCard(t('client_overview_last_session'), lastSessionLabel)}
       ${statCard(t('client_overview_prs_month'), ov.prs_this_month ?? 0)}
     </div>
-    ${chart ? `
-    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);letter-spacing:2px;margin-bottom:8px;">${t('client_overview_weight_chart')}</div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:18px;">${chart}</div>
-    ` : ''}
     <div id="coachMetricsCard"></div>
     ${renderClientBodyweightSection(_currentClientDetail.bodyweight)}
     ${ov.upcoming_sessions?.length ? `
@@ -14323,7 +14334,7 @@ function renderClientBodyweightSection(rows) {
         </div>
         <div style="font-size:20px;color:var(--muted);padding-right:4px;">›</div>
       </div>
-      ${chart ? `<div style="margin-top:8px;">${chart}</div>` : ''}
+      ${chart ? `<div class="coach-bw-chart" style="margin-top:8px;">${chart}</div>` : ''}
     </div>`;
 }
 
