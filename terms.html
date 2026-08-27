@@ -53,100 +53,317 @@
       .wordmark { font-size: 28px; }
       h2 { font-size: 22px; margin-top: 32px; }
     }
+
+    /* ══ language toggle — added with the i18n pass ══ */
+    .top { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+    .topleft { display: flex; flex-direction: column; gap: 10px; }
+    .langwrap { position: relative; flex-shrink: 0; }
+    .langbtn { background: #111; border: 1px solid #222; border-radius: 8px; padding: 7px 10px; cursor: pointer; font-size: 16px; line-height: 1; color: #f0f0f0; transition: border-color .15s; }
+    .langbtn:hover { border-color: #e8ff3d; }
+    .langdrawer { position: absolute; top: calc(100% + 6px); right: 0; background: #111; border: 1px solid #222; border-radius: 8px; padding: 4px; display: none; z-index: 20; min-width: 150px; }
+    .langdrawer.open { display: block; }
+    .langopt { font-family: 'DM Mono', monospace; font-size: 12px; color: #aaa; padding: 8px 12px; cursor: pointer; border-radius: 6px; white-space: nowrap; }
+    .langopt:hover { background: #1a1a1a; color: #e8ff3d; }
   </style>
 </head>
 <body>
   <div class="top">
-    <a class="back" href="/">← klemforge.com</a>
-    <div class="wordmark">FORGE</div>
+    <div class="topleft">
+      <a class="back" href="/">← klemforge.com</a>
+      <div class="wordmark">FORGE</div>
+    </div>
+    <div class="langwrap">
+      <button class="langbtn" id="langBtn" onclick="toggleLangDrawer()" aria-label="Language" aria-haspopup="true">&#127468;&#127463;</button>
+      <div class="langdrawer" id="langDrawer">
+        <div class="langopt" onclick="selectLang('en')">&#127468;&#127463; English</div>
+        <div class="langopt" onclick="selectLang('fr')">&#127467;&#127479; Fran&ccedil;ais</div>
+      </div>
+    </div>
   </div>
-  <div class="updated">Last updated: August 2026</div>
-  <div class="meta">
+  <div class="updated" data-i18n="updated">Last updated: August 2026</div>
+  <div class="meta" data-i18n-html="meta">
     <b>FORGE</b> — AI Performance Coach<br>
     <a href="https://klemforge.com">klemforge.com</a> · <a href="mailto:support@klemforge.com">support@klemforge.com</a><br>
     Rue du Rhône 14, 1204 Genève, Switzerland
   </div>
 
-  <h2><span class="num">01</span>Acceptance</h2>
-  <p>By creating an account and using FORGE you agree to these Terms. If you do not agree, do not use the service.</p>
+  <h2><span class="num">01</span><span data-i18n="s01_h">Acceptance</span></h2>
+  <p data-i18n="s01_p1">By creating an account and using FORGE you agree to these Terms. If you do not agree, do not use the service.</p>
 
-  <h2><span class="num">02</span>The Service</h2>
-  <p>FORGE provides an AI-powered fitness coaching application. Features include personalised workout programmes, AI coaching, nutrition guidance, session logging, and progress tracking.</p>
-  <p><strong>FORGE is for informational and fitness purposes only. It is not a medical service and does not provide medical advice.</strong> Consult a doctor before beginning any new exercise programme, particularly if you have injuries or health conditions.</p>
+  <h2><span class="num">02</span><span data-i18n="s02_h">The Service</span></h2>
+  <p data-i18n="s02_p1">FORGE provides an AI-powered fitness coaching application. Features include personalised workout programmes, AI coaching, nutrition guidance, session logging, and progress tracking.</p>
+  <p data-i18n-html="s02_p2"><strong>FORGE is for informational and fitness purposes only. It is not a medical service and does not provide medical advice.</strong> Consult a doctor before beginning any new exercise programme, particularly if you have injuries or health conditions.</p>
 
-  <h2><span class="num">03</span>Accounts</h2>
+  <h2><span class="num">03</span><span data-i18n="s03_h">Accounts</span></h2>
   <ul>
-    <li>You must be at least 18 years old to use FORGE.</li>
-    <li>You are responsible for keeping your credentials secure.</li>
-    <li>You must provide accurate information.</li>
-    <li>One account per person.</li>
-    <li>We reserve the right to suspend accounts that violate these terms.</li>
+    <li data-i18n="s03_l1">You must be at least 18 years old to use FORGE.</li>
+    <li data-i18n="s03_l2">You are responsible for keeping your credentials secure.</li>
+    <li data-i18n="s03_l3">You must provide accurate information.</li>
+    <li data-i18n="s03_l4">One account per person.</li>
+    <li data-i18n="s03_l5">We reserve the right to suspend accounts that violate these terms.</li>
   </ul>
 
-  <h2><span class="num">04</span>Subscriptions and Billing</h2>
+  <h2><span class="num">04</span><span data-i18n="s04_h">Subscriptions and Billing</span></h2>
   <ul>
-    <li>FORGE offers a <strong>7-day free trial</strong> with full access to all features.</li>
-    <li>No credit card is required to start a trial.</li>
-    <li>After the trial, a paid subscription is required to continue using FORGE.</li>
-    <li>Prices are shown in CHF (Swiss Francs) and include applicable taxes.</li>
-    <li>Subscriptions automatically renew each month or year depending on your plan.</li>
-    <li>You can cancel at any time from your Account settings.</li>
-    <li>Billing is handled by Stripe.</li>
+    <li data-i18n-html="s04_l1">FORGE offers a <strong>7-day free trial</strong> with full access to all features.</li>
+    <li data-i18n="s04_l2">No credit card is required to start a trial.</li>
+    <li data-i18n="s04_l3">After the trial, a paid subscription is required to continue using FORGE.</li>
+    <li data-i18n="s04_l4">Prices are shown in CHF (Swiss Francs) and include applicable taxes.</li>
+    <li data-i18n="s04_l5">Subscriptions automatically renew each month or year depending on your plan.</li>
+    <li data-i18n="s04_l6">You can cancel at any time from your Account settings.</li>
+    <li data-i18n="s04_l7">Billing is handled by Stripe.</li>
   </ul>
 
-  <h2><span class="num">05</span>Cancellation and Refunds</h2>
+  <h2><span class="num">05</span><span data-i18n="s05_h">Cancellation and Refunds</span></h2>
   <ul>
-    <li>You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period.</li>
-    <li><strong>30-day money-back guarantee.</strong> Email <a href="mailto:support@klemforge.com">support@klemforge.com</a> within 30 days of your first charge and we refund it in full.</li>
-    <li><strong>There are no conditions attached.</strong> You do not have to have logged a workout, used the AI coach, or reached any goal. You do not have to give a reason. How much or how little you used FORGE makes no difference.</li>
-    <li>The guarantee applies to your first paid subscription. Later billing periods are not refunded — cancel before a renewal to avoid being charged for it.</li>
-    <li>Trial periods carry no charge, so there is nothing to refund.</li>
+    <li data-i18n="s05_l1">You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period.</li>
+    <li data-i18n-html="s05_l2"><strong>30-day money-back guarantee.</strong> Email <a href="mailto:support@klemforge.com">support@klemforge.com</a> within 30 days of your first charge and we refund it in full.</li>
+    <li data-i18n-html="s05_l3"><strong>There are no conditions attached.</strong> You do not have to have logged a workout, used the AI coach, or reached any goal. You do not have to give a reason. How much or how little you used FORGE makes no difference.</li>
+    <li data-i18n="s05_l4">The guarantee applies to your first paid subscription. Later billing periods are not refunded — cancel before a renewal to avoid being charged for it.</li>
+    <li data-i18n="s05_l5">Trial periods carry no charge, so there is nothing to refund.</li>
   </ul>
 
-  <h2><span class="num">06</span>Emails We Send</h2>
-  <p>There are two kinds, and they are separate.</p>
+  <h2><span class="num">06</span><span data-i18n="s06_h">Emails We Send</span></h2>
+  <p data-i18n="s06_p1">There are two kinds, and they are separate.</p>
   <ul>
-    <li><strong>Service email.</strong> Account confirmation, password reset, subscription and billing notices, and a <strong>7-day onboarding sequence</strong> explaining the trial you have started. Every account receives these — they are part of providing the service, not marketing, and they cannot be switched off while your account is open.</li>
-    <li><strong>Marketing email.</strong> Training tips and offers. Sent <strong>only</strong> if you tick the separate, optional marketing box when you sign up. Leave it unticked and you receive none.</li>
+    <li data-i18n-html="s06_l1"><strong>Service email.</strong> Account confirmation, password reset, subscription and billing notices, and a <strong>7-day onboarding sequence</strong> explaining the trial you have started. Every account receives these — they are part of providing the service, not marketing, and they cannot be switched off while your account is open.</li>
+    <li data-i18n-html="s06_l2"><strong>Marketing email.</strong> Training tips and offers. Sent <strong>only</strong> if you tick the separate, optional marketing box when you sign up. Leave it unticked and you receive none.</li>
   </ul>
-  <p>You can turn marketing email on or off at any time in the <strong>Account</strong> panel, or through the unsubscribe link in any marketing email. Doing so does not affect your service email.</p>
-  <p>Email is delivered by Mailchimp. Our <a href="/privacy.html">Privacy Policy</a> sets out what they receive.</p>
+  <p data-i18n-html="s06_p2">You can turn marketing email on or off at any time in the <strong>Account</strong> panel, or through the unsubscribe link in any marketing email. Doing so does not affect your service email.</p>
+  <p data-i18n-html="s06_p3">Email is delivered by Mailchimp. Our <a href="privacy.html">Privacy Policy</a> sets out what they receive.</p>
 
-  <h2><span class="num">07</span>Acceptable Use</h2>
-  <p>You agree not to:</p>
+  <h2><span class="num">07</span><span data-i18n="s07_h">Acceptable Use</span></h2>
+  <p data-i18n="s07_p1">You agree not to:</p>
   <ul>
-    <li>Use FORGE for any unlawful purpose.</li>
-    <li>Attempt to access other users' data.</li>
-    <li>Reverse engineer or copy the service.</li>
-    <li>Share your account with others.</li>
-    <li>Use automated tools to scrape or access the service.</li>
+    <li data-i18n="s07_l1">Use FORGE for any unlawful purpose.</li>
+    <li data-i18n="s07_l2">Attempt to access other users' data.</li>
+    <li data-i18n="s07_l3">Reverse engineer or copy the service.</li>
+    <li data-i18n="s07_l4">Share your account with others.</li>
+    <li data-i18n="s07_l5">Use automated tools to scrape or access the service.</li>
   </ul>
 
-  <h2><span class="num">08</span>Intellectual Property</h2>
-  <p>All content, design, and code in FORGE is owned by or licensed to Kevin Klem / FORGE. You may not copy, reproduce, or distribute any part of the service without written permission.</p>
+  <h2><span class="num">08</span><span data-i18n="s08_h">Intellectual Property</span></h2>
+  <p data-i18n="s08_p1">All content, design, and code in FORGE is owned by or licensed to Kevin Klem / FORGE. You may not copy, reproduce, or distribute any part of the service without written permission.</p>
 
-  <h2><span class="num">09</span>Your Content</h2>
-  <p>Workout logs, goals, and other data you enter remain yours. By using FORGE you grant us a licence to use this data to provide and improve the service as described in our <a href="/privacy.html">Privacy Policy</a>.</p>
+  <h2><span class="num">09</span><span data-i18n="s09_h">Your Content</span></h2>
+  <p data-i18n-html="s09_p1">Workout logs, goals, and other data you enter remain yours. By using FORGE you grant us a licence to use this data to provide and improve the service as described in our <a href="privacy.html">Privacy Policy</a>.</p>
 
-  <h2><span class="num">10</span>Disclaimer of Warranties</h2>
-  <p>FORGE is provided <strong>"as is"</strong>. We make no warranties about uninterrupted availability, accuracy of AI-generated content, or fitness outcomes. AI coaching responses are generated automatically and may not always be appropriate for your specific situation.</p>
+  <h2><span class="num">10</span><span data-i18n="s10_h">Disclaimer of Warranties</span></h2>
+  <p data-i18n-html="s10_p1">FORGE is provided <strong>"as is"</strong>. We make no warranties about uninterrupted availability, accuracy of AI-generated content, or fitness outcomes. AI coaching responses are generated automatically and may not always be appropriate for your specific situation.</p>
 
-  <h2><span class="num">11</span>Limitation of Liability</h2>
-  <p>To the maximum extent permitted by law, FORGE and its operators are not liable for any indirect, incidental, or consequential damages arising from your use of the service.</p>
+  <h2><span class="num">11</span><span data-i18n="s11_h">Limitation of Liability</span></h2>
+  <p data-i18n="s11_p1">To the maximum extent permitted by law, FORGE and its operators are not liable for any indirect, incidental, or consequential damages arising from your use of the service.</p>
 
-  <h2><span class="num">12</span>Changes to the Service</h2>
-  <p>We may modify, suspend, or discontinue features at any time. We will give reasonable notice for material changes.</p>
+  <h2><span class="num">12</span><span data-i18n="s12_h">Changes to the Service</span></h2>
+  <p data-i18n="s12_p1">We may modify, suspend, or discontinue features at any time. We will give reasonable notice for material changes.</p>
 
-  <h2><span class="num">13</span>Governing Law</h2>
-  <p>These Terms are governed by the laws of Switzerland. Disputes will be resolved in the courts of Geneva, Switzerland.</p>
+  <h2><span class="num">13</span><span data-i18n="s13_h">Governing Law</span></h2>
+  <p data-i18n="s13_p1">These Terms are governed by the laws of Switzerland. Disputes will be resolved in the courts of Geneva, Switzerland.</p>
 
-  <h2><span class="num">14</span>Contact</h2>
-  <p><a href="mailto:support@klemforge.com">support@klemforge.com</a></p>
-  <p>FORGE, Rue du Rhône 14, 1204 Genève, Switzerland.</p>
+  <h2><span class="num">14</span><span data-i18n="s14_h">Contact</span></h2>
+  <p data-i18n-html="s14_p1"><a href="mailto:support@klemforge.com">support@klemforge.com</a></p>
+  <p data-i18n="s14_p2">FORGE, Rue du Rhône 14, 1204 Genève, Switzerland.</p>
 
-  <div class="footer">
+  <div class="footer" data-i18n-html="footer">
     <a href="/">← klemforge.com</a><br>
     © FORGE · Rue du Rhône 14, 1204 Genève, Switzerland
   </div>
+  <!-- ══ I18N — GENERATED BY tools/i18n-legal.js. Do not hand-edit. ══ -->
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// LEGAL PAGE i18n — coaches.html's engine, attribute-keyed only.
+// ══════════════════════════════════════════════════════════════════════
+// Two complete tables with IDENTICAL key sets, asserted at build time by
+// tools/i18n-legal.js. Every key is reached by a data-i18n / data-i18n-html
+// attribute on the element itself. There is not one positional array here:
+// a missing key leaves that ONE clause in English and shifts nothing else.
+//
+//   data-i18n      -> textContent
+//   data-i18n-html -> innerHTML   (clauses carrying <strong>, <a> or <br>)
+//
+// The English tables below are the page's own markup, extracted verbatim by
+// tools/key-legal.js. Editing the English HERE would put the table out of step
+// with the document; edit the markup and re-run the tools.
+const LEGAL_STRINGS = {
+  en: {
+    "s01_h": "Acceptance",
+    "s02_h": "The Service",
+    "s03_h": "Accounts",
+    "s04_h": "Subscriptions and Billing",
+    "s05_h": "Cancellation and Refunds",
+    "s06_h": "Emails We Send",
+    "s07_h": "Acceptable Use",
+    "s08_h": "Intellectual Property",
+    "s09_h": "Your Content",
+    "s10_h": "Disclaimer of Warranties",
+    "s11_h": "Limitation of Liability",
+    "s12_h": "Changes to the Service",
+    "s13_h": "Governing Law",
+    "s14_h": "Contact",
+    "s01_p1": "By creating an account and using FORGE you agree to these Terms. If you do not agree, do not use the service.",
+    "s02_p1": "FORGE provides an AI-powered fitness coaching application. Features include personalised workout programmes, AI coaching, nutrition guidance, session logging, and progress tracking.",
+    "s02_p2": "<strong>FORGE is for informational and fitness purposes only. It is not a medical service and does not provide medical advice.</strong> Consult a doctor before beginning any new exercise programme, particularly if you have injuries or health conditions.",
+    "s03_l1": "You must be at least 18 years old to use FORGE.",
+    "s03_l2": "You are responsible for keeping your credentials secure.",
+    "s03_l3": "You must provide accurate information.",
+    "s03_l4": "One account per person.",
+    "s03_l5": "We reserve the right to suspend accounts that violate these terms.",
+    "s04_l1": "FORGE offers a <strong>7-day free trial</strong> with full access to all features.",
+    "s04_l2": "No credit card is required to start a trial.",
+    "s04_l3": "After the trial, a paid subscription is required to continue using FORGE.",
+    "s04_l4": "Prices are shown in CHF (Swiss Francs) and include applicable taxes.",
+    "s04_l5": "Subscriptions automatically renew each month or year depending on your plan.",
+    "s04_l6": "You can cancel at any time from your Account settings.",
+    "s04_l7": "Billing is handled by Stripe.",
+    "s05_l1": "You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period.",
+    "s05_l2": "<strong>30-day money-back guarantee.</strong> Email <a href=\"mailto:support@klemforge.com\">support@klemforge.com</a> within 30 days of your first charge and we refund it in full.",
+    "s05_l3": "<strong>There are no conditions attached.</strong> You do not have to have logged a workout, used the AI coach, or reached any goal. You do not have to give a reason. How much or how little you used FORGE makes no difference.",
+    "s05_l4": "The guarantee applies to your first paid subscription. Later billing periods are not refunded — cancel before a renewal to avoid being charged for it.",
+    "s05_l5": "Trial periods carry no charge, so there is nothing to refund.",
+    "s06_p1": "There are two kinds, and they are separate.",
+    "s06_l1": "<strong>Service email.</strong> Account confirmation, password reset, subscription and billing notices, and a <strong>7-day onboarding sequence</strong> explaining the trial you have started. Every account receives these — they are part of providing the service, not marketing, and they cannot be switched off while your account is open.",
+    "s06_l2": "<strong>Marketing email.</strong> Training tips and offers. Sent <strong>only</strong> if you tick the separate, optional marketing box when you sign up. Leave it unticked and you receive none.",
+    "s06_p2": "You can turn marketing email on or off at any time in the <strong>Account</strong> panel, or through the unsubscribe link in any marketing email. Doing so does not affect your service email.",
+    "s06_p3": "Email is delivered by Mailchimp. Our <a href=\"/privacy.html\">Privacy Policy</a> sets out what they receive.",
+    "s07_p1": "You agree not to:",
+    "s07_l1": "Use FORGE for any unlawful purpose.",
+    "s07_l2": "Attempt to access other users' data.",
+    "s07_l3": "Reverse engineer or copy the service.",
+    "s07_l4": "Share your account with others.",
+    "s07_l5": "Use automated tools to scrape or access the service.",
+    "s08_p1": "All content, design, and code in FORGE is owned by or licensed to Kevin Klem / FORGE. You may not copy, reproduce, or distribute any part of the service without written permission.",
+    "s09_p1": "Workout logs, goals, and other data you enter remain yours. By using FORGE you grant us a licence to use this data to provide and improve the service as described in our <a href=\"/privacy.html\">Privacy Policy</a>.",
+    "s10_p1": "FORGE is provided <strong>\"as is\"</strong>. We make no warranties about uninterrupted availability, accuracy of AI-generated content, or fitness outcomes. AI coaching responses are generated automatically and may not always be appropriate for your specific situation.",
+    "s11_p1": "To the maximum extent permitted by law, FORGE and its operators are not liable for any indirect, incidental, or consequential damages arising from your use of the service.",
+    "s12_p1": "We may modify, suspend, or discontinue features at any time. We will give reasonable notice for material changes.",
+    "s13_p1": "These Terms are governed by the laws of Switzerland. Disputes will be resolved in the courts of Geneva, Switzerland.",
+    "s14_p1": "<a href=\"mailto:support@klemforge.com\">support@klemforge.com</a>",
+    "s14_p2": "FORGE, Rue du Rhône 14, 1204 Genève, Switzerland.",
+    "updated": "Last updated: August 2026",
+    "meta": "\n    <b>FORGE</b> — AI Performance Coach<br>\n    <a href=\"https://klemforge.com\">klemforge.com</a> · <a href=\"mailto:support@klemforge.com\">support@klemforge.com</a><br>\n    Rue du Rhône 14, 1204 Genève, Switzerland\n  ",
+    "footer": "\n    <a href=\"/\">← klemforge.com</a><br>\n    © FORGE · Rue du Rhône 14, 1204 Genève, Switzerland\n  ",
+    "page_title": "Terms of Service — FORGE"
+  },
+  fr: {
+    "page_title": "Conditions Générales — FORGE",
+    "updated": "Dernière mise à jour : août 2026",
+    "meta": "\n    <b>FORGE</b> — Coach Performance IA<br>\n    <a href=\"https://klemforge.com\">klemforge.com</a> · <a href=\"mailto:support@klemforge.com\">support@klemforge.com</a><br>\n    Rue du Rhône 14, 1204 Genève, Suisse\n  ",
+    "footer": "\n    <a href=\"/\">← klemforge.com</a><br>\n    © FORGE · Rue du Rhône 14, 1204 Genève, Suisse\n  ",
+    "s01_h": "Acceptation",
+    "s01_p1": "En créant un compte et en utilisant FORGE, vous acceptez les présentes Conditions. Si vous ne les acceptez pas, n'utilisez pas le service.",
+    "s02_h": "Le service",
+    "s02_p1": "FORGE fournit une application de coaching sportif propulsée par l'IA. Les fonctionnalités comprennent des programmes d'entraînement personnalisés, un coaching par IA, des conseils nutritionnels, l'enregistrement des séances et le suivi des progrès.",
+    "s02_p2": "<strong>FORGE est fourni à des fins d'information et de remise en forme uniquement. Il ne s'agit pas d'un service médical et il ne fournit aucun avis médical.</strong> Consultez un médecin avant de commencer tout nouveau programme d'exercice, en particulier si vous présentez des blessures ou des problèmes de santé.",
+    "s03_h": "Comptes",
+    "s03_l1": "Vous devez avoir au moins 18 ans pour utiliser FORGE.",
+    "s03_l2": "Vous êtes responsable de la confidentialité de vos identifiants.",
+    "s03_l3": "Vous devez fournir des informations exactes.",
+    "s03_l4": "Un seul compte par personne.",
+    "s03_l5": "Nous nous réservons le droit de suspendre les comptes qui enfreignent les présentes conditions.",
+    "s04_h": "Abonnements et facturation",
+    "s04_l1": "FORGE propose un <strong>essai gratuit de 7 jours</strong> avec un accès complet à toutes les fonctionnalités.",
+    "s04_l2": "Aucune carte bancaire n'est requise pour démarrer un essai.",
+    "s04_l3": "À l'issue de l'essai, un abonnement payant est nécessaire pour continuer à utiliser FORGE.",
+    "s04_l4": "Les prix sont affichés en CHF (francs suisses) et incluent les taxes applicables.",
+    "s04_l5": "Les abonnements se renouvellent automatiquement chaque mois ou chaque année selon votre formule.",
+    "s04_l6": "Vous pouvez résilier à tout moment depuis les paramètres de votre compte.",
+    "s04_l7": "La facturation est assurée par Stripe.",
+    "s05_h": "Résiliation et remboursements",
+    "s05_l1": "Vous pouvez résilier votre abonnement à tout moment. La résiliation prend effet à la fin de la période de facturation en cours.",
+    "s05_l2": "<strong>Garantie de remboursement de 30 jours.</strong> Écrivez à <a href=\"mailto:support@klemforge.com\">support@klemforge.com</a> dans les 30 jours suivant votre premier prélèvement et nous le remboursons intégralement.",
+    "s05_l3": "<strong>Aucune condition n'y est attachée.</strong> Vous n'avez pas besoin d'avoir enregistré une séance, utilisé le coach IA ni atteint le moindre objectif. Vous n'avez pas à donner de raison. L'usage que vous avez fait de FORGE, important ou minime, ne change rien.",
+    "s05_l4": "La garantie s'applique à votre premier abonnement payant. Les périodes de facturation ultérieures ne sont pas remboursées — résiliez avant un renouvellement pour ne pas être prélevé.",
+    "s05_l5": "Les périodes d'essai ne donnent lieu à aucun prélèvement, il n'y a donc rien à rembourser.",
+    "s06_h": "Les emails que nous envoyons",
+    "s06_p1": "Il en existe deux types, et ils sont distincts.",
+    "s06_l1": "<strong>Emails de service.</strong> Confirmation de compte, réinitialisation de mot de passe, avis d'abonnement et de facturation, et une <strong>séquence d'accueil de 7 jours</strong> expliquant l'essai que vous avez commencé. Chaque compte les reçoit — ils font partie de la fourniture du service, ce n'est pas du marketing, et ils ne peuvent pas être désactivés tant que votre compte est ouvert.",
+    "s06_l2": "<strong>Emails marketing.</strong> Conseils d'entraînement et offres. Envoyés <strong>uniquement</strong> si vous cochez la case marketing distincte et facultative lors de votre inscription. Laissez-la décochée et vous n'en recevrez aucun.",
+    "s06_p2": "Vous pouvez activer ou désactiver les emails marketing à tout moment dans le panneau <strong>Compte</strong>, ou via le lien de désinscription présent dans tout email marketing. Cela n'affecte pas vos emails de service.",
+    "s06_p3": "Les emails sont acheminés par Mailchimp. Notre <a href=\"privacy.html\">Politique de confidentialité</a> précise ce qu'ils reçoivent.",
+    "s07_h": "Utilisation acceptable",
+    "s07_p1": "Vous vous engagez à ne pas :",
+    "s07_l1": "Utiliser FORGE à des fins illicites.",
+    "s07_l2": "Tenter d'accéder aux données d'autres utilisateurs.",
+    "s07_l3": "Procéder à l'ingénierie inverse du service ou le copier.",
+    "s07_l4": "Partager votre compte avec des tiers.",
+    "s07_l5": "Utiliser des outils automatisés pour extraire des données du service ou y accéder.",
+    "s08_h": "Propriété intellectuelle",
+    "s08_p1": "L'ensemble des contenus, du design et du code de FORGE appartient à Kevin Klem / FORGE ou lui est concédé sous licence. Vous ne pouvez copier, reproduire ni distribuer aucune partie du service sans autorisation écrite.",
+    "s09_h": "Vos contenus",
+    "s09_p1": "Les journaux d'entraînement, objectifs et autres données que vous saisissez restent les vôtres. En utilisant FORGE, vous nous accordez une licence d'utilisation de ces données afin de fournir et d'améliorer le service, comme décrit dans notre <a href=\"privacy.html\">Politique de confidentialité</a>.",
+    "s10_h": "Exclusion de garanties",
+    "s10_p1": "FORGE est fourni <strong>« en l'état »</strong>. Nous ne donnons aucune garantie quant à une disponibilité ininterrompue, à l'exactitude des contenus générés par l'IA ou aux résultats sportifs. Les réponses du coach IA sont générées automatiquement et peuvent ne pas toujours convenir à votre situation particulière.",
+    "s11_h": "Limitation de responsabilité",
+    "s11_p1": "Dans toute la mesure permise par la loi, FORGE et ses exploitants ne sauraient être tenus responsables des dommages indirects, accessoires ou consécutifs découlant de votre utilisation du service.",
+    "s12_h": "Modifications du service",
+    "s12_p1": "Nous pouvons modifier, suspendre ou interrompre des fonctionnalités à tout moment. Nous donnerons un préavis raisonnable en cas de modification substantielle.",
+    "s13_h": "Droit applicable",
+    "s13_p1": "Les présentes Conditions sont régies par le droit suisse. Les litiges seront soumis aux tribunaux de Genève, Suisse.",
+    "s14_h": "Contact",
+    "s14_p1": "<a href=\"mailto:support@klemforge.com\">support@klemforge.com</a>",
+    "s14_p2": "FORGE, Rue du Rhône 14, 1204 Genève, Suisse."
+  }
+};
+
+// Same localStorage key as index.html, coaches.html, the ad pages and app.html.
+// A visitor who chose French anywhere else arrives here in French.
+const LANG_FLAGS = { en: '\uD83C\uDDEC\uD83C\uDDE7', fr: '\uD83C\uDDEB\uD83C\uDDF7' };
+let currentLang = 'en';
+try { currentLang = localStorage.getItem('forge_language') || 'en'; } catch (e) {}
+
+function toggleLangDrawer() {
+  const d = document.getElementById('langDrawer');
+  if (d) d.classList.toggle('open');
+}
+
+function selectLang(code) {
+  currentLang = code;
+  try { localStorage.setItem('forge_language', code); } catch (e) {}
+  const btn = document.getElementById('langBtn');
+  if (btn) btn.textContent = LANG_FLAGS[code] || LANG_FLAGS.en;
+  const d = document.getElementById('langDrawer');
+  if (d) d.classList.remove('open');
+  applyLegalLanguage(code);
+}
+
+function applyLegalLanguage(code) {
+  const s = LEGAL_STRINGS[code] || LEGAL_STRINGS.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (s[key]) el.textContent = s[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (s[key]) el.innerHTML = s[key];
+  });
+  if (s.page_title) document.title = s.page_title;
+  document.documentElement.setAttribute('lang', code);
+}
+
+// Guarded, like every other page in this codebase: click outside or press
+// Escape to close, and a missing drawer must not throw on every document click.
+document.addEventListener('click', e => {
+  const d = document.getElementById('langDrawer');
+  const b = document.getElementById('langBtn');
+  if (!d || !d.classList.contains('open')) return;
+  if (d.contains(e.target) || (b && b.contains(e.target))) return;
+  d.classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const d = document.getElementById('langDrawer');
+  if (d) d.classList.remove('open');
+});
+
+(function init() {
+  const btn = document.getElementById('langBtn');
+  if (btn) btn.textContent = LANG_FLAGS[currentLang] || LANG_FLAGS.en;
+  // Guarded to non-English: the markup IS the English table, so the English pass
+  // would be a no-op at best. The EN table still has to be complete — switching
+  // back from French needs it.
+  if (currentLang && currentLang !== 'en') applyLegalLanguage(currentLang);
+})();
+</script>
+  <!-- ══ END I18N ══ -->
 </body>
 </html>

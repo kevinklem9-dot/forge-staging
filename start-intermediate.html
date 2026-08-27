@@ -521,7 +521,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 }
 @media (max-width: 900px){ .ad-steps{grid-template-columns:1fr} }
 @media (max-width: 380px){
-  .currency-select{max-width:56px}
+  .currency-select{max-width:50px}
   .nav-link{font-size:8px;letter-spacing:0.4px}
   .nav-cta{padding:7px 6px;font-size:8.5px}
 }
@@ -529,9 +529,11 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   /* index.html's nav budget at 390px was sized for ONE .nav-link and landed at 377/390.
      These pages carry a second link (Home), so the select and the CTA give back the
      ~33px it costs: select 80 -> 64, CTA padding 10 -> 7. Budget at 390px, EN worst case:
-     padding 24 + logo 57 + home 29 + coaches 47 + select 64 + lang 30 + cta 113
-     + 5 gaps 20 = 384. */
-  .currency-select{max-width:64px}
+     "Pricing" is wider than the "Home" link it replaced and pushed EN 4px over at
+     390px and 9px at 360px (measured headless), so the select and the link padding
+     give back another ~16px. FR was never over — "Tarifs"/"Coachs" are shorter. */
+  .currency-select{max-width:56px}
+  .nav-link{letter-spacing:0.5px;padding:6px 1px}
   .nav-cta{padding:8px 7px;letter-spacing:0.6px}
   .ad-prose p{font-size:16px;line-height:1.8;margin-bottom:20px}
   .ad-step{padding:24px 20px}
@@ -545,12 +547,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 
 <!-- NAV -->
 <nav class="nav">
-  <a class="nav-logo-link" href="index.html" aria-label="FORGE home"><div class="nav-logo">
+  <div class="nav-logo">
     <span class="nav-logo-name">FORGE</span>
-    <span data-i18n="nav_logo_sub" class="nav-logo-sub">AI Performance Coach</span>
-  </div></a>
+    <span class="nav-logo-sub" data-i18n="footer_tag">AI Performance Coach</span>
+  </div>
   <div class="nav-right">
-    <a class="nav-link" href="index.html" aria-label="Home"><span class="nav-link-full" data-i18n="nav_home">Home</span><span class="nav-link-short" data-i18n="nav_home_short">Home</span></a>
+    <a class="nav-link" href="#pricing" aria-label="Pricing" onclick="scrollToPricing();return false;"><span class="nav-link-full" data-i18n="price_label">Pricing</span><span class="nav-link-short" data-i18n="price_label">Pricing</span></a>
     <a class="nav-link" href="coaches.html" aria-label="For Coaches"><span class="nav-link-full" data-i18n="nav_coaches">For Coaches</span><span class="nav-link-short" data-i18n="nav_coaches_short">Coaches</span></a>
     <select class="currency-select" id="currencySelect" onchange="setCurrency(this.value)">
       <option value="CHF">CHF — Switzerland</option>
@@ -571,7 +573,6 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 </div>
 
 <section class="hero" id="hero">
-  <div class="hero-eyebrow reveal" data-i18n="hero_eyebrow">For intermediate lifters</div>
   <h1 class="reveal" data-i18n="hero_h1">You're lifting the same weight you lifted a year ago.</h1>
   <p class="hero-sub reveal" data-i18n="hero_sub">Not because you're lazy. Because nothing has read a single session you've logged.</p>
   <button type="button" class="ad-hero-cta reveal" onclick="scrollToAuth()" data-i18n="hero_cta">Start free trial — no card</button>
@@ -585,9 +586,9 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
         </div>
         <!-- SIGNUP -->
         <div id="form-signup-hero">
-          <div class="field-group"><div data-i18n="auth_name" class="field-label">Full Name</div><input class="field-input" type="text" id="hero-name" placeholder="Your name"></div>
-          <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
-          <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
+          <div class="field-group"><div class="field-label" data-i18n="auth_name">Full Name</div><input class="field-input" type="text" id="hero-name" placeholder="Your name"></div>
+          <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="hero-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div class="field-label" data-i18n="auth_password">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-password',this)" type="button">👁</button></div></div>
           <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="hero-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
           <div class="consent-row">
             <input type="checkbox" id="hero-consent">
@@ -601,29 +602,29 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
             <label class="consent-text" for="hero-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
           </div>
           <div class="auth-error" id="hero-signup-error"></div>
-          <div data-i18n="auth_tab_note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
-          <div data-i18n="auth_note_below" class="auth-note">7 days free. No card required, cancel anytime.</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;" data-i18n="auth_tab_note">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('hero')" style="margin-top:0">Start your free trial</button>
+          <div class="auth-note" data-i18n="auth_note_below">7 days free. No card required, cancel anytime.</div>
         </div>
         <!-- SIGNIN -->
         <div id="form-signin-hero" style="display:none">
-          <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-signin-email" placeholder="your@email.com"></div>
-          <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-signin-password',this)" type="button">👁</button></div></div>
+          <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="hero-signin-email" placeholder="your@email.com"></div>
+          <div class="field-group"><div class="field-label" data-i18n="auth_password">Password</div><div style="position:relative"><input class="field-input" type="password" id="hero-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('hero-signin-password',this)" type="button">👁</button></div></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;">
               <input type="checkbox" id="hero-remember-me" style="width:15px;height:15px;accent-color:#e8ff3d;cursor:pointer;">
-              <label data-i18n="auth_remember" for="hero-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">REMEMBER ME</label>
+              <label for="hero-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;" data-i18n="auth_remember">REMEMBER ME</label>
             </div>
-            <button data-i18n="auth_forgot" type="button" onclick="showForgotLanding('hero')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">FORGOT?</button>
+            <button type="button" onclick="showForgotLanding('hero')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;" data-i18n="auth_forgot">FORGOT?</button>
           </div>
           <div class="auth-error" id="hero-signin-error"></div>
           <button data-i18n="auth_signin_btn" class="auth-btn" onclick="doSignin('hero')">Sign in</button>
-          <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab('hero','signup')" data-i18n="auth_start_trial">Start your free trial</a></div>
+          <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab(\'hero\',\'signup\')" data-i18n="auth_start_trial">Start your free trial</a></div>
           <div id="hero-forgot" style="display:none;margin-top:8px;">
-            <div data-i18n="auth_reset_hint" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">Enter your email and we'll send you a reset link.</div>
-            <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="hero-reset-email" placeholder="your@email.com"></div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;" data-i18n="auth_reset_hint">Enter your email and we'll send you a reset link.</div>
+            <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="hero-reset-email" placeholder="your@email.com"></div>
             <div class="auth-error" id="hero-reset-error"></div>
-            <button data-i18n="auth_reset_btn" class="auth-btn" onclick="sendResetLanding('hero')">Send Reset Link</button>
-            <button data-i18n="auth_back_signin" type="button" onclick="hideForgotLanding('hero')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;">← Back to sign in</button>
+            <button class="auth-btn" onclick="sendResetLanding('hero')" data-i18n="auth_reset_btn">Send Reset Link</button>
+            <button type="button" onclick="hideForgotLanding('hero')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;" data-i18n="auth_back_signin">← Back to sign in</button>
           </div>
         </div>
       </div>
@@ -817,7 +818,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <h2 data-i18n="price_h2" class="reveal" style="text-align:center">Choose your level.</h2>
     <div class="pricing-meta reveal">
       <div data-i18n="price_sub" class="pricing-sub">Start free for 7 days. No commitment until you're ready.</div>
-      <div class="pricing-currency-note"><span data-i18n="showing_prices">Showing prices in</span> <span id="currencyLabel">CHF</span> — <a data-i18n="change_currency" onclick="document.getElementById('currencySelect').focus()">change currency</a> · <span data-i18n="currency_charge_note" id="currency-charge-note">You'll be charged in the currency you choose</span></div>
+      <div class="pricing-currency-note"><span data-i18n="showing_prices">Showing prices in</span> <span id="currencyLabel">CHF</span> — <a onclick="document.getElementById('currencySelect').focus()" data-i18n="change_currency">change currency</a> · <span data-i18n="currency_charge_note" id="currency-charge-note">You'll be charged in the currency you choose</span></div>
     </div>
     <!-- Three-way billing control. The old two-state .toggle-pill could not carry a third
          option, so the labels became the control itself. setBilling() drives it; there is no
@@ -996,9 +997,9 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
               <div class="auth-tab" id="tab-signin-final" data-i18n="auth_tab_signin" onclick="switchTab('final','signin')">Sign in</div>
             </div>
             <div id="form-signup-final">
-              <div class="field-group"><div data-i18n="auth_name" class="field-label">Full Name</div><input class="field-input" type="text" id="final-name" placeholder="Your name"></div>
-              <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
-              <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
+              <div class="field-group"><div class="field-label" data-i18n="auth_name">Full Name</div><input class="field-input" type="text" id="final-name" placeholder="Your name"></div>
+              <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="final-email" placeholder="your@email.com"></div>
+              <div class="field-group"><div class="field-label" data-i18n="auth_password">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-password" placeholder="Min. 6 characters" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-password',this)" type="button">👁</button></div></div>
               <div class="field-group" style="margin-top:4px"><input class="field-input" type="text" id="final-code" placeholder="Have a code? Enter it here" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
               <div class="consent-row">
                 <input type="checkbox" id="final-consent">
@@ -1010,28 +1011,28 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
                 <label class="consent-text" for="final-marketing" data-i18n="marketing_label">Email me training tips and FORGE offers. Optional, and you can turn this off any time.</label>
               </div>
               <div class="auth-error" id="final-signup-error"></div>
-              <div data-i18n="auth_tab_note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
-              <div data-i18n="auth_note_below" class="auth-note">7 days free. No card required, cancel anytime.</div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;" data-i18n="auth_tab_note">Full access. Nothing locked. No commitment until your trial ends.</div><button data-i18n="auth_btn" class="auth-btn" onclick="doSignup('final')" style="margin-top:0">Start your free trial</button>
+              <div class="auth-note" data-i18n="auth_note_below">7 days free. No card required, cancel anytime.</div>
             </div>
             <div id="form-signin-final" style="display:none">
-              <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-signin-email" placeholder="your@email.com"></div>
-              <div class="field-group"><div data-i18n="auth_password" class="field-label">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-signin-password',this)" type="button">👁</button></div></div>
+              <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="final-signin-email" placeholder="your@email.com"></div>
+              <div class="field-group"><div class="field-label" data-i18n="auth_password">Password</div><div style="position:relative"><input class="field-input" type="password" id="final-signin-password" placeholder="Your password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('final-signin-password',this)" type="button">👁</button></div></div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <input type="checkbox" id="final-remember-me" style="width:15px;height:15px;accent-color:#e8ff3d;cursor:pointer;">
-                  <label data-i18n="auth_remember" for="final-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">REMEMBER ME</label>
+                  <label for="final-remember-me" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;" data-i18n="auth_remember">REMEMBER ME</label>
                 </div>
-                <button data-i18n="auth_forgot" type="button" onclick="showForgotLanding('final')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;">FORGOT?</button>
+                <button type="button" onclick="showForgotLanding('final')" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;letter-spacing:1px;" data-i18n="auth_forgot">FORGOT?</button>
               </div>
               <div class="auth-error" id="final-signin-error"></div>
               <button data-i18n="auth_signin_btn" class="auth-btn" onclick="doSignin('final')">Sign in</button>
-              <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab('final','signup')" data-i18n="auth_start_trial">Start your free trial</a></div>
+              <div class="auth-note"><span data-i18n="auth_no_account">No account yet?</span> <a onclick="switchTab(\'final\',\'signup\')" data-i18n="auth_start_trial">Start your free trial</a></div>
               <div id="final-forgot" style="display:none;margin-top:8px;">
-                <div data-i18n="auth_reset_hint" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">Enter your email and we'll send you a reset link.</div>
-                <div class="field-group"><div data-i18n="auth_email" class="field-label">Email</div><input class="field-input" type="email" id="final-reset-email" placeholder="your@email.com"></div>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;" data-i18n="auth_reset_hint">Enter your email and we'll send you a reset link.</div>
+                <div class="field-group"><div class="field-label" data-i18n="auth_email">Email</div><input class="field-input" type="email" id="final-reset-email" placeholder="your@email.com"></div>
                 <div class="auth-error" id="final-reset-error"></div>
-                <button data-i18n="auth_reset_btn" class="auth-btn" onclick="sendResetLanding('final')">Send Reset Link</button>
-                <button data-i18n="auth_back_signin" type="button" onclick="hideForgotLanding('final')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;">← Back to sign in</button>
+                <button class="auth-btn" onclick="sendResetLanding('final')" data-i18n="auth_reset_btn">Send Reset Link</button>
+                <button type="button" onclick="hideForgotLanding('final')" style="width:100%;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:10px;letter-spacing:1px;" data-i18n="auth_back_signin">← Back to sign in</button>
               </div>
             </div>
           </div>
@@ -1064,7 +1065,7 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
       <a class="contact-email" href="mailto:support@klemforge.com">support@klemforge.com</a>
     </div>
   </div>
-  <div data-i18n="footer_bottom" class="footer-bottom">© FORGE · Built for athletes who don't make it up as they go.</div>
+  <div class="footer-bottom" data-i18n="footer_bottom">© FORGE · Built for athletes who don't make it up as they go.</div>
 </footer>
 
 <!-- ── PASSWORD RESET (Supabase recovery: …/?reset=true#access_token=…&type=recovery) ── -->
@@ -1072,12 +1073,12 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="reset-logo">FORGE</div>
-      <div data-i18n="reset_title" class="reset-title" id="reset-title">Set a new password</div>
-      <div data-i18n="reset_sub" class="reset-sub">Choose a new password for your account. Minimum 6 characters.</div>
-      <div class="field-group"><div data-i18n="reset_new_pw" class="field-label">New password</div><div style="position:relative"><input class="field-input" type="password" id="reset-new-password" placeholder="Min. 6 characters" autocomplete="new-password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('reset-new-password',this)" type="button" aria-label="Show password">👁</button></div></div>
-      <div class="field-group"><div data-i18n="reset_confirm_pw" class="field-label">Confirm password</div><div style="position:relative"><input class="field-input" type="password" id="reset-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')submitNewPassword()"><button class="pw-toggle" onclick="togglePw('reset-confirm-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="reset-title" id="reset-title" data-i18n="reset_title">Set a new password</div>
+      <div class="reset-sub" data-i18n="reset_sub">Choose a new password for your account. Minimum 6 characters.</div>
+      <div class="field-group"><div class="field-label" data-i18n="reset_new_pw">New password</div><div style="position:relative"><input class="field-input" type="password" id="reset-new-password" placeholder="Min. 6 characters" autocomplete="new-password" style="padding-right:44px"><button class="pw-toggle" onclick="togglePw('reset-new-password',this)" type="button" aria-label="Show password">👁</button></div></div>
+      <div class="field-group"><div class="field-label" data-i18n="reset_confirm_pw">Confirm password</div><div style="position:relative"><input class="field-input" type="password" id="reset-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')submitNewPassword()"><button class="pw-toggle" onclick="togglePw('reset-confirm-password',this)" type="button" aria-label="Show password">👁</button></div></div>
       <div class="auth-error" id="reset-password-error"></div>
-      <button data-i18n="reset_submit" class="auth-btn" id="reset-submit-btn" onclick="submitNewPassword()">Update password</button>
+      <button class="auth-btn" id="reset-submit-btn" onclick="submitNewPassword()" data-i18n="reset_submit">Update password</button>
       <div class="auth-note" style="margin-top:14px"><span data-i18n="reset_remembered">Remembered it?</span> <a onclick="closeResetOverlay()" data-i18n="reset_back">Back to sign in</a></div>
     </div>
   </div>
@@ -1637,6 +1638,14 @@ function scrollToAuth() {
   setTimeout(() => document.getElementById('hero-name')?.focus(), 600);
 }
 
+// ── SCROLL TO PRICING ─────────────────────────────────
+// The nav's Pricing link. Same smooth-scroll idiom as the ported scrollToAuth(), and
+// the href="#pricing" underneath it still works if this never runs.
+function scrollToPricing() {
+  const el = document.getElementById('pricing');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── HANDLE URL PARAMS (email confirmation) ─────────────
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('confirmed') === 'true') {
@@ -1868,7 +1877,6 @@ const AD_STRINGS = {
     footer_terms: "Terms",
     forge_soon: "Coming next: Apple Health sync, Garmin sync, nutrition barcode scanner, priority support, and early access to new features.",
     hero_cta: "Start free trial — no card",
-    hero_eyebrow: "For intermediate lifters",
     hero_h1: "You're lifting the same weight you lifted a year ago.",
     hero_sub: "Not because you're lazy. Because nothing has read a single session you've logged.",
     hero_trust: "7 days free · No card required · Cancel in two taps",
@@ -1885,9 +1893,6 @@ const AD_STRINGS = {
     marketing_label: "Email me training tips and FORGE offers. Optional, and you can turn this off any time.",
     nav_coaches: "For Coaches",
     nav_coaches_short: "Coaches",
-    nav_home: "Home",
-    nav_home_short: "Home",
-    nav_logo_sub: "AI Performance Coach",
     nav_trial_btn: "Start free trial",
     obj1_a: "They do. And most of them mean a decision tree that picks a template at signup and never looks again. The test isn't what an app says at signup — it's whether anything changes after a bad session. Log three sessions in FORGE and watch what the fourth one looks like. That's a checkable claim, which is why we're happy to make it.",
     obj1_q: "\"Every app says it's personalised.\"",
@@ -2075,7 +2080,6 @@ const AD_STRINGS = {
     footer_terms: "CGU",
     forge_soon: "Bientôt : synchronisation Apple Health, synchronisation Garmin, scanner de code-barres nutrition, support prioritaire et accès anticipé aux nouveautés.",
     hero_cta: "Essai gratuit — sans carte",
-    hero_eyebrow: "Pour les pratiquants intermédiaires",
     hero_h1: "Tu soulèves le même poids qu'il y a un an.",
     hero_sub: "Pas parce que tu es fainéant. Parce que rien n'a jamais lu une seule des séances que tu as notées.",
     hero_trust: "7 jours gratuits · Sans carte bancaire · Annulable en deux clics",
@@ -2092,9 +2096,6 @@ const AD_STRINGS = {
     marketing_label: "Recevoir des conseils d'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.",
     nav_coaches: "Pour les coachs",
     nav_coaches_short: "Coachs",
-    nav_home: "Accueil",
-    nav_home_short: "Accueil",
-    nav_logo_sub: "Coach Performance IA",
     nav_trial_btn: "Essai gratuit",
     obj1_a: "C'est vrai. Et pour la plupart, ça veut dire un arbre de décision qui choisit un modèle à l'inscription et ne regarde plus jamais. Le test, ce n'est pas ce qu'une app dit à l'inscription — c'est de savoir si quoi que ce soit change après une mauvaise séance. Note trois séances dans FORGE et regarde à quoi ressemble la quatrième. C'est une affirmation vérifiable, et c'est pour ça qu'on la fait.",
     obj1_q: "« Toutes les apps disent qu'elles sont personnalisées. »",
