@@ -2637,6 +2637,37 @@ async function handleSession(session) {
     }
   }
 
+  // ── COACH SIGN-UP ARM ────────────────────────────────────────────────────────────────
+  // This account was created on coaches.html (profiles.signup_intent_coach, set at
+  // /api/signup — the column exists because nothing client-side survives the email
+  // confirmation round trip). Nothing below this point knows the difference between a coach
+  // and a client, so without this arm they fall through to showScreen('onboarding') and are
+  // asked their age, weight, injuries, training goals and equipment — none of which the coach
+  // product reads. See the coach dashboard: it is gated on account_type alone.
+  //
+  // Launch the app FIRST, then open coach setup over it. Order matters twice: the overlay is
+  // position:fixed/z-index 10010 so it sits above whatever is behind it, and
+  // loadPlanAndLaunch() refreshes userProfile on the way through — openCoachSetup() reads
+  // userProfile.name to prefill the form. It also leaves a working app behind the overlay, so
+  // closing the × is not a dead end.
+  //
+  // userPlan is normally null here and every consumer guards for that: renderWorkoutPanel
+  // returns early on !userPlan?.workout_plan, renderNutritionPanel on !nutrition_plan, and the
+  // AI-coach greeting falls back to em-dashes. `planData || null` keeps a real plan if one
+  // somehow exists rather than discarding it.
+  //
+  // GUARDED ON onboarding_complete so this is self-clearing from either side: /api/coach/setup
+  // clears the flag AND sets onboarding_complete, and a coach who instead runs client
+  // onboarding (Account → "Set up my own training plan") sets onboarding_complete via
+  // /api/generate-plan. Either route stops this firing. A coach who dismisses the overlay
+  // without doing either sees it again next launch — a reminder, not the onboarding trap.
+  if (userProfile?.signup_intent_coach === true && userProfile?.onboarding_complete !== true) {
+    userPlan = planData || null;
+    await loadPlanAndLaunch();
+    if (typeof openCoachSetup === 'function') openCoachSetup();
+    return;
+  }
+
   if (planData && userProfile?.onboarding_complete === true) {
     // Plan exists AND onboarding already confirmed — go straight to the app.
     userPlan = planData;
@@ -2755,6 +2786,11 @@ let obStep = 0;
 // Sport-specific data collected during onboarding
 // Stored alongside main profile data
 const obData = {};
+// True while onboarding is running because the user started it from inside the app
+// (Account → "Set up my own training plan"), rather than being routed into it at launch.
+// Declared here, beside the other onboarding state, because renderObStep() reads it — the
+// functions that own it live down with obBack(). Only effect: it gives step 0 a way out.
+let _obFromApp = false;
 
 // ═══════════════════════════════════════════════════════
 // FEATURE FLAGS (enabled_features)
@@ -2776,13 +2812,26 @@ const FORGE_FEATURES = [
 ];
 // DB column default — keep in sync with the enabled_features migration in server.js.
 const FORGE_DEFAULT_FEATURES = ['plans','nutrition','progress','prs','coach','logging'];
+// COACH SIGN-UP DEFAULT — all six OFF. Mirrors COACH_DEFAULT_FEATURES in server.js, which
+// writes this set on a FIRST coach setup by someone who never completed client onboarding.
+// Every key above is a PERSONAL training feature and that account has none of the data
+// behind them: age, weight, goal and equipment are null and there is no plan row, so each
+// panel would open empty. Nothing a coach needs is in this list — the AI Coach panel is
+// always visible and the Clients tab is gated on account_type alone (isCoachAccount) — so
+// an empty set still leaves a complete coach app. Re-enabled any time in Account → Features.
+const FORGE_COACH_DEFAULT_FEATURES = [];
 
 // Resolve the active feature set: profile → localStorage → all-on default.
 // 'plans' is no longer force-included — users can switch AI plans off.
 function getEnabledFeatures() {
   let f = (userProfile && Array.isArray(userProfile.enabled_features)) ? userProfile.enabled_features.slice() : null;
   if (!f) { try { f = JSON.parse(localStorage.getItem('forge-enabled-features') || 'null'); } catch(e) { f = null; } }
-  if (!Array.isArray(f) || !f.length) f = FORGE_DEFAULT_FEATURES.slice();
+  // A STORED EMPTY ARRAY IS A REAL ANSWER, not a missing one. This used to read
+  // `|| !f.length` and bounced [] back to all-on, which made "everything off" impossible to
+  // express — the coach default below could not be written, and a user who turned every
+  // toggle off in Account → Features had it silently reverted on the next read. Only a
+  // genuinely absent value (no profile, no localStorage) falls back to the all-on default.
+  if (!Array.isArray(f)) f = FORGE_DEFAULT_FEATURES.slice();
   return f;
 }
 function isFeatureEnabled(key) { return getEnabledFeatures().includes(key); }
@@ -2804,7 +2853,15 @@ function persistEnabledFeatures(arr) {
 function applyFeatureNav() {
   const f = getEnabledFeatures();
   const setVis = (id, on) => { const b = document.getElementById(id); if (b) b.style.display = on ? '' : 'none'; };
-  setVis('nav-workout', true); // Plan nav always visible — panel shows a disabled-state message when AI plans is off
+  // Plan nav stays visible for everyone EXCEPT a coach with AI plans switched off. For a
+  // non-coach the tab is their route back: the panel's disabled-state card carries the
+  // "Go to settings" button that turns plans on again, so hiding it would strand them.
+  // A coach with plans off reached that state from the coach sign-up default, has no plan
+  // row behind it, and gets the same route from Account → "Set up my own training plan" —
+  // so for them the tab is a dead entry sitting next to Clients. isCoachAccount is declared
+  // further down the same script block (hoisted function); the typeof guard is belt and braces.
+  const _isCoach = typeof isCoachAccount === 'function' && isCoachAccount();
+  setVis('nav-workout', f.includes('plans') || !_isCoach);
   setVis('nav-log', f.includes('logging'));
   setVis('nav-nutrition', f.includes('nutrition'));
   setVis('nav-progress', f.includes('progress'));
@@ -3176,7 +3233,10 @@ function renderObStep() {
   document.getElementById('ob-sub').textContent = stepSub;
   document.getElementById('ob-bar').style.width = pct + '%';
   renderObLangSelector(); // keep the header language button's code (EN/FR/…) in sync with the active language
-  document.getElementById('ob-back').style.visibility = obStep > 0 ? 'visible' : 'hidden';
+  // Hidden at step 0 on the signup path — a brand-new account has nowhere to go back to.
+  // Visible at step 0 when the run was started from inside the app (_obFromApp), where the
+  // arrow is the coach's way out; see obBack() / exitPersonalOnboarding().
+  document.getElementById('ob-back').style.visibility = (obStep > 0 || _obFromApp) ? 'visible' : 'hidden';
   document.getElementById('ob-next').textContent = obStep === getObSteps().length - 1 ? t('build_plan') : t('next');
   // The feature-selection step is the final question — its CTA is "Set up my app →".
   if (step.type === 'features') document.getElementById('ob-next').textContent = 'Set up my app →';
@@ -3732,6 +3792,37 @@ async function obNext() {
 
 function obBack() {
   if (obStep > 0) { obStep--; renderObStep(); }
+  // Step 0 with _obFromApp set: the back arrow is the way out of an onboarding run the user
+  // started deliberately from inside the app. On the signup path _obFromApp is false and the
+  // arrow is hidden at step 0, exactly as before — a new account still has no exit.
+  else if (_obFromApp) exitPersonalOnboarding();
+}
+
+// ── PERSONAL ONBOARDING, ENTERED FROM INSIDE THE APP ────────────────────────────────────
+// The onboarding flow is otherwise reachable only by being routed into it at launch, and
+// submitOnboarding() is the ONLY writer of age / sex / height / weight / goal / experience /
+// days_per_week / preferred_days / equipment / diet_style / diet_restrictions / injuries and
+// the only caller of /api/generate-plan. Account settings can change a name and a theme; it
+// cannot set any of those. So a coach who never ran onboarding — the normal case now that
+// handleSession() sends them to coach setup instead — had no route to a training plan of
+// their own. This is that route. It reuses the flow wholesale: no second onboarding
+// definition, no duplicated PATCH, no duplicated plan generation.
+// (_obFromApp itself is declared up with obStep/obData — renderObStep() reads it.)
+
+function startPersonalOnboarding() {
+  _obFromApp = true;
+  obStep = 0;
+  obData.name = userProfile?.name || '';
+  showScreen('onboarding');
+  renderObStep();
+}
+
+// showScreen() only swaps the active .screen; the panels inside #screen-app keep their own
+// active state, so this returns the coach to the exact panel they left (Account) with no
+// panel bookkeeping and without tripping showPanel()'s nav lock or same-panel guard.
+function exitPersonalOnboarding() {
+  _obFromApp = false;
+  showScreen('app');
 }
 
 // ── UNDER-AGE: TERMINAL REJECTION ─────────────────────
@@ -4547,7 +4638,12 @@ function handlePaymentRedirect() {
   const portalReturn = params.get('portal_return');
   const coachPayment = params.get('coach_payment');
   const coachRequest = params.get('coach_request');
-  const coachSignup = params.get('coach_signup');
+  // NOTE: ?coach_signup=true was read here and is gone. It ran at module scope — before any
+  // authentication — stripped itself with replaceState, and left only a 500ms timer that a
+  // session-less visitor never survived (the boot IIFE redirects to '/' first). It could not
+  // have worked in any case: signup requires email confirmation, so the user leaves the
+  // browser entirely before app.html loads. Coach intent is now profiles.signup_intent_coach,
+  // read in handleSession() where the profile is actually available.
 
   // Coach post-trial Stripe return
   if (coachPayment === 'success') {
@@ -4577,14 +4673,6 @@ function handlePaymentRedirect() {
       if (typeof openCoachRequestScreen === 'function') openCoachRequestScreen(coachRequest);
     }, 500);
   }
-  // Direct deeplink to coach sign-up from coaches.html
-  if (coachSignup === 'true') {
-    window.history.replaceState({}, '', window.location.pathname);
-    setTimeout(() => {
-      if (typeof openCoachSetup === 'function') openCoachSetup();
-    }, 500);
-  }
-
   // FIX 5: push-notification deep-link to a panel (?panel=...) → switch to it. For
   // workout/nutrition also force-refresh plan data so coach changes appear immediately,
   // not stale. fetchUnreadCounts() after nav so the red badge updates on landing.
@@ -11192,6 +11280,7 @@ const STRINGS = {
     yesterday: 'Yesterday', days_ago: '{n} days ago', todays_weight: "Today's weight",
     become_coach_cta_desc: "Give your clients 24/7 AI coaching. Manage their programmes and progress in one place.",
     become_coach_cta_btn: "Set up coach account",
+    coach_own_plan_title: "Your own training", coach_own_plan_desc: "You coach clients. You do not have a plan of your own yet. Answer a few questions and FORGE builds one.", coach_own_plan_btn: "Set up my training plan",
     unit_set: 'set', unit_sets: 'sets', unit_exercise: 'exercise', unit_exercises: 'exercises', label_custom: 'Custom',
     greeting_training: 'Training', greeting_recovery: 'Recovery', greeting_next_session: 'Next Session', greeting_ready_today: 'Ready For Today', greeting_today_focus: "Today's Focus", greeting_duration: 'Duration', greeting_last_completed: 'Last Completed',
     notif_enable_instructions: "To enable: Settings → Safari → Notifications → FORGE → Allow", notif_enabled: "Notifications enabled.", notif_disabled: "Notifications disabled.", notif_not_supported: "Push notifications not supported on this browser.", notif_blocked: "Notifications blocked. Go to Settings → Safari → Notifications → FORGE → Allow",
@@ -12303,6 +12392,7 @@ const STRINGS = {
     today: "Aujourd'hui", yesterday: 'Hier', days_ago: 'il y a {n} jours', todays_weight: "Poids d'aujourd'hui",
     become_coach_cta_desc: "Offre à tes clients un coaching IA 24h/24 et 7j/7. Gère leurs programmes et leur progression au même endroit.",
     become_coach_cta_btn: "Configurer le compte coach",
+    coach_own_plan_title: "Ton entraînement", coach_own_plan_desc: "Tu coaches des clients. Tu n'as pas encore ton propre programme. Réponds à quelques questions et FORGE le construit.", coach_own_plan_btn: "Créer mon programme",
     unit_set: 'série', unit_sets: 'séries', unit_exercise: 'exercice', unit_exercises: 'exercices', label_custom: 'Personnalisé',
     greeting_training: 'Entraînement', greeting_recovery: 'Récupération', greeting_next_session: 'Prochaine séance', greeting_ready_today: "Prêt pour aujourd'hui", greeting_today_focus: 'Objectif du jour', greeting_duration: 'Durée', greeting_last_completed: 'Dernière terminée',
     notif_enable_instructions: "Pour activer: Réglages → Safari → Notifications → FORGE →Autoriser", notif_enabled: "Notifications activées.", notif_disabled: "Notifications désactivées.", notif_not_supported: "Les notifications push ne sont pas disponibles sur ce navigateur.", notif_blocked: "Notifications bloquées. Va dans Réglages → Safari → Notifications → FORGE → Autoriser",
@@ -16842,6 +16932,16 @@ async function submitCoachSetup() {
   };
   const res = await api('/api/coach/setup', 'POST', postBody);
   if (res?.ok) {
+    // The server switched this account's personal features off (first coach setup by someone
+    // who never completed client onboarding — see /api/coach/setup). Mirror it locally NOW
+    // rather than relying on the re-fetch below: that call is wrapped in try/catch and fails
+    // silently, and getEnabledFeatures() falls through to localStorage when userProfile has
+    // no array — either route would leave the nav showing personal panels the server has
+    // already turned off.
+    if (res.features_reset) {
+      try { localStorage.setItem('forge-enabled-features', JSON.stringify(FORGE_COACH_DEFAULT_FEATURES)); } catch(e) { /* quota */ }
+      if (userProfile) userProfile.enabled_features = FORGE_COACH_DEFAULT_FEATURES.slice();
+    }
     // Refresh profile so account_type='coach' is reflected locally
     try {
       const p = await api('/api/profile');
@@ -17076,6 +17176,29 @@ async function renderAccountCoachSections() {
         ${status === 'active' ? `<button onclick="openBillingPortal()" style="width:100%;padding:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">${t('coach_manage_billing')}</button>` : ''}
         <button onclick="confirmCancelCoachPlan()" style="width:100%;padding:11px;background:transparent;border:1px solid rgba(255,68,68,0.25);color:var(--red, #ff4444);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('coach_cancel_plan')}</button>
       </div>`;
+      // ── ROUTE BACK TO PERSONAL ONBOARDING ────────────────────────────────────────────
+      // Shown to a coach who has no training plan of their own. That is the normal state now:
+      // handleSession() sends a coach straight to coach setup, so age/weight/goal/equipment
+      // are never collected and no plan row is written. This is the only way back to those
+      // fields — startPersonalOnboarding() runs the real flow, and submitOnboarding() does
+      // the PATCH and calls /api/generate-plan exactly as it does at signup.
+      //
+      // GATED ON THE PLAN, NOT ON onboarding_complete. /api/coach/setup now sets that flag
+      // for every coach (it is what keeps them out of the onboarding loop), so it no longer
+      // means "has answered the questions". An absent workout plan does.
+      //
+      // Placed directly under COACH PLAN, in the coach's own section near the top of Account
+      // — the same panel that holds their plan, seats and billing, which is where a coach
+      // already goes for anything about their own account.
+      const _hasOwnPlan = !!(userPlan?.workout_plan?.days?.length);
+      if (!_hasOwnPlan) {
+        html += `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;">${t('coach_own_plan_title')}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:14px;">${t('coach_own_plan_desc')}</div>
+        <button onclick="startPersonalOnboarding()" style="width:100%;padding:13px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${t('coach_own_plan_btn')}</button>
+      </div>`;
+      }
       // EARNINGS PANEL REMOVED — intentionally unreachable, NOT deleted.
       // Commissions are no longer presented as a coach benefit, so the <details>
       // "COMMISSION" block that used to sit here is gone and #coachCommissionBlock no longer

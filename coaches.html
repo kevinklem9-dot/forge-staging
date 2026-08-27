@@ -1126,15 +1126,20 @@ function showError(id, msg) {
   if (el) { el.textContent = msg; el.style.color = ''; el.style.display = msg ? 'block' : 'none'; }
 }
 
-// Coaches arriving from THIS page go straight to coach setup. app.html's
-// handlePaymentRedirect() reads ?coach_signup=true and calls openCoachSetup().
 // Built relative to the current directory so it works under the /forge-staging/ subpath.
-function _getAppUrl(coachSignup) {
+//
+// NO coach flag rides on this URL any more. It used to take a `coachSignup` argument and
+// append ?coach_signup=true, which app.html read in handlePaymentRedirect(). That path was
+// dead on arrival and looked live: /api/signup ALWAYS returns requires_confirmation, so the
+// only branch that appended the flag was unreachable — and had it been reached, app.html
+// bounces a session-less visitor straight back to '/' before the flag can be acted on, and
+// the user leaves for an email link regardless. Coach intent is now carried by the
+// profiles.signup_intent_coach column written at /api/signup (see doSignup below).
+function _getAppUrl() {
   const loc = window.location;
-  const base = loc.pathname.endsWith('/')
+  return loc.pathname.endsWith('/')
     ? loc.origin + loc.pathname + 'app.html'
     : loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/') + 'app.html';
-  return coachSignup ? base + '?coach_signup=true' : base;
 }
 
 async function doSignup(instance) {
@@ -1177,6 +1182,13 @@ async function doSignup(instance) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
         marketing_opt_in: marketingOptIn,
+        // THIS is the coach landing page — every account created here intends to coach.
+        // Persisted to profiles.signup_intent_coach so it survives the email-confirmation
+        // round trip; app.html reads it in handleSession() and opens coach setup instead of
+        // sending them through client onboarding (age, weight, injuries, equipment).
+        // Sent only on SIGN-UP. doSignin below deliberately does not send it — an existing
+        // account's intent was recorded when it was created.
+        signup_intent_coach: true,
         ...(signupCurrency ? { currency: signupCurrency } : {}) })
     });
     const data = await res.json();
@@ -1196,7 +1208,10 @@ async function doSignup(instance) {
           + escHtml(tstr('confirm_body2', 'Click the link to activate your account and start your free trial.')) + '</div></div>';
       }
     } else {
-      window.location.href = _getAppUrl(true);
+      // Reached only if email confirmation is ever switched off in Supabase — /api/signup
+      // returns requires_confirmation unconditionally today. Either way the intent is already
+      // in the database by this point, so this needs no flag on the URL.
+      window.location.href = _getAppUrl();
     }
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
@@ -1246,10 +1261,11 @@ async function doSignin(instance) {
       localStorage.removeItem('forge-session');
     }
 
-    // Sign-in goes to the app WITHOUT ?coach_signup=true. An existing account may already be
-    // a set-up coach, and re-opening the coach setup sheet over their dashboard would be
-    // wrong. Only a fresh signup from this page deep-links into coach setup.
-    window.location.href = _getAppUrl(false);
+    // Sign-in records no intent. An existing account may already be a set-up coach, and
+    // re-opening the coach setup sheet over their dashboard would be wrong. Only a fresh
+    // signup from this page sets profiles.signup_intent_coach, and /api/coach/setup clears
+    // it once they are through — so this route can never re-trigger it.
+    window.location.href = _getAppUrl();
   } catch(e) {
     console.error('doSignin error:', e);
     if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
