@@ -261,10 +261,9 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
   .nav{gap:8px}
   .nav-logo{flex:0 0 auto}
   .nav-right{gap:6px;flex:0 1 auto;min-width:0}
-  /* "For athletes" is the next thing to go. EN's nav CTA is ~30px wider than FR's, and at
-     390px that was enough to push it past the right edge. The link is still in the footer,
-     and the original coaches.html hid it below 880px anyway. */
-  .nav-link{display:none}
+  /* This used to be `.nav-link{display:none}` — it took the Pricing link down with the
+     cross-link, so the money link was invisible on every phone. The cross-link alone now
+     goes at 380px, in the PHONES block below, on the same rule all four pages share. */
   /* Fixed narrow width so the select shows the three-letter code and truncates the country
      name, instead of sizing itself to its widest option ("USD — United States"). */
   .currency-select{padding:8px 4px;font-size:10px;width:64px;flex:0 0 auto;text-overflow:ellipsis}
@@ -275,6 +274,98 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
   .field-input{font-size:16px}
   .hero{padding:130px 20px 70px}
   .objection-cards .card{padding:24px 22px 26px}
+}
+/* ══ NAV BUDGET — TWO LINKS ═══════════════════════════════════════════════════
+   Every breakpoint above was sized for ONE .nav-link (For athletes). Pricing makes
+   two, and this nav is heavier than index.html's: the currency select sizes itself
+   to its widest option ("USD — United States", 198px) and is not pinned until the
+   520px rule, and the EN CTA is 170px.
+
+   Measured headless — NATURAL width of the nav line (position:static + width:
+   max-content on .nav, so flex-shrink cannot hide a deficit) against the viewport:
+
+     one link,  full labels, select 198 : 793 EN / 841 FR
+     two links, full labels, select 198 : 885 EN / 925 FR   <- over from 925 down
+     two links, short labels, select 198: 824 EN / 822 FR   <- over from 880 down
+     two links, short labels, select  72: 674 EN / 674 FR
+
+   The select is the whole problem, so the select is what gives. Clamping it to 72px
+   from 960 keeps the FULL labels fitting all the way to the existing 880px swap
+   (736 EN / 778 FR), so no existing breakpoint moves: the sub-label still goes at
+   700, the labels still shorten at 880, the links still drop at 520.
+
+   These same rules also close a gap that pre-dates the Pricing link: with ONE link
+   the nav already needed 634 EN / 609 FR against a 520px floor, so it overflowed
+   from 633px down to 521px. That band now needs 476 EN / 447 FR.
+
+   Floored at 521px on purpose. The 520px block above is the phone nav and is
+   deliberately different; without the min-width these later rules would win on
+   source order and restyle it. */
+@media (min-width:521px) and (max-width:960px){
+  .currency-select{max-width:72px;text-overflow:ellipsis}
+  .nav-cta{padding:9px 11px;letter-spacing:1.2px}
+}
+@media (min-width:521px) and (max-width:720px){
+  /* The select is NOT tightened past the 72px above. At 56px it rendered "E." for EUR —
+     index.html hit the same wall and settled on 60px for the same reason. The links and
+     the CTA give back the width instead; 521px, the tightest point in this band, still
+     clears by 29px EN / 58px FR. */
+  .nav-right{gap:6px}
+  .nav-link{letter-spacing:0.5px;padding:6px 4px}
+  .nav-cta{padding:8px 7px;letter-spacing:0.6px}
+}
+/* ══ NAV BUDGET — PHONES ══════════════════════════════════════════════════════
+   A value-for-value mirror of index.html's phone tiers, so the four landing pages stop
+   drifting apart. index.html owns these numbers; both ad pages inherit them by having
+   its stylesheet copied verbatim, and this is the only page that has to restate them,
+   because it carries a wholly separate sheet.
+
+   This nav was much heavier than index.html's at phone widths and had no wordmark rule
+   at all: 74.4px of wordmark against index's 46.7, a 64px select against 42, and a 132px
+   CTA against 99.6. Measured need vs viewport before this block:
+     390 EN 352.4/390 · 360 EN 352.4/360 · 320 EN 352.4/320  OVER by 32.4
+   and the Pricing link was not rendering at any of those widths.
+
+   Tier boundaries are index.html's, not new ones: 520 (this page's phone floor) maps to
+   index's 720 values, then 400 / 385 / 380 / 340 exactly as index has them. */
+@media (max-width:520px){
+  /* Chrome matched to index.html too, not just the controls. This nav was carrying 28px of
+     side padding against index's 24 and a 6px .nav-right gap against its 4 — 12px more
+     chrome for the same five items, which at 390px EN left 0.8px of slack once the wider
+     "ATHLETES" cross-link (42.8px vs "COACHES" 37.7px) was in. Now 12.8px. */
+  .nav{padding:0 12px}
+  .nav-right{gap:4px}
+  .nav-logo-name{font-size:20px;letter-spacing:3px}
+  .nav-link{font-size:9px;letter-spacing:0.8px;padding:6px 2px}
+  /* width:auto cancels the fixed 64px above so max-width can take over, matching how
+     index.html steps the select down. flex:0 0 auto still comes from that rule.
+     The ladder is index.html's, step for step: 56 here, back out to 60 at 400 where there
+     is slack to spend on readability, then 42 at 385. Holding 60 all the way up to 520 left
+     coaches EN with 7.3px at 405px — the thinnest margin on any of the four pages. */
+  .currency-select{width:auto;max-width:56px;padding:6px 6px;font-size:10px}
+  .lang-btn{padding:6px 8px;font-size:14px}
+  .nav-cta{padding:7px 5px;font-size:8.5px;letter-spacing:0.5px}
+}
+@media (max-width:400px){
+  .nav-link{font-size:8px;letter-spacing:0.3px;padding:6px 1px}
+  /* 60, not 56 — index.html's reasoning verbatim: at this width the nav has slack, and a
+     narrower select renders "E…", which is unreadable as a currency. */
+  .currency-select{max-width:60px}
+}
+@media (max-width:385px){
+  .currency-select{max-width:42px;padding:5px 3px}
+}
+@media (max-width:380px){
+  .nav-logo-name{font-size:18px;letter-spacing:2.5px}
+  /* The cross-link goes, Pricing stays. Same selector as index.html. */
+  .nav-link:not([href="#pricing"]){display:none}
+}
+@media (max-width:340px){
+  .nav{padding:0 8px;gap:6px}
+  .nav-right{gap:3px}
+  .nav-logo-name{font-size:17px;letter-spacing:2px}
+  .nav-cta{padding:6px 4px;font-size:8px;letter-spacing:0.3px}
+  .lang-btn{padding:5px 6px;font-size:13px}
 }
 /* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
    Two treatments, defined ONCE. This block is authored in index.html and the ad-page
@@ -358,6 +449,10 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
     <span class="nav-logo-sub" data-i18n="nav_logo_sub">For Coaches</span>
   </div>
   <div class="nav-right">
+    <!-- In-page jump to the pricing section. Copied verbatim from index.html:615, which the
+         ad-page generator also reproduces — same price_label key on BOTH spans, same
+         href="#pricing" fallback under the handler, same smooth scroll. -->
+    <a class="nav-link" href="#pricing" aria-label="Pricing" onclick="scrollToPricing();return false;"><span class="nav-link-full" data-i18n="price_label">Pricing</span><span class="nav-link-short" data-i18n="price_label">Pricing</span></a>
     <!-- Back to the main homepage. RELATIVE — "/" would resolve to the domain root and
          miss the /forge-staging/ subpath entirely on GitHub Pages. -->
     <a class="nav-link" href="index.html" aria-label="For athletes"><span class="nav-link-full" data-i18n="nav_athletes">For athletes</span><span class="nav-link-short" data-i18n="nav_athletes_short">Athletes</span></a>
@@ -557,14 +652,14 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
       <p data-i18n="s6_p3">That's not how FORGE works, and the difference is structural rather than a promise.</p>
       <div class="punch" data-i18n="s6_punch">The AI produces a draft. It lands on your dashboard. It goes nowhere else.</div>
       <div class="shot shot-full">
-        <img src="img/coach-client-overview.webp" width="1456" height="788" loading="lazy" decoding="async"
-             alt="A client overview in FORGE, showing an AI-written summary of the client alongside sessions this week, current streak, last session and personal records this month." data-i18n-alt="shot_alt_overview">
+        <img src="img/coach-programme-builder.webp" width="1456" height="798" loading="lazy" decoding="async"
+             alt="The FORGE programme builder open on a training week, with editable exercises, sets, reps, rest and coach notes, and Save to library and Save and assign buttons along the bottom." data-i18n-alt="shot_alt_builder">
       </div>
       <p data-i18n="s6_p4">You review it. You edit it. You approve it. Only then does your client see anything.</p>
       <p data-i18n="s6_p5">There is no path from a generated programme to your client that doesn't pass through you. The generator writes nothing — no plan saved, no notification sent — until you save it yourself. That isn't a setting you could leave switched on. It's how the builder is wired.</p>
       <div class="shot shot-full">
-        <img src="img/coach-programme-builder.webp" width="1456" height="798" loading="lazy" decoding="async"
-             alt="The FORGE programme builder open on a training week, with editable exercises, sets, reps, rest and coach notes, and Save to library and Save and assign buttons along the bottom." data-i18n-alt="shot_alt_builder">
+        <img src="img/coach-client-overview.webp" width="1456" height="788" loading="lazy" decoding="async"
+             alt="A client overview in FORGE, showing an AI-written summary of the client alongside sessions this week, current streak, last session and personal records this month." data-i18n-alt="shot_alt_overview">
       </div>
       <p data-i18n="s6_p6">Your client's own AI coach is a separate thing, and it does speak to them directly — check-ins after a session, weekly and monthly reviews. That's the part they're paying for. You can switch any of it off, per client, from their card.</p>
       <p data-i18n="s6_p7">What the AI is doing for you is the arithmetic — periodisation maths, progression logic, volume tracking, equipment substitutions, flagging the client who has quietly stopped logging. The part of your week that's data entry.</p>
@@ -1407,6 +1502,14 @@ async function sendResetLanding(prefix) {
   }
 }
 
+// ── SCROLL TO PRICING ─────────────────────────────────
+// index.html:1507 and the ad pages carry this same three-line body. The nav link keeps
+// href="#pricing" underneath it, so the jump still works with JS off or if this throws.
+function scrollToPricing() {
+  const el = document.getElementById('pricing');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── SCROLL TO AUTH ────────────────────────────────────
 function scrollToAuth() {
   const el = document.getElementById('hero-auth');
@@ -1443,6 +1546,7 @@ const COACH_STRINGS = {
     nav_logo_sub: 'For Coaches',
     nav_athletes: 'For athletes',
     nav_athletes_short: 'Athletes',
+    price_label: 'Pricing',
     nav_trial_btn: 'Start free trial',
 
     // ── Section 1 — hero ──
@@ -1692,6 +1796,7 @@ const COACH_STRINGS = {
     nav_logo_sub: 'Pour les coachs',
     nav_athletes: 'Pour les sportifs',
     nav_athletes_short: 'Sportifs',
+    price_label: 'Tarifs',
     nav_trial_btn: 'Essai gratuit',
 
     // ── Section 1 — hero ──

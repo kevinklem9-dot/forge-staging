@@ -530,6 +530,44 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 @media (max-width: 385px){
   .currency-select{max-width:42px;padding:5px 3px}
 }
+/* ── NAV BUDGET — NARROW PHONES ───────────────────────────────────────────────
+   Authored here and inherited by both ad pages (the generator copies this whole
+   <style> verbatim). coaches.html carries a value-for-value mirror in its own sheet.
+
+   Measured need vs viewport BEFORE this block — natural nav width, flex-shrink pinned
+   so a deficit cannot hide as a squeeze:
+
+     index    360 EN 347.7/360 ok     320 EN 347.7/320  OVER 27.7
+     ad pages 360 EN 370.1/360 OVER   320 EN 370.1/320  OVER 50.1
+     coaches  360 EN 352.4/360 ok     320 EN 352.4/320  OVER 32.4
+
+   Two links, plus a sixteen-character CTA, plus the currency select, plus the language
+   button, plus the wordmark, do not fit on a 360px line — and there is nothing readable
+   left to shave. The CTA is already 8.5px, the select already ellipsises to "C…", and
+   the ad pages were over at 360 before anything was added here.
+
+   So below 380px the CROSS-LINK goes: For Coaches on index and the ad pages, For
+   athletes on coaches.html. It is in the footer of all four pages. PRICING NEVER GOES —
+   on pages taking paid traffic it is the only nav route to the prices, and hiding it is
+   what this pass exists to undo on coaches.html.
+
+   Selected with :not([href="#pricing"]) rather than a class, so a nav link added later
+   is hidden by default and cannot escape the budget by not being tagged. */
+@media (max-width: 380px){
+  .nav-link:not([href="#pricing"]){display:none}
+}
+/* Narrowest phones still in real use (iPhone SE 1st gen, older Android at 320). The
+   wordmark, the CTA, the language button and the nav's own padding each give a little
+   rather than any one of them collapsing. */
+@media (max-width: 340px){
+  .nav{padding:0 8px;gap:6px}
+  .nav-right{gap:3px}
+  .nav-logo-name{font-size:17px;letter-spacing:2px}
+  .nav-cta{padding:6px 4px;font-size:8px;letter-spacing:0.3px}
+  /* #langBtn carries inline styles in the markup, so these need !important — the same
+     reason the 720px rule above does. */
+  #langBtn{padding:5px 6px !important;font-size:13px !important}
+}
 /* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
    Two treatments, defined ONCE. This block is authored in index.html and the ad-page
    generator copies index.html's whole <style> verbatim, so start-intermediate.html and

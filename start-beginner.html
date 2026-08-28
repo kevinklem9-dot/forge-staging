@@ -532,6 +532,44 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 @media (max-width: 385px){
   .currency-select{max-width:42px;padding:5px 3px}
 }
+/* ── NAV BUDGET — NARROW PHONES ───────────────────────────────────────────────
+   Authored here and inherited by both ad pages (the generator copies this whole
+   <style> verbatim). coaches.html carries a value-for-value mirror in its own sheet.
+
+   Measured need vs viewport BEFORE this block — natural nav width, flex-shrink pinned
+   so a deficit cannot hide as a squeeze:
+
+     index    360 EN 347.7/360 ok     320 EN 347.7/320  OVER 27.7
+     ad pages 360 EN 370.1/360 OVER   320 EN 370.1/320  OVER 50.1
+     coaches  360 EN 352.4/360 ok     320 EN 352.4/320  OVER 32.4
+
+   Two links, plus a sixteen-character CTA, plus the currency select, plus the language
+   button, plus the wordmark, do not fit on a 360px line — and there is nothing readable
+   left to shave. The CTA is already 8.5px, the select already ellipsises to "C…", and
+   the ad pages were over at 360 before anything was added here.
+
+   So below 380px the CROSS-LINK goes: For Coaches on index and the ad pages, For
+   athletes on coaches.html. It is in the footer of all four pages. PRICING NEVER GOES —
+   on pages taking paid traffic it is the only nav route to the prices, and hiding it is
+   what this pass exists to undo on coaches.html.
+
+   Selected with :not([href="#pricing"]) rather than a class, so a nav link added later
+   is hidden by default and cannot escape the budget by not being tagged. */
+@media (max-width: 380px){
+  .nav-link:not([href="#pricing"]){display:none}
+}
+/* Narrowest phones still in real use (iPhone SE 1st gen, older Android at 320). The
+   wordmark, the CTA, the language button and the nav's own padding each give a little
+   rather than any one of them collapsing. */
+@media (max-width: 340px){
+  .nav{padding:0 8px;gap:6px}
+  .nav-right{gap:3px}
+  .nav-logo-name{font-size:17px;letter-spacing:2px}
+  .nav-cta{padding:6px 4px;font-size:8px;letter-spacing:0.3px}
+  /* #langBtn carries inline styles in the markup, so these need !important — the same
+     reason the 720px rule above does. */
+  #langBtn{padding:5px 6px !important;font-size:13px !important}
+}
 /* ══ PRODUCT SCREENSHOTS ══════════════════════════════════════════════════════
    Two treatments, defined ONCE. This block is authored in index.html and the ad-page
    generator copies index.html's whole <style> verbatim, so start-intermediate.html and
@@ -630,34 +668,23 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
 .ad-block:first-of-type{margin-top:44px;padding-top:0;border-top:none}
 .ad-block-t{font-family:'DM Sans',sans-serif;font-size:21px;font-weight:600;color:var(--text);line-height:1.4;letter-spacing:-0.3px;margin-bottom:18px}
 .ad-close-trust{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.5px;color:var(--muted);margin-top:16px}
-/* NAV BUDGET — these pages carry TWO .nav-link items (Home + For Coaches); index.html
-   carries one, so its own tightening at 720px is too late here. Measured headless: the
-   desktop-sized nav stops fitting at ~882px in EN and ~911px in FR ("Accueil" +
-   "Pour les coachs"), so the short labels and the tightened controls come in at 920px.
-   Above that the nav has 28px of clearance at every width tested up to 1440. */
-@media (max-width: 920px){
-  .nav-logo-sub{display:none}
-  .nav-link-full{display:none}
-  .nav-link-short{display:inline}
-  .currency-select{max-width:72px}
-  .nav-cta{padding:9px 11px;letter-spacing:1.2px}
-}
+/* NO NAV RULES HERE — DELIBERATELY.
+   index.html owns the nav budget for all three pages: this script copies its whole
+   <style> verbatim, so every breakpoint from the 920px short-label swap down to the
+   340px tier already applies to these pages.
+
+   This block used to re-declare them, and the copies had drifted. Two concrete costs,
+   both measured before removal:
+     · The @media(max-width:380px) tier here was DEAD. It sat ABOVE a @media(max-width:
+       720px) tier in the same block, so at 360px the later 720px rule won on source
+       order and the select stayed at 56px instead of the intended 50 — while index.html
+       was correctly reaching 42px through its own 385px tier.
+     · That is why the ad pages needed 370.1px of nav at 360px (over by 10.1) and
+       347.7px on index at the same width. Same markup, same fonts, 22px apart, purely
+       from a duplicated stylesheet disagreeing with itself.
+   Ad-page TYPOGRAPHY still belongs here — it has no counterpart in index.html. */
 @media (max-width: 900px){ .ad-steps{grid-template-columns:1fr} }
-@media (max-width: 380px){
-  .currency-select{max-width:50px}
-  .nav-link{font-size:8px;letter-spacing:0.4px}
-  .nav-cta{padding:7px 6px;font-size:8.5px}
-}
 @media (max-width: 720px){
-  /* index.html's nav budget at 390px was sized for ONE .nav-link and landed at 377/390.
-     These pages carry a second link (Home), so the select and the CTA give back the
-     ~33px it costs: select 80 -> 64, CTA padding 10 -> 7. Budget at 390px, EN worst case:
-     "Pricing" is wider than the "Home" link it replaced and pushed EN 4px over at
-     390px and 9px at 360px (measured headless), so the select and the link padding
-     give back another ~16px. FR was never over — "Tarifs"/"Coachs" are shorter. */
-  .currency-select{max-width:56px}
-  .nav-link{letter-spacing:0.5px;padding:6px 1px}
-  .nav-cta{padding:8px 7px;letter-spacing:0.6px}
   .ad-prose p{font-size:16px;line-height:1.8;margin-bottom:20px}
   .ad-step{padding:24px 20px}
   .ad-block-t{font-size:19px}
@@ -876,8 +903,16 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,76px);line-heigh
     <h2 class="reveal" data-i18n="s7_h2">What that looks like in week one.</h2>
     <div class="ad-block reveal">
       <div class="ad-block-t" data-i18n="s7_1_t">When you overdo it, it notices.</div>
-      <div class="ad-prose">
+      <div class="shot-split">
+        <div>
+          <div class="ad-prose">
       <p data-i18n="s7_1_p1">First couple of leg sessions leave you barely able to walk. Not injured — just wrecked. Tell it. The next session doesn't smash your legs again and tell you to push through. It pulls back.</p>
+          </div>
+        </div>
+        <div class="shot-phone reveal">
+        <img src="img/post-workout-checkin.webp" width="560" height="1142" loading="lazy" decoding="async"
+             alt="A post-workout check-in in FORGE: the athlete reports feeling tired and sore, marks the session too hard and notes that the last pressing sets were a grind on poor sleep, and the coach reads the logged sets back — the incline press dropping from four sets of six, the overhead press held at 24kg — and calls it pressing fatigue rather than a programme failure." data-i18n-alt="shot_alt_checkin">
+      </div>
       </div>
     </div>
     <div class="ad-block reveal">
@@ -2149,6 +2184,7 @@ const AD_STRINGS = {
     s9_p1: "Three days a week. Two, if that's what's realistic. Thirty-five minutes on the days you're pushed.",
     s9_p2: "Just machines, if the free weights area still feels like too much. It'll get you there when you're ready — and moving there is a step it plans, not a leap you make on your own.",
     shot_alt_chat: "The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap.",
+    shot_alt_checkin: "A post-workout check-in in FORGE: the athlete reports feeling tired and sore, marks the session too hard and notes that the last pressing sets were a grind on poor sleep, and the coach reads the logged sets back — the incline press dropping from four sets of six, the overhead press held at 24kg — and calls it pressing fatigue rather than a programme failure.",
     shot_alt_history: "Session history in FORGE: the most recent session expanded to show every exercise with the weight and reps for each set, and earlier sessions listed by date below.",
     shot_alt_weekly: "A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week.",
     showing_prices: "Showing prices in",
@@ -2346,6 +2382,7 @@ const AD_STRINGS = {
     s9_p1: "Trois jours par semaine. Deux, si c'est ce qui est réaliste. Trente-cinq minutes les jours où tu es pris à la gorge.",
     s9_p2: "Uniquement des machines, si la zone poids libres te paraît encore trop. Il t'y amènera quand tu seras prêt — et y aller est une étape qu'il planifie, pas un saut que tu fais tout seul.",
     shot_alt_chat: "Le coach IA de FORGE en pleine conversation : l'athlète explique que son épaule le gêne et demande de remplacer le développé militaire ; le coach répond par un landmine press en expliquant pourquoi.",
+    shot_alt_checkin: "Un bilan d'après-séance dans FORGE : l'athlète se dit fatigué et courbaturé, juge la séance trop dure et signale que les dernières séries de développé ont été laborieuses après deux mauvaises nuits ; le coach relit les séries enregistrées — le développé incliné passé de quatre séries de six, le développé militaire maintenu à 24 kg — et conclut à une fatigue des pectoraux et des épaules plutôt qu'à un programme mal calibré.",
     shot_alt_history: "L'historique des séances dans FORGE : la séance la plus récente développée pour montrer chaque exercice avec la charge et les répétitions de chaque série, et les séances précédentes listées par date en dessous.",
     shot_alt_weekly: "Un bilan hebdomadaire dans FORGE : trois séances sur quatre réalisées et deux records personnels, avec un résumé écrit de la semaine, les points forts et un objectif pour la semaine suivante.",
     showing_prices: "Prix en",
