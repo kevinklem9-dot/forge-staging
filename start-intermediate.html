@@ -1676,7 +1676,21 @@ async function doSignup(instance) {
       // Show confirmation message
       const card = btn.closest('.auth-card');
       // `email` is whatever was typed into the signup field — escaped, never concatenated raw.
-      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
+      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div>'
+        // Keyed the same way coaches.html keys it. The English values in AD_STRINGS
+        // are the literals that used to sit here, character for character, so the EN card
+        // renders byte-identically. escHtml(email) is untouched: it is user input.
+        + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">'
+        + escHtml(_ls('confirm_title', 'CHECK YOUR EMAIL')) + '</div>'
+        + '<div style="font-size:14px;color:var(--muted);line-height:1.7">'
+        + escHtml(_ls('confirm_body1', 'We sent a confirmation link to')) + ' <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>'
+        + escHtml(_ls('confirm_body2', 'Click the link to activate your account and start your free trial.')) + '</div>'
+        // Spam-folder hint. Sibling of the body line, never inside it, so the line above
+        // and the escaped address are byte-identical to what shipped. Styling is
+        // .auth-note's, the card's own secondary-text treatment: DM Mono 10px on
+        // --muted, against the 14px body line. A hint, not a headline.
+        + '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;line-height:1.6;margin-top:14px">'
+        + escHtml(_ls('confirm_spam', "Check your spam folder if it's not in your inbox. It sometimes lands there first.")) + '</div></div>';
     } else {
       window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
     }
@@ -2022,6 +2036,10 @@ const AD_STRINGS = {
     close_body: "Your log has been telling you what's wrong for a year.",
     close_h2: "Give it something that reads it.",
     close_trust: "7 days free · No card required · 30-day money back",
+    confirm_body1: "We sent a confirmation link to",
+    confirm_body2: "Click the link to activate your account and start your free trial.",
+    confirm_spam: "Check your spam folder if it's not in your inbox. It sometimes lands there first.",
+    confirm_title: "CHECK YOUR EMAIL",
     consent_label: "I agree to the <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Terms of Service</a> and <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Privacy Policy</a>, and I confirm I am 18 or over.",
     consent_required: "Accept the Terms of Service and Privacy Policy to continue.",
     currency_charge_note: "You'll be charged in the currency you choose",
@@ -2228,6 +2246,10 @@ const AD_STRINGS = {
     close_body: "Ton carnet te dit ce qui ne va pas depuis un an.",
     close_h2: "Donne-lui quelque chose qui le lit.",
     close_trust: "7 jours gratuits · Sans carte bancaire · Remboursement 30 jours",
+    confirm_body1: "On a envoyé un lien de confirmation à",
+    confirm_body2: "Clique dessus pour activer ton compte et démarrer ton essai gratuit.",
+    confirm_spam: "Regarde dans tes spams s'il n'est pas dans ta boîte de réception. Il y atterrit parfois en premier.",
+    confirm_title: "REGARDE TES E-MAILS",
     consent_label: "J'accepte les <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">CGU</a> et la <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.",
     consent_required: "Accepte les CGU et la Politique de confidentialité pour continuer.",
     currency_charge_note: "Tu seras débité dans la devise que tu choisis",

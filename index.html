@@ -1404,7 +1404,21 @@ async function doSignup(instance) {
       // Show confirmation message
       const card = btn.closest('.auth-card');
       // `email` is whatever was typed into the signup field — escaped, never concatenated raw.
-      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div><div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">CHECK YOUR EMAIL</div><div style="font-size:14px;color:var(--muted);line-height:1.7">We sent a confirmation link to <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>Click the link to activate your account and start your free trial.</div></div>';
+      card.innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:32px;margin-bottom:16px">📬</div>'
+        // Keyed the same way coaches.html keys it. The English values in LANDING_STRINGS
+        // are the literals that used to sit here, character for character, so the EN card
+        // renders byte-identically. escHtml(email) is untouched: it is user input.
+        + '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:12px">'
+        + escHtml(_ls('confirm_title', 'CHECK YOUR EMAIL')) + '</div>'
+        + '<div style="font-size:14px;color:var(--muted);line-height:1.7">'
+        + escHtml(_ls('confirm_body1', 'We sent a confirmation link to')) + ' <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>'
+        + escHtml(_ls('confirm_body2', 'Click the link to activate your account and start your free trial.')) + '</div>'
+        // Spam-folder hint. Sibling of the body line, never inside it, so the line above
+        // and the escaped address are byte-identical to what shipped. Styling is
+        // .auth-note's, the card's own secondary-text treatment: DM Mono 10px on
+        // --muted, against the 14px body line. A hint, not a headline.
+        + '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;line-height:1.6;margin-top:14px">'
+        + escHtml(_ls('confirm_spam', "Check your spam folder if it's not in your inbox. It sometimes lands there first.")) + '</div></div>';
     } else {
       window.location.href = window.location.href.replace(/\/[^\/]*$/, '/app.html');
     }
@@ -1835,6 +1849,18 @@ const LANDING_STRINGS = {
     consent_label:'I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and I confirm I am 18 or over.',
     marketing_label:'Email me training tips and FORGE offers. Optional, and you can turn this off any time.',
     consent_required:"Accept the Terms of Service and Privacy Policy to continue.",
+    // Post-signup confirmation card. Read at runtime by _ls(), not by a data-i18n
+    // sweep: the card is innerHTML'd after the response lands, so no element exists
+    // to carry a key.
+    //   title/body1/body2 — PORTED from coaches.html, which has keyed this card since
+    //   it was built. The English is byte-identical there, so the French carries over
+    //   verbatim rather than being translated a second time.
+    //   confirm_spam — the hint added when confirmation mail turned out to be reaching
+    //   some recipients' spam folders.
+    confirm_title:"CHECK YOUR EMAIL",
+    confirm_body1:"We sent a confirmation link to",
+    confirm_body2:"Click the link to activate your account and start your free trial.",
+    confirm_spam:"Check your spam folder if it's not in your inbox. It sometimes lands there first.",
     shot_alt_chat:"The FORGE AI coach mid-conversation: the athlete says their shoulder has been off and asks to swap the overhead press, and the coach replies with a landmine press and the reason for the swap.",
     shot_alt_weekly:"A weekly review in FORGE showing three of four sessions completed and two personal records, with a written summary of the week, the highlights and one focus for next week.",
     // Added so the surfaces below can be translated at all. Every English value here is
@@ -1962,6 +1988,10 @@ const LANDING_STRINGS = {
     consent_label:'J\'accepte les <a href="terms.html" target="_blank" rel="noopener">CGU</a> et la <a href="privacy.html" target="_blank" rel="noopener">Politique de confidentialité</a>, et je confirme avoir 18 ans ou plus.',
     marketing_label:'Recevoir des conseils d\'entraînement et les offres FORGE. Facultatif, désactivable à tout moment.',
     consent_required:"Accepte les CGU et la Politique de confidentialité pour continuer.",
+    confirm_title:"REGARDE TES E-MAILS",
+    confirm_body1:"On a envoyé un lien de confirmation à",
+    confirm_body2:"Clique dessus pour activer ton compte et démarrer ton essai gratuit.",
+    confirm_spam:"Regarde dans tes spams s'il n'est pas dans ta boîte de réception. Il y atterrit parfois en premier.",
     shot_alt_chat:"Le coach IA de FORGE en pleine conversation : l'athlète explique que son épaule le gêne et demande de remplacer le développé militaire ; le coach répond par un landmine press en expliquant pourquoi.",
     shot_alt_weekly:"Un bilan hebdomadaire dans FORGE : trois séances sur quatre réalisées et deux records personnels, avec un résumé écrit de la semaine, les points forts et un objectif pour la semaine suivante.",
     // Same fourteen keys. These French values already ship on start-intermediate.html and

@@ -1388,7 +1388,12 @@ async function doSignup(instance) {
           + escHtml(tstr('confirm_title', 'CHECK YOUR EMAIL')) + '</div>'
           + '<div style="font-size:14px;color:var(--muted);line-height:1.7">'
           + escHtml(tstr('confirm_body1', 'We sent a confirmation link to')) + ' <strong style="color:var(--text)">' + escHtml(email) + '</strong>.<br>'
-          + escHtml(tstr('confirm_body2', 'Click the link to activate your account and start your free trial.')) + '</div></div>';
+          + escHtml(tstr('confirm_body2', 'Click the link to activate your account and start your free trial.')) + '</div>'
+          // Spam-folder hint. Appended as a sibling of the body line, so confirm_body1/2
+          // and the escaped address are untouched. .auth-note's treatment: DM Mono 10px
+          // on --muted, against the 14px body line. A hint, not a headline.
+          + '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;line-height:1.6;margin-top:14px">'
+          + escHtml(tstr('confirm_spam', "Check your spam folder if it's not in your inbox. It sometimes lands there first.")) + '</div></div>';
       }
     } else {
       // Reached only if email confirmation is ever switched off in Supabase — /api/signup
@@ -1598,6 +1603,7 @@ const COACH_STRINGS = {
     confirm_title: 'CHECK YOUR EMAIL',
     confirm_body1: 'We sent a confirmation link to',
     confirm_body2: 'Click the link to activate your account and start your free trial.',
+    confirm_spam: "Check your spam folder if it's not in your inbox. It sometimes lands there first.",
     lang_saved: "language saved. Your app will open in this language.",
 
     // ── Section 2 — Sunday ──
@@ -1848,6 +1854,7 @@ const COACH_STRINGS = {
     confirm_title: 'REGARDE TES E-MAILS',
     confirm_body1: 'On a envoyé un lien de confirmation à',
     confirm_body2: 'Clique dessus pour activer ton compte et démarrer ton essai gratuit.',
+    confirm_spam: "Regarde dans tes spams s'il n'est pas dans ta boîte de réception. Il y atterrit parfois en premier.",
     lang_saved: "langue enregistrée. Ton app s'ouvrira dans cette langue.",
 
     // ── Section 2 — dimanche ──
