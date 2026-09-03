@@ -1358,6 +1358,44 @@ function _getAppUrl() {
     : loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/') + 'app.html';
 }
 
+// META BROWSER IDS — _fbp and _fbc, read from THIS page's own cookies and posted to
+// /api/signup so the server's Conversions API event can carry them.
+//
+// The server can NEVER read these itself. Both are FIRST-PARTY cookies on this domain,
+// and BACKEND_URL is a different origin, so they are not attached to the /api/signup
+// request's Cookie header no matter what CORS allows. Posting them in the body is the
+// only way they can reach the server, which is why this exists.
+//
+// They are the biggest match-quality signal available to a server event: _fbp identifies
+// the browser, _fbc carries the ad click (fbevents.js writes it from the fbclid on the
+// landing URL). Without them the server event matches on hashed email alone.
+//
+// Written by Meta's own pixel script, so on staging BOTH ARE ABSENT — the loader in
+// <head> sits inside the hostname guard, nothing sets them, and both fields are simply
+// omitted from the request. Same free no-op as the CompleteRegistration call below, and
+// it needs no hostname test of its own.
+//
+// Shape-checked before sending: fb.<subdomainIndex>.<creationTimeMs>.<payload>, the
+// documented format for both. A value that fails is dropped rather than corrected — the
+// server re-validates identically and omits anything malformed, so a mangled cookie
+// costs match quality and nothing else. Never throws: a cookie-less context returns {}.
+function metaBrowserIds() {
+  try {
+    const jar = String(document.cookie || '');
+    const read = function(key) {
+      const m = jar.match(new RegExp('(?:^|;\\s*)' + key + '=([^;]*)'));
+      if (!m) return null;
+      var v;
+      try { v = decodeURIComponent(m[1]).trim(); } catch (e) { return null; }
+      return /^fb\.[0-9]\.[0-9]{6,20}\.[A-Za-z0-9._-]{1,300}$/.test(v) ? v : null;
+    };
+    const out = {};
+    const fbp = read('_fbp'); if (fbp) out.fbp = fbp;
+    const fbc = read('_fbc'); if (fbc) out.fbc = fbc;
+    return out;
+  } catch (e) { return {}; }
+}
+
 async function doSignup(instance) {
   const name = (document.getElementById(instance + '-name')?.value || '').trim();
   const email = (document.getElementById(instance + '-email')?.value || '').trim();
@@ -1409,11 +1447,16 @@ async function doSignup(instance) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
         marketing_opt_in: marketingOptIn,
-        // Paired with the CompleteRegistration fired below. The server ignores it today —
-        // /api/signup destructures a fixed field list and never reads req.body.event_id —
-        // so it is inert until the Conversions API job wires it up. Sent now so the id is
-        // already arriving when that lands.
+        // Paired with the CompleteRegistration fired below. The server now sends the
+        // matching Conversions API event carrying THIS SAME id, and Meta collapses the
+        // browser event and the server event into one conversion instead of two.
         event_id: signupEventId,
+        // _fbp / _fbc, for the server event's match quality. They cannot reach the
+        // server any other way: both are first-party cookies on THIS domain while
+        // BACKEND_URL is a different origin, so they never ride along in a Cookie
+        // header. Absent on staging — the pixel never loads there — and the spread
+        // then contributes nothing at all.
+        ...metaBrowserIds(),
         // THIS is the coach landing page — every account created here intends to coach.
         // Persisted to profiles.signup_intent_coach so it survives the email-confirmation
         // round trip; app.html reads it in handleSession() and opens coach setup instead of
