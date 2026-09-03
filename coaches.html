@@ -439,6 +439,39 @@ h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5.2vw,64px);line-hei
 }
 
 </style>
+
+<!-- Meta Pixel Code -->
+<script>
+// PRODUCTION ONLY. Byte-identical to the block running on www.klemforge.com apart from
+// the hostname check wrapping it (and the <noscript> note below).
+//
+// Staging shares production's pixel id, so an unguarded copy here would file staging
+// PageViews and every test signup against the live ad campaigns. The loader, the init
+// and the PageView are ALL inside the check: on any other hostname fbevents.js is never
+// fetched and fbq is never defined. That last part is load-bearing — doSignup()'s
+// CompleteRegistration tests typeof fbq === 'function', so it goes quiet here for free
+// instead of carrying a second copy of this hostname test.
+//
+// This file is promotable to production unchanged. The hostname check is the ONLY thing
+// making staging inert; nothing else about the pixel differs.
+if (location.hostname === 'www.klemforge.com') {
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1495574939256851');
+fbq('track', 'PageView');
+}
+</script>
+<!-- Production's block also carries a <noscript><img> fallback to www.facebook.com/tr.
+     Deliberately NOT copied here: a <noscript> cannot be hostname-guarded on a static
+     host, so it would fire a staging PageView for every JS-disabled agent — the one leak
+     the guard above cannot close. Restore it on promotion if that fallback is wanted. -->
+<!-- End Meta Pixel Code -->
 </head>
 <body>
 
@@ -1359,12 +1392,28 @@ async function doSignup(instance) {
     }
   } catch(e) {}
 
+  // META EVENT ID for this signup. ONE id, TWO destinations: the browser's
+  // CompleteRegistration below, and /api/signup's body as event_id. When the server later
+  // sends the matching Conversions API event it carries this same id, and Meta collapses
+  // the browser event and the server event into ONE conversion instead of counting the
+  // signup twice. Generated here, before the request, because both destinations need it.
+  // crypto.randomUUID() is absent on insecure origins and on Safari before 15.4, so there
+  // is a fallback; Meta only requires the id be unique per event, not that it be a UUID.
+  const signupEventId = (window.crypto && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : 'sg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+
   try {
     const res = await fetch(BACKEND_URL + '/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, code, language: currentLang, accepted_terms: consent,
         marketing_opt_in: marketingOptIn,
+        // Paired with the CompleteRegistration fired below. The server ignores it today —
+        // /api/signup destructures a fixed field list and never reads req.body.event_id —
+        // so it is inert until the Conversions API job wires it up. Sent now so the id is
+        // already arriving when that lands.
+        event_id: signupEventId,
         // THIS is the coach landing page — every account created here intends to coach.
         // Persisted to profiles.signup_intent_coach so it survives the email-confirmation
         // round trip; app.html reads it in handleSession() and opens coach setup instead of
@@ -1378,6 +1427,23 @@ async function doSignup(instance) {
     if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
 
     if (!res.ok || data.error) return showError(errId, data.error || tstr('err_signup', 'Sign up failed. Please try again.'));
+
+    // The account exists — SUCCESS ONLY. Every validation failure returned above the fetch,
+    // every transport failure lands in the catch below, and a non-2xx or {error} body
+    // returned on the line above this one.
+    //
+    // Deliberately ABOVE the requires_confirmation branch rather than inside it.
+    // /api/signup answers requires_confirmation unconditionally today, so the two are
+    // equivalent right now — but if email confirmation is ever switched off in Supabase the
+    // else-branch navigates straight to app.html, and a call nested in the if-branch would
+    // stop counting registrations at that moment with nothing to show for it.
+    //
+    // No user data goes to Meta: the custom-data object is empty, never the email. On
+    // staging fbq is undefined, because the loader in <head> sits inside the hostname
+    // guard, so this is a no-op there and needs no hostname test of its own.
+    if (typeof fbq === 'function') {
+      fbq('track', 'CompleteRegistration', {}, { eventID: signupEventId });
+    }
 
     if (data.requires_confirmation) {
       const card = btn ? btn.closest('.auth-card') : null;
